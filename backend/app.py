@@ -97,12 +97,12 @@ _ART_FULLWIDTH_CSS = (
     "max-width:none!important;width:100%!important;"
     "margin-left:0!important;margin-right:0!important;"
     "margin-top:0!important;margin-bottom:0!important;"
-    "padding-left:2rem!important;padding-right:2rem!important;"
+    "padding-left:0.75rem!important;padding-right:0.75rem!important;"
     "box-sizing:border-box!important;"
     "overflow-x:hidden!important;overflow-y:auto!important;"
     "}"
     # 父级：保留对固定侧栏的 12rem 让位，纵向可滚，横向 hidden 兜底
-    "html body .off-canvas-content{margin-left:12rem!important;overflow-y:auto!important;overflow-x:hidden!important;}"
+    "html body .off-canvas-content{margin-left:12rem!important;overflow-y:auto!important;overflow-x:hidden!important;padding-left:1rem!important;padding-right:1rem!important;}"
     # body 自身去掉横向 hidden，确保代码块过长能横滚而不是被静默切掉
     "html body{overflow-x:auto!important;}"
     # 兜底约束正文内可能过宽的元素：流程图/表格/代码块/图片/视频/canvas
@@ -115,7 +115,7 @@ _ART_FULLWIDTH_CSS = (
     # 窄屏（<=820px）：隐藏文章侧栏，off-canvas 归零 margin，正文占满
     "@media (max-width:820px){"
     "html body .book-sidebar{display:none!important;}"
-    "html body .off-canvas-content{margin-left:0!important;padding-left:1rem!important;padding-right:1rem!important;}"
+    "html body .off-canvas-content{margin-left:0!important;padding-left:0.5rem!important;padding-right:0.5rem!important;}"
     "html body .book-content{padding-left:0!important;padding-right:0!important;}"
     "}"
     "</style>"
