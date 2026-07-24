@@ -99,6 +99,11 @@ function _safeUrl(u) {
 }
 const _MD_IMG = /!\[([^\]]*)\]\(([^)\s]+)\)/g;
 const _MD_LINK = /\[([^\]]+)\]\(([^)\s]+)\)/g;
+// 残缺链接：URL 部分为空或缺失（飞书导入时大量 [text]( 被截断），但意图是链接。
+// 两种形态：[text]() / [text]( ) —— 空 URL + 闭合括号
+//          [text]($ / [text](\n —— 没有 URL 也没有闭合括号，到行/字符串末尾
+const _MD_LINK_BROKEN_CLOSED = /\[([^\]\n]{2,200})\]\(\s*\)/g;
+const _MD_LINK_BROKEN_OPEN   = /\[([^\]\n]{2,200})\]\(\s*$/gm;
 const _MD_CODE = /`([^`]+)`/g;
 const _MD_BOLD = /\*\*([^*]+)\*\*/g;
 // 启发式：把「连续 2+ 行、每行以 ≥4 空格/Tab 缩进、且含代码特征、无中文标点」的段落
@@ -320,6 +325,16 @@ function renderMarkdown(text, keywords) {
     blocks.push({ lang: (lang || "").toLowerCase(), code: code.replace(/\n$/, "") });
     return "K" + idx + "";
   });
+  // 2.5) 抽离残缺链接 [text]() / [text]($ —— URL 缺失但意图明显是链接
+  //      （飞书/外部源导入时常出现这种截断，全题库有上千条）。
+  //      渲染时给个可点击的 a.md-link-broken，点击触发百度搜索兜底。
+  const brokenLinks = [];
+  const _markBroken = (t) => {
+    brokenLinks.push(t);
+    return "\x00BL" + (brokenLinks.length - 1) + "\x00";
+  };
+  raw = raw.replace(_MD_LINK_BROKEN_CLOSED, (m, t) => _markBroken(t));
+  raw = raw.replace(_MD_LINK_BROKEN_OPEN,   (m, t) => _markBroken(t));
   // 3) 转义 + 关键词高亮（仅非代码区）
   let s = escapeHtml(raw);
   if (keywords && keywords.length) {
@@ -401,6 +416,14 @@ function renderMarkdown(text, keywords) {
       return "<li>" + c + "</li>";
     }).join("");
     return "<ol class='md-pretty'>" + li + "</ol>";
+  });
+  // 7) 还原残缺链接占位符为可点击的 a.md-link-broken（点击触发百度搜索兜底）
+  s = s.replace(/\x00BL(\d+)\x00/g, (m, i) => {
+    const t = brokenLinks[+i];
+    if (t == null) return m;
+    const et = escapeHtml(t);
+    return "<a class='md-link md-link-broken' href='javascript:void(0)' data-q='" + et +
+      "' title='链接 URL 缺失，点击用百度搜索：&#10;" + et + "'>" + et + "</a>";
   });
   return "<p class='md-p'>" + s + "</p>";
 }
@@ -1854,6 +1877,17 @@ document.getElementById("dqCancel").onclick = exitEditMode;
 document.getElementById("dqImgBtn").onclick = () => document.getElementById("dqImgFile").click();
 document.getElementById("dqImgFile").onchange = uploadAnswerImage;
 document.getElementById("hmRange").addEventListener("change", loadHeatmap);
+
+// 残缺链接兜底：data-q 是链接原文，点击后用百度搜索（URL 源数据丢失，
+// 至少保证用户能点开看到原文资料）
+document.addEventListener("click", (e) => {
+  const link = e.target.closest("a.md-link-broken");
+  if (!link) return;
+  e.preventDefault();
+  const q = link.dataset.q;
+  if (!q) return;
+  window.open("https://www.baidu.com/s?wd=" + encodeURIComponent(q), "_blank", "noopener");
+});
 
 // 智能组卷 / 模拟面试
 document.querySelectorAll(".qmode").forEach(b => b.onclick = () => setQuizMode(b.dataset.qmode));

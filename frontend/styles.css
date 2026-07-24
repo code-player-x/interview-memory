@@ -315,6 +315,8 @@ select.diff { width: auto; min-width: 130px; border-radius: 999px; }
 .md-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; background: var(--surface-3); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; color: var(--ink); }
 .md-link { color: var(--brand); text-decoration: none; }
 .md-link:hover { text-decoration: underline; }
+.md-link-broken { color: var(--brand); text-decoration: none; border-bottom: 1px dashed var(--brand); padding-bottom: 1px; }
+.md-link-broken:hover { border-bottom-style: solid; text-decoration: none; }
 
 .md-pretty {
   list-style: none; counter-reset: prettyc; margin: 12px 0; padding: 0;
