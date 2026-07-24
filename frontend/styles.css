@@ -131,7 +131,7 @@ body {
 }
 .topbar #viewTitle { font-size: 17px; font-weight: 700; color: #fff; }
 .topbar .sub { font-size: 12.5px; color: rgba(255,255,255,.82); margin-left: 10px; font-weight: 500; }
-.content { padding: 28px 30px 56px; max-width: 1100px; width: 100%; margin: 0 auto; }
+.content { padding: 24px 24px 56px; max-width: 100%; width: 100%; }
 
 /* ---------- 视图 ---------- */
 .view { display: none; animation: fade .22s ease; }
@@ -503,7 +503,7 @@ table.tbl tr:hover td { background: var(--surface-2); }
 /* ============================================================
    技术文章摘抄（内嵌 iframe 视图）
    ============================================================ */
-.articles-view { max-width: none; padding: 0; margin: 0 -30px -56px; width: calc(100% + 60px); }
+.articles-view { max-width: none; padding: 0; margin: 0 -24px -56px; width: calc(100% + 48px); }
 .art-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 4px; font-size: 13px; }
 .art-bar .muted { color: var(--muted); }
 .art-open { color: var(--brand); text-decoration: none; font-weight: 600; }
@@ -740,8 +740,7 @@ mark.kw {
   .topbar { padding: 0 18px; }
   .content { padding: 20px 16px 88px; max-width: 100%; }
   .articles-view { margin: 0 -16px -88px; width: calc(100% + 32px); }
-  .art-frame { height: calc(100vh - 160px); }
-  .cat-grid { grid-template-columns: repeat(2, 1fr); }
+  .art-frame { height: calc(100vh - 160px); }  .cat-grid { grid-template-columns: repeat(2, 1fr); }
   .growth-reports { grid-template-columns: 1fr; }
   .growth-progress { gap: 18px; }
 
