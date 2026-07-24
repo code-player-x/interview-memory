@@ -80,29 +80,30 @@ _ART_HTML_SNIFF = (
     b"<!doctype", b"<html", b"<head", b"<body",
 )
 # iframe 嵌入适配样式：注入到 <head> 末尾，覆盖 lianglianglee 模板硬编码的
-# .book-content { max-width: 960px; margin: 0 auto }，避免右侧大块空白。
+# .book-content { max-width: 960px; margin: 0 auto }，让正文铺满可用宽度。
 # 关键点（按优先级）：
-#   1. 用 `html body .book-content` 提升 specificity，确保稳赢内联 style（内联 specificity=1,0,0,0，
-#      普通 class 只有 0,0,1,0；但 !important 永远赢，这里主要是给未来的 regression test 一个明确信号）。
-#   2. 同时设 `max-width:none !important` + `width:100% !important`，双保险覆盖内联 `max-width:960px`。
-#   3. `margin-left:12rem` 整体右移避让 position:fixed 的 12rem 宽侧栏（零重叠，侧栏必然可见）。
-#   4. `box-sizing:border-box` 让 padding-right 不外溢。
-#   5. 窄屏（<=799px）侧栏隐藏，归零 margin-left、给点 padding-left。
+#   1. 用 `html body .book-content` 提升 specificity，确保稳赢内联 style。
+#   2. 同时设 `max-width:none !important` + `width:100% !important`，覆盖内联 `max-width:960px`。
+#   3. `.book-content` 的 margin-left 必须为 0：外侧 `.off-canvas-content` 已用
+#      margin-left:12rem 给固定侧栏让位，若这里再加 12rem 会变成「双重 margin」，
+#      内容被右推并顶出视口 → 父级 overflow-x:auto 切出横向滚动条（历史 bug 根因）。
+#   4. `box-sizing:border-box` + padding 两侧对称，避免外溢。
+#   5. `.off-canvas-content` 加 overflow-x:hidden 兜底，杜绝内部横向滚动条。
+#   6. 窄屏（<=820px）隐藏文章自带侧栏并把 off-canvas margin 归零，把空间全部让给正文。
 _ART_FULLWIDTH_CSS = (
     "<style data-interview-memory='fullwidth'>"
-    # 文章页 .book-content：解锁 inline max-width/overflow，让正文铺满 iframe 右半
-    # 并允许纵向滚动（lianglianglee 模板 inline overflow-y:hidden 会切掉滚动）
+    # 正文容器：铺满父级（off-canvas-content 已让出侧栏宽度），不再右移
     "html body .book-content{"
     "max-width:none!important;width:100%!important;"
-    "margin-left:12rem!important;margin-right:0!important;"
+    "margin-left:0!important;margin-right:0!important;"
     "margin-top:0!important;margin-bottom:0!important;"
-    "padding-left:0!important;padding-right:2rem!important;"
+    "padding-left:2rem!important;padding-right:2rem!important;"
     "box-sizing:border-box!important;"
     "overflow-x:hidden!important;overflow-y:auto!important;"
     "}"
-    # 父级 off-canvas-content 兜底也允许纵向滚，避免被父容器切掉滚动条
-    "html body .off-canvas-content{overflow-y:auto!important;}"
-    # body 自身去掉横向 hidden，确保如果有代码块过长也能横向滚而不是被切
+    # 父级：保留对固定侧栏的 12rem 让位，纵向可滚，横向 hidden 兜底
+    "html body .off-canvas-content{margin-left:12rem!important;overflow-y:auto!important;overflow-x:hidden!important;}"
+    # body 自身去掉横向 hidden，确保代码块过长能横滚而不是被静默切掉
     "html body{overflow-x:auto!important;}"
     # 兜底约束正文内可能过宽的元素：流程图/表格/代码块/图片/视频/canvas
     # 让它们自适应缩小到父容器宽度，不撑爆布局（产生 iframe 横滚）
@@ -111,9 +112,11 @@ _ART_FULLWIDTH_CSS = (
     "max-width:100%!important;height:auto!important;box-sizing:border-box!important;"
     "}"
     ".book-content pre{overflow-x:auto!important;}"
-    # 窄屏（<=799px）侧栏隐藏，归零 margin-left、给点 padding-left
-    "@media (max-width:799px){"
-    "html body .book-content{margin-left:0!important;padding-left:1.25rem!important;}"
+    # 窄屏（<=820px）：隐藏文章侧栏，off-canvas 归零 margin，正文占满
+    "@media (max-width:820px){"
+    "html body .book-sidebar{display:none!important;}"
+    "html body .off-canvas-content{margin-left:0!important;padding-left:1rem!important;padding-right:1rem!important;}"
+    "html body .book-content{padding-left:0!important;padding-right:0!important;}"
     "}"
     "</style>"
 )

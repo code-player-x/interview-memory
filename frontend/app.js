@@ -2248,16 +2248,18 @@ function grBindOnce() {
 // 这里走 DOM API 直接改写 .book-content 的 style 属性（最高优先级），并把侧栏
 // 压窄一截以换取正文宽度。
 const _ART_OVERRIDE_CSS = `
-  html, body { height: 100% !important; min-height: 100% !important; overflow-x: hidden !important; }
-  .book-sidebar { width: 10rem !important; }
-  .off-canvas-content { margin-left: 10rem !important; padding: 1rem !important; overflow-y: auto !important; }
-  .off-canvas-content .book-content { padding: 0 1rem !important; max-width: none !important; box-sizing: border-box !important; overflow-x: hidden !important; overflow-y: auto !important; }
+  html, body { overflow-x: auto !important; }
+  .book-sidebar { width: 12rem !important; }
+  .off-canvas-content { margin-left: 12rem !important; padding: 1rem 2.2rem !important; overflow-y: auto !important; overflow-x: hidden !important; }
+  .off-canvas-content .book-content { margin-left: 0 !important; padding: 0 2rem !important; max-width: none !important; width: 100% !important; box-sizing: border-box !important; overflow-x: hidden !important; overflow-y: auto !important; }
   .off-canvas-content .book-content .book-post { max-width: none !important; width: 100% !important; }
   .off-canvas-content .book-content .book-post pre { max-width: 100% !important; overflow-x: auto !important; }
   .book-content img, .book-content video, .book-content canvas, .book-content svg, .book-content table { max-width: 100% !important; height: auto !important; box-sizing: border-box !important; display: block !important; }
   .book-content-inner, .book-content > * { max-width: none !important; width: 100% !important; }
-  @media (max-width: 799px) {
-    .off-canvas-content { margin-left: 0 !important; }
+  @media (max-width: 820px) {
+    .book-sidebar { display: none !important; }
+    .off-canvas-content { margin-left: 0 !important; padding-left: 1rem !important; padding-right: 1rem !important; }
+    .off-canvas-content .book-content { padding-left: 0 !important; padding-right: 0 !important; }
   }
 `;
 function _applyArticleOverride() {
