@@ -1918,6 +1918,116 @@ if os.path.isdir(ARTICLES_BOOK_DIR):
     app.mount(ARTICLES_PREFIX, StaticFiles(directory=ARTICLES_BOOK_DIR, html=True), name="articles")
 
 # 番茄待办 API（待办清单 + 番茄钟 + 专注统计）；必须注册在 "/" 兜底挂载之前。
+# ----------------------------- 番茄待办：分类 / 完成记录 / 专注统计 -----------------------------
+class PomodoroCompleteIn(BaseModel):
+    todo_id: Optional[int] = None
+    kind: str = "focus"          # focus | break
+    minutes: int = 25
+    completed: bool = True
+
+
+@app.get("/api/todo/categories", summary="待办分类列表（含计数）")
+def todo_categories(db: Session = Depends(get_db)):
+    rows = (
+        db.query(models.Todo.category, func.count(models.Todo.id))
+        .filter(models.Todo.deleted == False, models.Todo.category != None, models.Todo.category != "")
+        .group_by(models.Todo.category)
+        .order_by(func.count(models.Todo.id).desc())
+        .all()
+    )
+    return [{"name": c, "count": n} for c, n in rows]
+
+
+@app.post("/api/pomodoro/complete", summary="记录一个完成的番茄 / 休息")
+def pomodoro_complete(p: PomodoroCompleteIn, db: Session = Depends(get_db)):
+    # 用本地时间（与 growth_summary 的本地日期边界一致），修复跨时区统计偏差
+    now = datetime.now()
+    mins = max(0, int(p.minutes))
+    fs = models.FocusSession(
+        todo_id=p.todo_id,
+        kind=p.kind,
+        minutes=mins,
+        started_at=now - timedelta(minutes=mins),
+        ended_at=now,
+        actual_minutes=mins,
+        completed=bool(p.completed),
+    )
+    db.add(fs)
+    db.commit()
+    db.refresh(fs)
+    return {"id": fs.id, "kind": fs.kind, "minutes": fs.actual_minutes, "completed": fs.completed}
+
+
+def _day_minutes_map(db, start_dt, end_dt):
+    """区间内已完成专注按「本地日期」聚合为 {YYYY-MM-DD: 分钟数}（DB 无关，便于跨库）。"""
+    rows = (
+        db.query(models.FocusSession.started_at, models.FocusSession.actual_minutes)
+        .filter(
+            models.FocusSession.completed == True,
+            models.FocusSession.started_at >= start_dt,
+            models.FocusSession.started_at <= end_dt,
+        )
+        .all()
+    )
+    m = {}
+    for st, mins in rows:
+        if not st:
+            continue
+        key = st.date().isoformat()
+        m[key] = m.get(key, 0) + int(mins or 0)
+    return m
+
+
+@app.get("/api/pomodoro/stats", summary="专注统计：今日/周/月分钟 + 今日番茄数 + 热力图 + 周纵览")
+def pomodoro_stats(db: Session = Depends(get_db)):
+    today = date.today()
+    now = datetime.now()
+
+    today_start = datetime(today.year, today.month, today.day)
+    today_minutes = _focus_minutes(db, today_start, now)
+    today_count = (
+        db.query(models.FocusSession)
+        .filter(
+            models.FocusSession.completed == True,
+            models.FocusSession.kind == "focus",
+            models.FocusSession.started_at >= today_start,
+            models.FocusSession.started_at <= now,
+        )
+        .count()
+    )
+
+    monday = today - timedelta(days=today.weekday())
+    week_start = datetime(monday.year, monday.month, monday.day)
+    week_minutes = _focus_minutes(db, week_start, now)
+
+    month_start = datetime(today.year, today.month, 1)
+    month_minutes = _focus_minutes(db, month_start, now)
+
+    # 热力图：17 周 × 7 天，列优先（周→天），最右列为本周
+    start_monday = monday - timedelta(weeks=16)
+    day_map = _day_minutes_map(
+        db, datetime(start_monday.year, start_monday.month, start_monday.day), now
+    )
+    heatmap = []
+    for i in range(17 * 7):
+        d = start_monday + timedelta(days=i)
+        heatmap.append({"day": d.isoformat(), "minutes": day_map.get(d.isoformat(), 0)})
+
+    # 本周纵览（周一~周日）
+    week_overview = []
+    for i in range(7):
+        d = monday + timedelta(days=i)
+        week_overview.append({"minutes": day_map.get(d.isoformat(), 0)})
+
+    return {
+        "today": {"minutes": today_minutes, "count": today_count},
+        "week": {"minutes": week_minutes},
+        "month": {"minutes": month_minutes},
+        "heatmap": heatmap,
+        "week_overview": week_overview,
+    }
+
+
 app.include_router(todo_router)
 
 # 静态资源：按需暴露子目录，严禁把整个 data/ 挂成静态文件（否则 SQLite 库、WAL、备份可被 HTTP 下载）。
