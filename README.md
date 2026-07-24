@@ -167,9 +167,9 @@ docker compose up -d --build
 
 将本项目发布为开源仓库前需完成：
 
-- [ ] **LICENSE**：选定协议（推荐 MIT 或 Apache-2.0），添加 `LICENSE` 文件
+- [x] **LICENSE**：选定协议（MIT，已添加 `LICENSE` 文件）
 - [x] **`.gitignore`**：已加入，屏蔽 `data/`（数据库 + 上传图片 + 导出）、`.env`（密钥）、Python 缓存等
-- [ ] **`CONTRIBUTING.md`**：贡献指南（如何跑起来、如何提 PR、DB 后端说明）
+- [x] **`CONTRIBUTING.md`**：贡献指南（如何跑起来、如何提 PR、DB 后端说明）
 - [ ] **CI**：GitHub Actions 仅测 SQLite + PostgreSQL 两套后端（`pytest tests/`），不纳入 MySQL
 - [ ] **Docker**：`docker-compose.yml` 已提供，建议默认附带 PostgreSQL 服务，方便一键起生产态
 - [ ] **文档**：补充「部署到云」示例（Supabase / Neon / Railway 等托管 Postgres）
