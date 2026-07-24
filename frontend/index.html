@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=20260724">
+  <link rel="stylesheet" href="styles.css?v=20260724b">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
 </head>
 <body>
@@ -374,37 +374,46 @@
             <ul class="pomo-list" id="pomList"></ul>
           </div>
 
-          <!-- 中：番茄钟 -->
-          <div class="card pomo-timer">
-            <h2>番茄钟</h2>
+          <!-- 中：番茄钟（Pomotroid 风格：模式 tab + 开始/暂停合一） -->
+          <div class="card pomo-timer mode-focus">
+            <div class="pomo-modes" id="pomModes">
+              <button class="pomo-mode active" data-mode="focus">专注</button>
+              <button class="pomo-mode" data-mode="short">短休</button>
+              <button class="pomo-mode" data-mode="long">长休</button>
+            </div>
             <div class="pomo-ring">
-            <svg viewBox="0 0 120 120" class="pomo-svg">
-              <defs>
-                <linearGradient id="pomoGrad" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stop-color="#6366f1"/>
-                  <stop offset="100%" stop-color="#2563eb"/>
-                </linearGradient>
-              </defs>
-              <circle class="pomo-bg" cx="60" cy="60" r="52"></circle>
-              <circle class="pomo-fg" id="pomArc" cx="60" cy="60" r="52"></circle>
-            </svg>
+              <svg viewBox="0 0 120 120" class="pomo-svg">
+                <defs>
+                  <linearGradient id="pomoGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#ee5253"/>
+                    <stop offset="100%" stop-color="#c0392b"/>
+                  </linearGradient>
+                </defs>
+                <circle class="pomo-bg" cx="60" cy="60" r="52"></circle>
+                <circle class="pomo-fg" id="pomArc" cx="60" cy="60" r="52"></circle>
+              </svg>
               <div class="pomo-ring-center">
                 <div class="pomo-time" id="pomTime">25:00</div>
                 <div class="pomo-phase" id="pomPhase">专注</div>
+                <div class="pomo-round" id="pomRound">已完成 0 / 4 个后长休</div>
               </div>
+            </div>
+            <div class="pomo-ctrls">
+              <button class="btn pomo-main-btn" id="pomStart">开始</button>
+              <button class="btn ghost" id="pomReset">重置</button>
             </div>
             <select id="pomTodoSel" class="pomo-todosel">
               <option value="">自由专注（不关联待办）</option>
             </select>
-            <div class="pomo-ctrls">
-              <button class="btn" id="pomStart">开始</button>
-              <button class="btn ghost" id="pomPause">暂停</button>
-              <button class="btn ghost" id="pomReset">重置</button>
-            </div>
-            <div class="pomo-cfg">
-              <label>专注 <input id="cfgFocus" type="number" min="1" max="120" value="25"> 分</label>
-              <label>休息 <input id="cfgBreak" type="number" min="1" max="60" value="5"> 分</label>
-            </div>
+            <details class="pomo-set">
+              <summary>⚙ 时长设置</summary>
+              <div class="pomo-cfg">
+                <label>专注 <input id="cfgFocus" type="number" min="1" max="120" value="25"> 分</label>
+                <label>短休 <input id="cfgShort" type="number" min="1" max="60" value="5"> 分</label>
+                <label>长休 <input id="cfgLong" type="number" min="1" max="60" value="15"> 分</label>
+                <label>长休间隔 <input id="cfgInterval" type="number" min="1" max="12" value="4"> 个</label>
+              </div>
+            </details>
             <div class="pomo-count">今日已完成 🍅 <b id="pomTodayCount">0</b></div>
           </div>
 
@@ -578,7 +587,7 @@
 </div>
 
 <div class="tooltip" id="tip"></div>
-<script src="app.js?v=20260723e"></script>
+<script src="app.js?v=20260724b"></script>
   <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
 </body>
 </html>

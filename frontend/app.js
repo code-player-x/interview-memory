@@ -1871,9 +1871,12 @@ switchView("bank");
 
 // ==================== 番茄待办（抽象自番茄Todo：待办清单 + 番茄钟 + 专注统计） ====================
 const pom = {
-  focusMin: 25, breakMin: 5,
-  phase: "focus",          // focus | break
-  remaining: 25 * 60,      // 秒
+  mode: "focus",                 // focus | short | long（用户选择的模式）
+  durations: { focus: 25, short: 5, long: 15 },
+  longInterval: 4,               // 每完成 N 个专注后进入长休
+  focusDone: 0,                  // 本轮已完成专注数（用于决定长休）
+  phase: "focus",                // 当前计时阶段 focus | break
+  remaining: 25 * 60,            // 秒
   total: 25 * 60,
   running: false,
   timerId: null,
@@ -1914,9 +1917,11 @@ function pomToast(msg) {
 }
 
 async function loadPomodoro() {
-  pom.focusMin = pomClampInt(document.getElementById("cfgFocus").value, 1, 120, 25);
-  pom.breakMin = pomClampInt(document.getElementById("cfgBreak").value, 1, 60, 5);
-  pomReset(false);
+  pom.durations.focus = pomClampInt(document.getElementById("cfgFocus").value, 1, 120, 25);
+  pom.durations.short = pomClampInt(document.getElementById("cfgShort").value, 1, 60, 5);
+  pom.durations.long = pomClampInt(document.getElementById("cfgLong").value, 1, 60, 15);
+  pom.longInterval = pomClampInt(document.getElementById("cfgInterval").value, 1, 12, 4);
+  pomSetMode("focus", false);
   pomBindOnce();
   await Promise.all([pomLoadCats(), pomLoadTodos(), pomLoadStats()]);
 }
@@ -1928,17 +1933,24 @@ function pomBindOnce() {
     e.preventDefault();
     pomAdd();
   });
-  document.getElementById("pomStart").onclick = pomStart;
-  document.getElementById("pomPause").onclick = pomPause;
+  document.getElementById("pomStart").onclick = pomToggle;   // 开始 / 暂停 合一
   document.getElementById("pomReset").onclick = () => pomReset(true);
   document.getElementById("pomTodoSel").onchange = (e) => { pom.todoId = e.target.value ? parseInt(e.target.value, 10) : null; };
+  // 模式切换 tab
+  document.querySelectorAll("#pomModes .pomo-mode").forEach(b => {
+    b.onclick = () => pomSetMode(b.dataset.mode, true);
+  });
+  // 时长设置
   const onCfg = () => {
-    pom.focusMin = pomClampInt(document.getElementById("cfgFocus").value, 1, 120, 25);
-    pom.breakMin = pomClampInt(document.getElementById("cfgBreak").value, 1, 60, 5);
-    if (!pom.running) pomReset(false);
+    pom.durations.focus = pomClampInt(document.getElementById("cfgFocus").value, 1, 120, 25);
+    pom.durations.short = pomClampInt(document.getElementById("cfgShort").value, 1, 60, 5);
+    pom.durations.long = pomClampInt(document.getElementById("cfgLong").value, 1, 60, 15);
+    pom.longInterval = pomClampInt(document.getElementById("cfgInterval").value, 1, 12, 4);
+    if (!pom.running) pomSetMode(pom.mode, false);
   };
-  document.getElementById("cfgFocus").onchange = onCfg;
-  document.getElementById("cfgBreak").onchange = onCfg;
+  ["cfgFocus", "cfgShort", "cfgLong", "cfgInterval"].forEach(id => {
+    document.getElementById(id).onchange = onCfg;
+  });
 }
 
 async function pomLoadCats() {
@@ -2053,36 +2065,71 @@ async function pomDelete(id) {
   } catch (e) { pomToast("删除失败"); }
 }
 
-// ----------------- 番茄钟计时 -----------------
+// ----------------- 番茄钟计时（Pomotroid 风格：模式 tab + 开始/暂停合一） -----------------
+function pomModeMinutes(mode) {
+  if (mode === "short") return pom.durations.short;
+  if (mode === "long") return pom.durations.long;
+  return pom.durations.focus;
+}
+function pomApplyModeTheme() {
+  const card = document.querySelector(".pomo-timer");
+  if (!card) return;
+  card.classList.remove("mode-focus", "mode-short", "mode-long");
+  card.classList.add("mode-" + pom.mode);
+}
+function pomSetMode(mode, notify) {
+  pom.mode = mode;
+  pom.phase = "focus";
+  const mins = pomModeMinutes(mode);
+  pom.total = mins * 60;
+  pom.remaining = pom.total;
+  pom.running = false;
+  clearInterval(pom.timerId);
+  pom.timerId = null;
+  pomApplyModeTheme();
+  document.querySelectorAll("#pomModes .pomo-mode").forEach(b => {
+    b.classList.toggle("active", b.dataset.mode === mode);
+  });
+  pomRenderTimer();
+  if (notify) pomToast(mode === "focus" ? "专注模式 🍅" : (mode === "short" ? "短休模式 ☕" : "长休模式 💤"));
+}
 function pomRenderTimer() {
   document.getElementById("pomTime").textContent = pomFormat(pom.remaining);
-  document.getElementById("pomPhase").textContent = pom.phase === "focus" ? "专注" : "休息";
+  const phaseLabel = pom.phase === "focus"
+    ? (pom.mode === "focus" ? "专注" : (pom.mode === "short" ? "短休" : "长休"))
+    : "休息中";
+  document.getElementById("pomPhase").textContent = phaseLabel;
+  document.getElementById("pomRound").textContent =
+    pom.phase === "focus" ? `已完成 ${pom.focusDone} / ${pom.longInterval} 个后长休` : "休息一下 ☕";
   const arc = document.getElementById("pomArc");
   const r = 52, C = 2 * Math.PI * r;
   const elapsed = pom.total - pom.remaining;
-  const frac = pom.total > 0 ? elapsed / pom.total : 0;
+  const frac = pom.total > 0 ? Math.max(0, Math.min(1, elapsed / pom.total)) : 0;
   arc.style.strokeDasharray = C;
   arc.style.strokeDashoffset = C * (1 - frac);
-  arc.classList.toggle("break", pom.phase === "break");
+  arc.classList.toggle("break", pom.phase !== "focus");
+  const btn = document.getElementById("pomStart");
+  if (btn) btn.textContent = pom.running ? "暂停" : (pom.remaining < pom.total ? "继续" : "开始");
 }
-
+function pomToggle() {
+  if (pom.running) pomPause(); else pomStart();
+}
 function pomStart() {
   if (pom.running) return;
   pom.running = true;
   pom.timerId = setInterval(pomTick, 1000);
-  pomToast(pom.phase === "focus" ? "开始专注 🍅" : "开始休息 ☕");
+  pomRenderTimer();
+  pomToast(pom.phase === "focus"
+    ? (pom.mode === "focus" ? "开始专注 🍅" : "开始休息 ☕") : "继续 ⏱");
 }
 function pomPause() {
   pom.running = false;
   clearInterval(pom.timerId);
   pom.timerId = null;
+  pomRenderTimer();
 }
 function pomReset(notify) {
-  pomPause();
-  pom.phase = "focus";
-  pom.total = pom.focusMin * 60;
-  pom.remaining = pom.total;
-  pomRenderTimer();
+  pomSetMode(pom.mode, false);
   if (notify) pomToast("已重置");
 }
 function pomTick() {
@@ -2098,20 +2145,22 @@ function pomTick() {
 async function pomPhaseDone() {
   pomPause();
   if (pom.phase === "focus") {
-    // 记录一个完成的番茄
-    await pomRecord("focus", pom.focusMin, true);
+    await pomRecord("focus", pomModeMinutes(pom.mode), true);
+    pom.focusDone++;
+    // 达到长休间隔 → 长休，否则短休
+    const nextMode = (pom.focusDone % pom.longInterval === 0) ? "long" : "short";
     pom.phase = "break";
-    pom.total = pom.breakMin * 60;
+    pom.mode = nextMode;
+    pom.total = pomModeMinutes(nextMode) * 60;
     pom.remaining = pom.total;
+    pomApplyModeTheme();
+    document.querySelectorAll("#pomModes .pomo-mode").forEach(b => b.classList.toggle("active", b.dataset.mode === nextMode));
     pomRenderTimer();
     pomBeep();
-    pomToast("🍅 专注完成，休息一下");
+    pomToast(nextMode === "long" ? "🍅 专注达成，来个长休 💤" : "🍅 专注完成，短休一下 ☕");
   } else {
-    await pomRecord("break", pom.breakMin, true);
-    pom.phase = "focus";
-    pom.total = pom.focusMin * 60;
-    pom.remaining = pom.total;
-    pomRenderTimer();
+    await pomRecord("break", pomModeMinutes(pom.mode), true);
+    pomSetMode("focus", false);
     pomToast("休息结束，继续加油 💪");
   }
   await pomLoadStats();

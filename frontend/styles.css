@@ -589,10 +589,10 @@ mark.kw {
 
 .pomo-add { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .pomo-add input#pomTitle { width: 100%; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); font-size: 14px; background: var(--surface); color: var(--ink); }
-.pomo-add-row { display: flex; gap: 8px; align-items: center; }
-.pomo-add-row select, .pomo-add-row input { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--r-sm); font-size: 13px; background: var(--surface); color: var(--ink); }
-.pomo-add-row input#pomDue { flex: 0 0 auto; }
-.pomo-add-row .btn { margin-left: auto; }
+.pomo-add-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pomo-add-row select, .pomo-add-row input { flex: 1 1 auto; min-width: 80px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--r-sm); font-size: 13px; background: var(--surface); color: var(--ink); }
+.pomo-add-row input#pomDue { min-width: 140px; }
+.pomo-add-row .btn { flex: 1 1 100%; margin-left: 0; }
 
 .pomo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 56vh; overflow: auto; }
 .pomo-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 28px 0; }
@@ -617,23 +617,34 @@ mark.kw {
 .pomo-del:hover { opacity: 1; }
 
 /* 番茄钟 */
-.pomo-timer { display: flex; flex-direction: column; align-items: center; text-align: center; }
-.pomo-timer h2 { align-self: flex-start; margin: 0 0 12px; font-size: 16px; }
-.pomo-ring { position: relative; width: 210px; height: 210px; margin: 6px 0 14px; }
+.pomo-timer { display: flex; flex-direction: column; align-items: center; text-align: center; --pomo-accent: #ee5253; }
+.pomo-timer.mode-short { --pomo-accent: #10b981; }
+.pomo-timer.mode-long { --pomo-accent: #6366f1; }
+.pomo-modes { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface-2); border-radius: 999px; margin-bottom: 14px; }
+.pomo-mode { border: none; background: transparent; color: var(--ink-2); padding: 7px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s, color .15s; }
+.pomo-mode:hover { color: var(--ink); }
+.pomo-mode.active { background: var(--pomo-accent); color: #fff; box-shadow: 0 2px 10px -2px var(--pomo-accent); }
+.pomo-ring { position: relative; width: 220px; height: 220px; margin: 4px 0 14px; }
 .pomo-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
 .pomo-bg { fill: none; stroke: var(--surface-3); stroke-width: 10; }
-.pomo-fg { fill: none; stroke: url(#pomoGrad); stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset .35s linear; }
-.pomo-fg.break { stroke: var(--ok); }
-.pomo-ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.pomo-time { font-size: 42px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
-.pomo-phase { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.pomo-fg { fill: none; stroke: var(--pomo-accent); stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset .35s linear, stroke .3s; }
+.pomo-fg.break { stroke: var(--pomo-accent); }
+.pomo-ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.pomo-time { font-size: 46px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
+.pomo-phase { font-size: 14px; color: var(--pomo-accent); font-weight: 600; }
+.pomo-round { font-size: 11.5px; color: var(--muted); }
+.pomo-ctrls { display: flex; gap: 10px; margin-bottom: 12px; }
+.pomo-main-btn { min-width: 124px; font-size: 15px; padding: 11px 0; background: var(--pomo-accent); border-color: var(--pomo-accent); color: #fff; }
+.pomo-main-btn:hover { filter: brightness(1.06); }
 .pomo-todosel { width: 100%; max-width: 320px; padding: 9px 11px; border: 1px solid var(--border); border-radius: var(--r-sm); font-size: 13px; background: var(--surface); color: var(--ink); margin-bottom: 12px; }
-.pomo-ctrls { display: flex; gap: 8px; margin-bottom: 12px; }
-.pomo-cfg { display: flex; gap: 16px; font-size: 13px; color: var(--ink-2); }
-.pomo-cfg label { display: flex; align-items: center; gap: 5px; }
+.pomo-set { width: 100%; max-width: 320px; text-align: left; font-size: 13px; color: var(--ink-2); }
+.pomo-set summary { cursor: pointer; padding: 6px 2px; user-select: none; }
+.pomo-set[open] summary { color: var(--pomo-accent); }
+.pomo-cfg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; padding: 10px 0 4px; }
+.pomo-cfg label { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .pomo-cfg input { width: 56px; padding: 5px 7px; border: 1px solid var(--border); border-radius: var(--r-sm); font-size: 13px; text-align: center; }
 .pomo-count { margin-top: 14px; font-size: 13px; color: var(--muted); }
-.pomo-count b { color: var(--brand); font-size: 15px; }
+.pomo-count b { color: var(--pomo-accent); font-size: 15px; }
 
 /* 统计 */
 .pomo-stat-row { display: flex; gap: 10px; margin-bottom: 16px; }
