@@ -59,6 +59,13 @@ ARTICLES_BOOK_DIR = os.getenv(
     r"G:/golang_project/lianglianglee-main/lianglianglee-main/book",
 )
 ARTICLES_PREFIX = "/articles"
+# 兜底约束正文内可能过宽的元素（img/table/pre/svg/video/canvas），避免撑爆 iframe 视口产生横滚
+# max-width:100% + height:auto 让原生超宽的流程图/表格按父容器自适应缩小
+# box-sizing:border-box 让 padding 不外溢
+_ART_BOOKCONTENT_INLINE_STYLE_RE = re.compile(
+    r'(<div class="book-content")\s+style="[^"]*\bmax-width\b[^"]*"',
+    re.IGNORECASE,
+)
 # 文章站实际使用的绝对路径前缀（对 book/ 全量扫描所得；明文 + URL 编码两种都覆盖）
 _ART_ABS_PREFIXES = [
     "/static", "/专栏", "/文章", "/PDF", "/恋爱必修课", "/极客时间",
@@ -97,6 +104,13 @@ _ART_FULLWIDTH_CSS = (
     "html body .off-canvas-content{overflow-y:auto!important;}"
     # body 自身去掉横向 hidden，确保如果有代码块过长也能横向滚而不是被切
     "html body{overflow-x:auto!important;}"
+    # 兜底约束正文内可能过宽的元素：流程图/表格/代码块/图片/视频/canvas
+    # 让它们自适应缩小到父容器宽度，不撑爆布局（产生 iframe 横滚）
+    ".book-content img,.book-content video,.book-content canvas,"
+    ".book-content svg,.book-content table,.book-content pre{"
+    "max-width:100%!important;height:auto!important;box-sizing:border-box!important;"
+    "}"
+    ".book-content pre{overflow-x:auto!important;}"
     # 窄屏（<=799px）侧栏隐藏，归零 margin-left、给点 padding-left
     "@media (max-width:799px){"
     "html body .book-content{margin-left:0!important;padding-left:1.25rem!important;}"
@@ -187,6 +201,9 @@ class ArticleRewriteMiddleware(BaseHTTPMiddleware):
         text = _ART_ABS_RE.sub(lambda m: ARTICLES_PREFIX + m.group(0), text)
         # 2) 根路径属性值 "/" → "/articles/"（补尾斜杠，否则站内根链接点击 404）
         text = _ART_ROOT_ATTR_RE.sub(r"\1=\2" + ARTICLES_PREFIX + "/" + r"\2", text)
+        # 3) 删除 .book-content 上的 inline style（CSS !important 压不过 inline，必须删）
+        #    仅匹配含 max-width 的情况，不会误伤其他合法 inline style
+        text = _ART_BOOKCONTENT_INLINE_STYLE_RE.sub(r"\1", text)
         # 3) iframe 适配：注入 CSS 覆盖 lianglianglee 模板的 max-width:960px。
         #    命中最后一个 </head>（lianglianglee 有嵌套 <head><head> 结构，插在真正的
         #    head 闭合前才干净），兜底没 </head> 就插到 <body> 前。

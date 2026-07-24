@@ -2254,6 +2254,7 @@ const _ART_OVERRIDE_CSS = `
   .off-canvas-content .book-content { padding: 0 1rem !important; max-width: none !important; box-sizing: border-box !important; overflow-x: hidden !important; overflow-y: auto !important; }
   .off-canvas-content .book-content .book-post { max-width: none !important; width: 100% !important; }
   .off-canvas-content .book-content .book-post pre { max-width: 100% !important; overflow-x: auto !important; }
+  .book-content img, .book-content video, .book-content canvas, .book-content svg, .book-content table { max-width: 100% !important; height: auto !important; box-sizing: border-box !important; display: block !important; }
   .book-content-inner, .book-content > * { max-width: none !important; width: 100% !important; }
   @media (max-width: 799px) {
     .off-canvas-content { margin-left: 0 !important; }
@@ -2296,6 +2297,13 @@ function _applyArticleOverride() {
   doc.querySelectorAll(".book-content-inner, .book-post, .book-content > *").forEach(el => {
     el.style.maxWidth = "none";
     el.style.width = "100%";
+  });
+  // 5) 兜底：所有正文内可能过宽的元素（流程图/表格/代码块/图片/视频）强制自适应
+  //    不让它撑爆 iframe 视口产生横滚
+  doc.querySelectorAll(".book-content img, .book-content video, .book-content canvas, .book-content svg, .book-content table, .book-content pre").forEach(el => {
+    el.style.maxWidth = "100%";
+    el.style.height = "auto";
+    el.style.boxSizing = "border-box";
   });
   return true;
 }
