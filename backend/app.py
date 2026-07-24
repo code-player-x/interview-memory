@@ -328,6 +328,18 @@ class QuestionUpdate(BaseModel):
     images: Optional[str] = None  # 显式覆盖；为 None 时按 reference_answer 内 ![alt](url) 重新推导
 
 
+class NoteIn(BaseModel):
+    content: str = Field(..., min_length=1, max_length=4000)
+
+
+class NoteOut(BaseModel):
+    id: int
+    question_id: int
+    content: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
 class AnswerOut(BaseModel):
     is_correct: Optional[bool]
     explanation: str
@@ -2030,6 +2042,63 @@ def pomodoro_stats(db: Session = Depends(get_db)):
 
 
 app.include_router(todo_router)
+
+# ==================== 个人笔记（一题多条，单人系统） ====================
+def _note_to_out(n):
+    return NoteOut(
+        id=n.id, question_id=n.question_id, content=n.content,
+        created_at=n.created_at.isoformat() if n.created_at else None,
+        updated_at=n.updated_at.isoformat() if n.updated_at else None,
+    )
+
+
+@app.get("/api/questions/{qid}/notes", response_model=List[NoteOut], summary="列出某题所有笔记（按时间倒序）")
+def list_notes(qid: int, db: Session = Depends(get_db)):
+    rows = (db.query(models.QuestionNote)
+              .filter(models.QuestionNote.question_id == qid)
+              .order_by(models.QuestionNote.created_at.desc(),
+                        models.QuestionNote.id.desc())
+              .all())
+    return [_note_to_out(r) for r in rows]
+
+
+@app.post("/api/questions/{qid}/notes", response_model=NoteOut, summary="新增一条笔记")
+def create_note(qid: int, payload: NoteIn, db: Session = Depends(get_db)):
+    if not db.query(models.Question).filter(models.Question.id == qid).first():
+        raise HTTPException(status_code=404, detail="题目不存在")
+    n = models.QuestionNote(question_id=qid, content=payload.content)
+    db.add(n)
+    db.commit()
+    db.refresh(n)
+    return _note_to_out(n)
+
+
+@app.put("/api/questions/{qid}/notes/{note_id}", response_model=NoteOut, summary="更新一条笔记")
+def update_note(qid: int, note_id: int, payload: NoteIn, db: Session = Depends(get_db)):
+    n = (db.query(models.QuestionNote)
+           .filter(models.QuestionNote.id == note_id,
+                   models.QuestionNote.question_id == qid)
+           .first())
+    if not n:
+        raise HTTPException(status_code=404, detail="笔记不存在")
+    n.content = payload.content
+    db.commit()
+    db.refresh(n)
+    return _note_to_out(n)
+
+
+@app.delete("/api/questions/{qid}/notes/{note_id}", summary="删除一条笔记")
+def delete_note(qid: int, note_id: int, db: Session = Depends(get_db)):
+    n = (db.query(models.QuestionNote)
+           .filter(models.QuestionNote.id == note_id,
+                   models.QuestionNote.question_id == qid)
+           .first())
+    if not n:
+        raise HTTPException(status_code=404, detail="笔记不存在")
+    db.delete(n)
+    db.commit()
+    return {"ok": True}
+
 
 # 静态资源：按需暴露子目录，严禁把整个 data/ 挂成静态文件（否则 SQLite 库、WAL、备份可被 HTTP 下载）。
 #   - 上传图片：/data/images/<file>

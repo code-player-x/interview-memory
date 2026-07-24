@@ -672,61 +672,160 @@ async function memStart() {
 }
 
 async function memRender() {
-  // 确保当前页的题目已加载（按需翻页补足）
-  const endIdx = mem.idx + mem.pageSize;
+  // 单题文章式：mem.idx 是题索引（不再是页索引），mem.pageSize 仅用于后端一次拉多少
+  const endIdx = mem.idx + 1;
   while (endIdx > mem.items.length && mem.items.length < mem.total && !mem.loading) {
     mem.loading = true;
     await memLoadPage();
     mem.loading = false;
   }
   const box = document.getElementById("memCard");
-  const pageItems = mem.items.slice(mem.idx, Math.min(endIdx, mem.items.length));
-  if (!pageItems.length) {
+  const q = mem.items[mem.idx];
+  if (!q) {
     box.innerHTML = "<div class='empty'>该分类下暂无题目</div>";
     document.getElementById("memProgress").textContent = "0 / 0";
     document.getElementById("memPrev").disabled = true;
     document.getElementById("memNext").disabled = true;
     return;
   }
-  box.innerHTML = pageItems.map((q, i) => {
-    const dm = diffMeta(q.difficulty);
-    const kws = splitKeywords(q.keywords);
-    const kwHtml = kws.length
-      ? "<div class='mem-kws'>" + kws.map(k => "<span class='kw-pill'>" + escapeHtml(k) + "</span>").join("") + "</div>"
-      : "";
-    return (
-      "<div class='mem-item' data-index='" + (mem.idx + i) + "'>" +
-        "<div class='mem-q'>" + renderMarkdown(q.question_text || "") + "</div>" +
+  const dm = diffMeta(q.difficulty);
+  const kws = splitKeywords(q.keywords);
+  const kwHtml = kws.length
+    ? "<div class='mem-kws'>" + kws.map(k => "<span class='kw-pill'>" + escapeHtml(k) + "</span>").join("") + "</div>"
+    : "";
+  const likeN = (q.id || 0) * 7 + 233;
+  const statsHtml =
+    "<div class='mem-stats'>" +
+      "<span class='act' title='收藏/标记'>🔖 标记</span>" +
+      "<span class='act' title='复制链接' data-qid='" + q.id + "' onclick='copyShareLink(this)'>🔗 分享</span>" +
+      "<span class='like' title='有用'>👍 " + likeN + " 有用</span>" +
+    "</div>";
+  const tagsHtml =
+    "<div class='mem-tags'>" +
+      "<span class='badge " + dm.cls + "'>" + dm.label + "</span>" +
+      "<span class='pill'>" + escapeHtml(q.category || "") + "</span>" +
+      curatedTagsHtml(q.category, q.platform, q.tags, 4) +
+    "</div>";
+  box.innerHTML =
+    "<article class='mem-article'>" +
+      "<h1 class='mem-title'>" +
+        "<span class='mem-qid'>#" + q.id + "</span>" +
+        renderMarkdown(q.question_text || "") +
+      "</h1>" +
+      tagsHtml +
+      statsHtml +
+      "<div class='mem-tabs'>" +
+        "<div class='mem-tab active'>📖 推荐答案</div>" +
+        "<div class='mem-tab muted'>🎙️ 开始面试（自测模式）</div>" +
+      "</div>" +
+      "<section class='mem-answer' id='memAnswerSection'>" +
         kwHtml +
-        "<div class='mem-head'>" +
-          "<span class='pill'>" + escapeHtml(q.category || "") + "</span>" +
-          "<span class='badge " + dm.cls + "'>" + dm.label + "</span>" +
-          curatedTagsHtml(q.category, q.platform, q.tags, 4) +
+        "<div class='mem-a-body'>" + renderMarkdown(q.reference_answer || "（暂无参考答案）", kws) + "</div>" +
+      "</section>" +
+      "<section class='mem-notes' id='memNotesSection'>" +
+        "<div class='mem-notes-head'>📝 我的笔记 <span class='muted'>（个人 · 落库 · 仅自己可见）</span></div>" +
+        "<div class='mem-note-editor'>" +
+          "<textarea id='memNoteInput' placeholder='写点自己的理解 / 记忆口诀 / 易错点…'></textarea>" +
+          "<div class='mem-note-actions'>" +
+            "<button class='btn ghost sm' id='memNoteClear'>清空</button>" +
+            "<button class='btn primary sm' id='memNoteSave'>保存笔记</button>" +
+          "</div>" +
+          "<div class='mem-note-tip muted' id='memNoteTip'></div>" +
         "</div>" +
-        "<div class='mem-divider'><span>参考答案</span></div>" +
-        "<div class='mem-a'>" + renderMarkdown(q.reference_answer || "（暂无参考答案）", kws) + "</div>" +
-      "</div>"
-    );
-  }).join("");
-  const start = mem.idx + 1;
-  const end = Math.min(mem.idx + mem.pageSize, mem.total);
-  document.getElementById("memProgress").textContent = "第 " + start + "-" + end + " / " + mem.total + " 题";
+        "<div class='mem-note-list' id='memNoteList'><div class='muted' style='font-size:12px'>加载中…</div></div>" +
+      "</section>" +
+    "</article>";
+  document.getElementById("memNoteSave").onclick = () => memNoteSave(q.id);
+  document.getElementById("memNoteClear").onclick = () => { document.getElementById("memNoteInput").value = ""; };
+  memNoteLoad(q.id);
   document.getElementById("memPrev").disabled = mem.idx <= 0;
-  document.getElementById("memNext").disabled = mem.idx + mem.pageSize >= mem.total;
+  document.getElementById("memNext").disabled = mem.idx + 1 >= mem.total;
+  document.getElementById("memProgress").textContent = "第 " + (mem.idx + 1) + " / " + mem.total + " 题";
 }
 
 function memPrev() {
   if (mem.idx > 0) {
-    mem.idx = Math.max(0, mem.idx - mem.pageSize);
+    mem.idx -= 1;
     memRender();
-    document.getElementById("memCard").scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 }
 function memNext() {
-  if (mem.idx + mem.pageSize < mem.total) {
-    mem.idx += mem.pageSize;
+  if (mem.idx + 1 < mem.total) {
+    mem.idx += 1;
     memRender();
-    document.getElementById("memCard").scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+}
+
+// ---------------- 笔记：增/查/改/删（落库） ----------------
+async function memNoteLoad(qid) {
+  const list = document.getElementById("memNoteList");
+  if (!list) return;
+  list.innerHTML = "<div class='muted' style='font-size:12px'>加载中…</div>";
+  try {
+    const r = await fetch("/api/questions/" + qid + "/notes");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const notes = await r.json();
+    if (!notes.length) {
+      list.innerHTML = "<div class='muted' style='font-size:12px;padding:6px 0'>还没有笔记，写下第一笔吧～</div>";
+      return;
+    }
+    list.innerHTML = notes.map(n =>
+      "<div class='mem-note' data-nid='" + n.id + "'>" +
+        "<div class='mem-note-meta'>" +
+          "<span class='mem-note-dot'></span>" +
+          "<span>" + (n.created_at ? new Date(n.created_at).toLocaleString("zh-CN", {month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}) : "") + "</span>" +
+          "<span class='mem-note-del' onclick='memNoteDelete(" + qid + "," + n.id + ")'>删除</span>" +
+        "</div>" +
+        "<div class='mem-note-text'>" + escapeHtml(n.content).replace(/\n/g, "<br>") + "</div>" +
+      "</div>"
+    ).join("");
+  } catch (e) {
+    list.innerHTML = "<div class='muted' style='font-size:12px;color:#d33'>加载失败：" + e.message + "</div>";
+  }
+}
+async function memNoteSave(qid) {
+  const inp = document.getElementById("memNoteInput");
+  const tip = document.getElementById("memNoteTip");
+  const v = inp.value.trim();
+  if (!v) { tip.textContent = "请先写点内容"; setTimeout(()=>tip.textContent="", 1500); return; }
+  tip.textContent = "保存中…";
+  try {
+    const r = await fetch("/api/questions/" + qid + "/notes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: v }),
+    });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    inp.value = "";
+    tip.textContent = "已保存";
+    setTimeout(()=>tip.textContent="", 1200);
+    memNoteLoad(qid);
+  } catch (e) {
+    tip.textContent = "保存失败：" + e.message;
+  }
+}
+function copyShareLink(el) {
+  const qid = el.getAttribute('data-qid');
+  const url = location.href.split('?')[0].split('#')[0] + '?q=' + qid;
+  navigator.clipboard.writeText(url).then(() => {
+    const old = el.textContent;
+    el.textContent = '✓ 已复制';
+    setTimeout(() => { el.textContent = old; }, 1200);
+  }).catch(() => {
+    prompt('复制失败，请手动复制：', url);
+  });
+}
+
+async function memNoteDelete(qid, nid) {
+  if (!confirm("删除这条笔记？")) return;
+  try {
+    const r = await fetch("/api/questions/" + qid + "/notes/" + nid, { method: "DELETE" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    memNoteLoad(qid);
+  } catch (e) {
+    alert("删除失败：" + e.message);
   }
 }
 

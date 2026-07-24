@@ -1,10 +1,9 @@
 """SQLAlchemy 表模型：与 interview_memory.db 真实 schema 严格对齐。
-
 类名 = 表名 CamelCase；字段名 = 列名；类型按 PRAGMA table_info 推断。
 所有字段 nullable 与默认值对齐原库，保证 app.py 的读写与现有数据兼容。
 """
 from sqlalchemy import Column, Integer, String, Text, DateTime, Date, Boolean
-
+from sqlalchemy.sql import func as sqlfunc
 from .db import Base
 
 
@@ -115,7 +114,7 @@ class FocusSession(Base):
 
 class Todo(Base):
     __tablename__ = "todos"
-    id = Column(Integer, primary_key=True, nullable=False)
+    id = Column(Integer, primary_key=True)
     title = Column(String(300), nullable=False)
     note = Column(Text)
     category = Column(String(100))
@@ -126,3 +125,18 @@ class Todo(Base):
     created_at = Column(DateTime)
     order_no = Column(Integer)
     deleted = Column(Boolean)
+
+
+class QuestionNote(Base):
+    """个人笔记（一题可多条；单人系统，按时间倒序展示）。
+
+    - question_id 不建强外键，避免删题时级联误删笔记（保留用户的心血）。
+      删除题目时由 app.py 显式清理对应 notes。
+    - created_at/updated_at 由 SQLAlchemy 端 server_default + onupdate 维护。
+    """
+    __tablename__ = "question_notes"
+    id = Column(Integer, primary_key=True)
+    question_id = Column(Integer, nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=sqlfunc.now())
+    updated_at = Column(DateTime, server_default=sqlfunc.now(), onupdate=sqlfunc.now())
