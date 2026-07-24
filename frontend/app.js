@@ -695,13 +695,13 @@ async function memRender() {
       : "";
     return (
       "<div class='mem-item' data-index='" + (mem.idx + i) + "'>" +
+        "<div class='mem-q'>" + renderMarkdown(q.question_text || "") + "</div>" +
+        kwHtml +
         "<div class='mem-head'>" +
           "<span class='pill'>" + escapeHtml(q.category || "") + "</span>" +
           "<span class='badge " + dm.cls + "'>" + dm.label + "</span>" +
           curatedTagsHtml(q.category, q.platform, q.tags, 4) +
         "</div>" +
-        kwHtml +
-        "<div class='mem-q'>" + renderMarkdown(q.question_text || "") + "</div>" +
         "<div class='mem-divider'><span>参考答案</span></div>" +
         "<div class='mem-a'>" + renderMarkdown(q.reference_answer || "（暂无参考答案）", kws) + "</div>" +
       "</div>"

@@ -524,13 +524,13 @@ table.tbl tr:hover td { background: var(--surface-2); }
 .mem-item:last-child { border-bottom: none; }
 .mem-item:first-child { padding-top: 8px; }
 .mem-item .mem-q { font-size: 18px; line-height: 1.6; font-weight: 600; }
-.mem-item .mem-a { font-size: 14px; padding: 14px 18px; }
+.mem-item .mem-a { font-size: 16px; padding: 14px 18px; }
 .mem-item .mem-divider { margin: 18px 0 12px; }
 .mem-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
 .mem-q { font-size: 22px; line-height: 1.7; font-weight: 600; color: var(--ink); }
 .mem-q .md-p { margin: 0 0 10px; }
-.mem-divider { display: flex; align-items: center; gap: 12px; margin: 26px 0 16px; color: var(--muted); font-size: 13px; letter-spacing: .08em; }
-.mem-divider::before, .mem-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.mem-divider { margin: 22px 0 12px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.mem-divider::before, .mem-divider::after { display: none; }
 .mem-a { font-size: 16px; line-height: 1.8; color: var(--ink-2); background: var(--brand-soft); border: 1px solid #dfe6ff; border-radius: var(--r-md); padding: 20px 24px; }
 .mem-a .md-p { margin: 0 0 10px; }
 .mem-a .md-img { max-width: 100%; border-radius: var(--r-sm); margin: 8px 0; }
