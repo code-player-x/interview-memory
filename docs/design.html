@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>面试八股文长期记忆训练系统 · 软件设计方案</title>
+<style>
+  :root{
+    --bg:#ffffff; --panel:#f7f8fa; --ink:#1f2328; --muted:#57606a;
+    --line:#d8dee4; --brand:#0969da; --brand-soft:#ddf4ff;
+    --ok:#1a7f37; --bad:#cf222e; --warn:#9a6700;
+    --lv0:#ebedf0; --lv1:#9be9a8; --lv2:#40c463; --lv3:#30a14e; --lv4:#216e39;
+  }
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Helvetica,Arial,sans-serif;
+    color:var(--ink); background:var(--bg); line-height:1.7; margin:0; padding:0}
+  .wrap{max-width:960px; margin:0 auto; padding:40px 28px 80px}
+  header{border-bottom:2px solid var(--line); padding-bottom:18px; margin-bottom:28px}
+  h1{font-size:26px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:14px}
+  h2{font-size:20px; margin:38px 0 12px; padding-left:10px; border-left:4px solid var(--brand)}
+  h3{font-size:16px; margin:24px 0 8px; color:var(--ink)}
+  p,li{font-size:14.5px; color:#2d333b}
+  code{background:var(--panel); padding:1px 6px; border-radius:4px; font-size:13px; border:1px solid var(--line)}
+  pre{background:#0d1117; color:#e6edf3; padding:16px; border-radius:10px; overflow:auto; font-size:13px; line-height:1.55}
+  pre code{background:none; border:none; color:inherit; padding:0}
+  table{border-collapse:collapse; width:100%; margin:14px 0; font-size:13.5px}
+  th,td{border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top}
+  th{background:var(--panel); font-weight:600}
+  .tag{display:inline-block; font-size:12px; padding:2px 8px; border-radius:20px; margin-right:6px}
+  .tag.agent{background:#fff1e5; color:#bc4c00; border:1px solid #ffd8b5}
+  .tag.soft{background:var(--brand-soft); color:var(--brand); border:1px solid #b6e3ff}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin:16px 0}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}}
+  .muted{color:var(--muted); font-size:13px}
+  .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+  .flow{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:14px 0}
+  .node{background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:13px; min-width:120px}
+  .node.brand{background:var(--brand-soft); border-color:#b6e3ff}
+  .node.soft{background:#f0f6ff}
+  .arrow{color:var(--muted); font-size:18px}
+  /* heatmap */
+  #heatmap{display:flex; gap:3px; overflow-x:auto; padding:6px 0}
+  .week{display:flex; flex-direction:column; gap:3px}
+  .day{width:13px; height:13px; border-radius:3px; background:var(--lv0)}
+  .legend{display:flex; align-items:center; gap:4px; font-size:12px; color:var(--muted); margin-top:8px}
+  .legend .day{width:11px; height:11px}
+  .monthrow{display:flex; gap:3px; font-size:11px; color:var(--muted); margin-top:2px}
+  .tooltip{position:fixed; background:#1f2328; color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; pointer-events:none; opacity:0; transition:opacity .1s; z-index:99}
+  footer{margin-top:50px; border-top:1px solid var(--line); padding-top:16px; color:var(--muted); font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>面试八股文 · 长期记忆训练系统</h1>
+  <div class="sub">软件设计方案 v1.0 · 2026-07-20 · 由 WorkBuddy 生成</div>
+</header>
+
+<h2>1. 背景与目标</h2>
+<p>之前的 <code>interview-bank-from-xhs</code> 类 skill 把「爬题库 + 每日推送 + 判断对错 + 错题 + 邮件」全部塞进了 Agent。这带来两个问题：</p>
+<ul>
+  <li><b>邮件模板漂移</b>：回复问题的邮件模板每次都在变，不可控；</li>
+  <li><b>强依赖 Agent</b>：定时推送、热力图、错题本这些本不依赖 Agent 的能力，被绑死在对话循环里，脆弱且难以沉淀。</li>
+</ul>
+<p><b>目标</b>：把<b>不依赖 Agent 的能力落地成一个独立软件</b>；Agent 只保留两件最基础、最擅长的事：</p>
+<ol>
+  <li><b>爬取各平台面试八股文</b>（生成题库）；</li>
+  <li><b>判断用户答案对错</b>（LLM 判题）。</li>
+</ol>
+<p>软件负责其余全部：题库管理、每日练习选题与推送、GitHub 风格热力图、错题本、艾宾浩斯遗忘曲线调度、以及<b>固定模板</b>的邮件发送。从而保证长期记忆真正形成。</p>
+
+<h2>2. 系统边界：Agent vs 软件</h2>
+<table>
+  <tr><th>能力</th><th>归属</th><th>原因</th></tr>
+  <tr><td>爬取各平台（小红书/牛客/Boss 等）面试八股文</td><td><span class="tag agent">Agent</span></td><td>需要浏览器/反爬/解析等非结构化能力，Agent 最合适</td></tr>
+  <tr><td>判断用户答案对错（含解析）</td><td><span class="tag agent">Agent</span></td><td>需要语义理解，LLM 判题不可被规则替代</td></tr>
+  <tr><td>题库管理 / 导入</td><td><span class="tag soft">软件</span></td><td>结构化存储，无需 Agent</td></tr>
+  <tr><td>每日练习选题与推送</td><td><span class="tag soft">软件</span></td><td>按调度从题库抽题，规则化</td></tr>
+  <tr><td>GitHub 风格热力图</td><td><span class="tag soft">软件</span></td><td>纯前端可视化，无需 Agent</td></tr>
+  <tr><td>错题本</td><td><span class="tag soft">软件</span></td><td>结构化数据 + CRUD</td></tr>
+  <tr><td>艾宾浩斯遗忘曲线调度</td><td><span class="tag soft">软件</span></td><td>时间计算，规则化</td></tr>
+  <tr><td>邮件模板与发送</td><td><span class="tag soft">软件</span></td><td><b>模板由软件托管，固定可控</b>，不再依赖 Agent 改写</td></tr>
+</table>
+
+<h2>3. 总体架构</h2>
+<div class="flow">
+  <div class="node brand">Agent · 爬虫</div><span class="arrow">→</span>
+  <div class="node">题库 JSON</div><span class="arrow">→</span>
+  <div class="node soft">软件 · 题库管理</div>
+</div>
+<div class="flow">
+  <div class="node soft">软件 · 每日选题</div><span class="arrow">→</span>
+  <div class="node">用户作答</div><span class="arrow">→</span>
+  <div class="node brand">Agent · 判题</div><span class="arrow">→</span>
+  <div class="node soft">软件 · 记录结果</div>
+</div>
+<div class="flow">
+  <div class="node soft">软件 · 热力图</div>
+  <div class="node soft">软件 · 错题本</div>
+  <div class="node soft">软件 · 艾宾浩斯调度</div><span class="arrow">→</span>
+  <div class="node">固定模板邮件 → 你的邮箱</div>
+</div>
+<div class="card">
+<b>分层</b>：数据采集层（Agent）/ 应用层（后端 API + 定时任务）/ 展示层（Web 热力图 & 错题本）/ 通知层（SMTP 邮件）。<br>
+<b>部署</b>：初期单机 Docker 一键部署（后端 + 前端 + SQLite 打包为一个 compose）；后期可拆 PostgreSQL。
+</div>
+
+<h2>4. 技术选型（推荐）</h2>
+<table>
+  <tr><th>层</th><th>选型</th><th>说明</th></tr>
+  <tr><td>后端</td><td>Python + FastAPI</td><td>轻量、异步、易写定时任务；判题回调 Agent 用 HTTP</td></tr>
+  <tr><td>前端</td><td>原生 HTML/JS 或 Vue3</td><td>热力图用自绘 SVG/grid，无重依赖</td></tr>
+  <tr><td>数据库</td><td>SQLite（→ PostgreSQL）</td><td>单机够用，零运维</td></tr>
+  <tr><td>调度</td><td>APScheduler / 系统 cron</td><td>每日 09:00 跑复习邮件任务</td></tr>
+  <tr><td>邮件</td><td>SMTP（QQ 邮箱）</td><td>模板固定、由软件渲染，避免 Agent 改写</td></tr>
+  <tr><td>Agent 接口</td><td>HTTP（REST）</td><td>判题走稳定 API，降级可排队重试</td></tr>
+</table>
+
+<h2>5. 数据模型</h2>
+<pre><code>questions(
+  id, platform, category, difficulty,
+  question_text, reference_answer,
+  created_at
+)
+
+submissions(                -- 每次作答记录（热力图 & 判题来源）
+  id, question_id, user_answer,
+  is_correct, judge_by,        -- judge_by='agent'
+  submitted_at
+)
+
+wrong_book(                 -- 错题本（由 submissions 派生 + 复习状态）
+  id, question_id,
+  first_wrong_at, wrong_count,
+  last_user_answer,         -- 当时错答，便于对比
+  mastery,                  -- 'learning' | 'reviewing' | 'mastered'
+  updated_at
+)
+
+review_schedule(            -- 艾宾浩斯复习计划
+  id, question_id,
+  stage,                    -- 当前间隔阶梯
+  next_review_at,           -- 下次应复习日期
+  last_reviewed_at,
+  review_count,
+  status                    -- 'pending' | 'sent' | 'done'
+)
+
+activity(                   -- 热力图聚合（按天）
+  day, answered, correct, wrong
+)
+
+users / settings(           -- 邮箱、间隔序列、推送时间等配置
+  email, push_time, ebbinghaus_steps(json)
+)
+</code></pre>
+
+<h2>6. 核心功能设计</h2>
+
+<h3>6.1 GitHub 风格热力图</h3>
+<p>展示「哪天回复/作答了问题」。颜色深浅 = 当天答题数量（可在 答题数 / 正确数 间切换）。数据来自 <code>activity</code> 表。</p>
+<div class="card">
+  <div id="heatmap"></div>
+  <div class="monthrow" id="monthrow"></div>
+  <div class="legend">少 <span class="day" style="background:var(--lv0)"></span>
+    <span class="day" style="background:var(--lv1)"></span>
+    <span class="day" style="background:var(--lv2)"></span>
+    <span class="day" style="background:var(--lv3)"></span>
+    <span class="day" style="background:var(--lv4)"></span> 多</div>
+  <p class="muted">交互：hover 显示「日期 + 答题数」；点击某天可下钻查看当天作答的题目与对错。上图为依据样例数据渲染的原型。</p>
+</div>
+
+<h3>6.2 错题本</h3>
+<table>
+  <tr><th>字段</th><th>含义</th></tr>
+  <tr><td>题目 / 平台 / 分类</td><td>定位来源，便于按方向复习</td></tr>
+  <tr><td>错误日期 (first_wrong_at)</td><td>首次答错时间，对应热力图坐标</td></tr>
+  <tr><td>错误次数 (wrong_count)</td><td>多次错则加权优先推送</td></tr>
+  <tr><td>当时错答 (last_user_answer)</td><td>记录你的错误思路，复习时对照</td></tr>
+  <tr><td>参考答案</td><td>折叠展示，先自测再揭示</td></tr>
+  <tr><td>掌握状态 (mastery)</td><td>标记「已掌握」可移出错题本，停止推送</td></tr>
+</table>
+<p>列表支持筛选：按分类、按时间、仅看「待复习」。错题本与热力图联动——点开某天的错题即进入复习。</p>
+
+<h3>6.3 艾宾浩斯遗忘曲线 · 调度 + 邮件推送</h3>
+<p>答错 → 写入错题本 → 按间隔序列生成复习计划。到复习日，软件汇总当日待复习错题，渲染<b>固定模板</b>邮件推送到你邮箱。</p>
+<div class="card">
+  <p class="muted">艾宾浩斯记忆保留率衰减（示意）：</p>
+  <div id="curve"></div>
+</div>
+<table>
+  <tr><th>复习阶梯 stage</th><th>间隔（天）</th><th>说明</th></tr>
+  <tr><td>1</td><td>1</td><td>答错次日第一次复习</td></tr>
+  <tr><td>2</td><td>2</td><td></td></tr>
+  <tr><td>3</td><td>4</td><td></td></tr>
+  <tr><td>4</td><td>7</td><td></td></tr>
+  <tr><td>5</td><td>15</td><td></td></tr>
+  <tr><td>6</td><td>30</td><td></td></tr>
+  <tr><td>7</td><td>60</td><td>之后若仍记牢可标记 mastered</td></tr>
+</table>
+<p class="muted">间隔序列可在 <code>settings</code> 中配置；可选增强：复习邮件内嵌「记住了 / 还没记住」按钮，按 SM-2 思路动态调整下一次间隔（记牢则跳阶梯，没记住则回退）。</p>
+
+<h2>7. 软件与 Agent 的交互协议</h2>
+<h3>7.1 题库导入（Agent → 软件）</h3>
+<pre><code>POST /api/questions/import
+{
+  "platform": "小红书",
+  "category": "Java/并发",
+  "question_text": "volatile 能保证原子性吗？",
+  "reference_answer": "不能，volatile 仅保证可见性与有序性……",
+  "difficulty": 2
+}</code></pre>
+<h3>7.2 判题接口（软件 → Agent）</h3>
+<pre><code>POST /agent/judge
+{
+  "question_text": "...",
+  "reference_answer": "...",
+  "user_answer": "我认为可以保证原子性"
+}
+→ 200 {
+  "is_correct": false,
+  "explanation": "volatile 不保证复合操作原子性，例如 i++ ……"
+}</code></pre>
+<p class="warn">降级策略：Agent 不可用时，submissions 标记为 <code>judge_by='pending'</code> 进入重试队列，不影响热力图与调度主流程。</p>
+
+<h2>8. 邮件设计（固定模板，由软件托管）</h2>
+<p>模板由软件渲染、<b>不再依赖 Agent 改写</b>，保证稳定可控。每日复习邮件结构：</p>
+<pre><code>主题：【八股文复习】今天有 N 道错题待巩固（2026-07-20）
+────────────────────────
+早上好 👋 根据艾宾浩斯遗忘曲线，今天有 N 道题到了复习时间：
+
+1. [Java/并发] volatile 能保证原子性吗？
+   · 你曾答错：我认为可以保证原子性
+   · 参考答案（点开查看）：volatile 仅保证可见性与有序性，不保证原子性……
+   · 上次错误：2026-07-13 · 已错 2 次
+
+2. ...
+
+────────────────────────
+💡 先凭记忆作答，再点开参考答案对照。
+✅ 记住了 → 回复「1 记住」推进间隔；❌ 还没记住 → 回复「1 没记住」提前再次推送。
+📊 查看你的热力图：&lt;链接&gt;
+</code></pre>
+<p class="muted">模板内变量仅：日期、待复习列表、错题历史、热力图链接。结构固定，不会随对话漂移。</p>
+
+<h2>9. 目录结构（推荐实现）</h2>
+<pre><code>interview-memory/
+├─ backend/
+│  ├─ app.py            # FastAPI 入口
+│  ├─ db.py             # SQLite 连接
+│  ├─ models.py         # 数据模型
+│  ├─ judge.py          # 调用 Agent 判题（含降级）
+│  ├─ scheduler.py      # 每日复习任务
+│  ├─ emailer.py        # SMTP 发送 + 固定模板
+│  └─ ebbinghaus.py     # 间隔计算
+├─ frontend/
+│  ├─ index.html        # 热力图 + 错题本页
+│  └─ app.js
+├─ data/                # SQLite 文件
+└─ docker-compose.yml
+</code></pre>
+
+<h2>10. 实施里程碑</h2>
+<table>
+  <tr><th>阶段</th><th>交付</th><th>依赖 Agent</th></tr>
+  <tr><td>P0 数据层</td><td>数据库 + 题库导入 + 判题回调</td><td>仅判题</td></tr>
+  <tr><td>P1 练习闭环</td><td>每日选题 → 作答 → 判题 → 记录</td><td>仅判题</td></tr>
+  <tr><td>P2 可视化</td><td>热力图页 + 错题本页</td><td>否</td></tr>
+  <tr><td>P3 记忆引擎</td><td>艾宾浩斯调度 + 固定模板邮件</td><td>否</td></tr>
+  <tr><td>P4 打磨</td><td>SM-2 反馈、移动端、统计报表</td><td>否</td></tr>
+</table>
+
+<h2>11. 风险与备注</h2>
+<ul>
+  <li><b>Agent 判题稳定性</b>：用稳定 HTTP 接口 + 重试队列，避免阻塞主流程。</li>
+  <li><b>邮件送达</b>：QQ 邮箱需开启 SMTP 且用授权码；模板固定后无需再改。</li>
+  <li><b>题库来源合规</b>：爬取各平台需遵守 robots 与平台条款，仅作个人学习用途。</li>
+  <li><b>长期记忆验证</b>：热力图 + 错题本 + 间隔推送三者闭环，即可观测记忆形成过程。</li>
+</ul>
+
+<footer>
+本方案由 WorkBuddy 根据用户需求生成 · 仅作设计讨论用 · 落地实现可在此基础上细化。
+</footer>
+</div>
+
+<div class="tooltip" id="tip"></div>
+<script>
+// ---- 热力图原型（样例数据，渲染最近 26 周）----
+(function(){
+  const weeks=26, days=7;
+  const start=new Date(); start.setDate(start.getDate()-(weeks*days)+2);
+  const wrap=document.getElementById('heatmap');
+  const monthrow=document.getElementById('monthrow');
+  const tip=document.getElementById('tip');
+  const lv=['var(--lv0)','var(--lv1)','var(--lv2)','var(--lv3)','var(--lv4)'];
+  function lvl(n){ if(n===0)return 0; if(n<=2)return 1; if(n<=5)return 2; if(n<=9)return 3; return 4; }
+  // 伪随机但可复现
+  let seed=42;
+  function rnd(){ seed=(seed*9301+49297)%233280; return seed/233280; }
+  const months=[]; let cur=null;
+  for(let w=0;w<weeks;w++){
+    const col=document.createElement('div'); col.className='week';
+    for(let d=0;d<days;d++){
+      const idx=w*days+d; const dt=new Date(start); dt.setDate(start.getDate()+idx);
+      if(dt>new Date()){ const e=document.createElement('div'); e.className='day'; e.style.background='transparent'; col.appendChild(e); continue; }
+      const n=Math.floor(rnd()*12);
+      const e=document.createElement('div'); e.className='day'; e.style.background=lv[lvl(n)];
+      const label=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+      e.addEventListener('mousemove',ev=>{tip.style.opacity=1;tip.textContent=label+' · 答题 '+n+' 道';tip.style.left=(ev.clientX+12)+'px';tip.style.top=(ev.clientY+12)+'px';});
+      e.addEventListener('mouseleave',()=>tip.style.opacity=0);
+      col.appendChild(e);
+    }
+    wrap.appendChild(col);
+    const first=new Date(start); first.setDate(start.getDate()+w*days);
+    if(!cur || first.getMonth()!==cur){ months.push({w, m:first.getMonth()}); cur=first.getMonth(); }
+  }
+  // month labels (approx)
+  let html=''; for(let w=0;w<weeks;w++){ const m=months.find(x=>x.w===w); html+= m?('<span style="width:13px;margin-right:3px">'+['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'][m.m]+'</span>'):'<span style="width:16px"></span>'; }
+  monthrow.innerHTML=html;
+})();
+
+// ---- 艾宾浩斯衰减曲线 ----
+(function(){
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','0 0 320 120'); svg.setAttribute('width','100%');
+  const pts=[]; const W=320,H=110,pad=10;
+  for(let i=0;i<=20;i++){ const x=i/20; const r=Math.exp(-3*x); // 衰减
+    const px=pad+x*(W-2*pad); const py=H-pad-r*(H-2*pad); pts.push(px+','+py); }
+  const poly=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+  poly.setAttribute('points',pts.join(' ')); poly.setAttribute('fill','none');
+  poly.setAttribute('stroke','#0969da'); poly.setAttribute('stroke-width','2');
+  svg.appendChild(poly);
+  // 轴
+  const ax=document.createElementNS('http://www.w3.org/2000/svg','line');
+  ax.setAttribute('x1',pad);ax.setAttribute('y1',H-pad);ax.setAttribute('x2',W-pad);ax.setAttribute('y2',H-pad);
+  ax.setAttribute('stroke','#d8dee4'); svg.appendChild(ax);
+  document.getElementById('curve').appendChild(svg);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:////data/interview_memory.db
+      - AGENT_JUDGE_URL=${AGENT_JUDGE_URL}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USE_SSL=${SMTP_USE_SSL}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - APP_BASE_URL=${APP_BASE_URL}
+    volumes:
+      - ./data:/data
+    restart: unless-stopped

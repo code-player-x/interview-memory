@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>面试记忆系统 · 管理后台</title>
+  <link rel="stylesheet" href="/admin/admin.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🧠 面试记忆系统 · <strong>管理后台</strong></div>
+    <a class="home-link" href="/">← 返回主站</a>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="questions">📚 题目管理</button>
+    <button class="tab" data-tab="categories">🗂️ 分类管理</button>
+    <button class="tab" data-tab="overview">📊 面经 &amp; 概览</button>
+  </nav>
+
+  <main class="container">
+    <!-- ============ A. 题目管理 ============ -->
+    <section id="tab-questions" class="tab-pane active">
+      <div class="toolbar">
+        <input id="qKeyword" class="inp" placeholder="搜索题面 / 答案…" />
+        <select id="qCategory" class="inp"></select>
+        <select id="qLevel" class="inp">
+          <option value="0">全部难度</option>
+          <option value="1">简单</option>
+          <option value="2">中等</option>
+          <option value="3">困难</option>
+        </select>
+        <button id="qSearch" class="btn">搜索</button>
+        <button id="qReset" class="btn ghost">重置</button>
+        <span class="spacer"></span>
+        <button id="qExport" class="btn ghost">导出 JSON</button>
+        <label class="btn ghost" for="qImportFile">导入 JSON</label>
+        <input id="qImportFile" type="file" accept=".json,application/json" hidden />
+        <button id="qAdd" class="btn primary">＋ 新增题目</button>
+      </div>
+      <div id="qMsg" class="msg"></div>
+      <table class="tbl">
+        <thead>
+          <tr><th>#</th><th>分类</th><th>难度</th><th>标签</th><th>题目</th><th>操作</th></tr>
+        </thead>
+        <tbody id="qBody"></tbody>
+      </table>
+      <div class="pager">
+        <button id="qPrev" class="btn ghost">← 上一页</button>
+        <span id="qPageInfo" class="page-info"></span>
+        <button id="qNext" class="btn ghost">下一页 →</button>
+      </div>
+    </section>
+
+    <!-- ============ B. 分类管理 ============ -->
+    <section id="tab-categories" class="tab-pane">
+      <div id="cMsg" class="msg"></div>
+      <table class="tbl">
+        <thead>
+          <tr><th>图标</th><th>名称</th><th>题数</th><th>描述</th><th>操作</th></tr>
+        </thead>
+        <tbody id="cBody"></tbody>
+      </table>
+    </section>
+
+    <!-- ============ C. 面经 & 概览 ============ -->
+    <section id="tab-overview" class="tab-pane">
+      <div id="ovMsg" class="msg"></div>
+      <div id="statCards" class="stat-cards"></div>
+
+      <div class="panel">
+        <h3>近 30 天活跃度</h3>
+        <div id="heatmap" class="heatmap"></div>
+      </div>
+
+      <div class="panel">
+        <h3>分类题量分布</h3>
+        <div id="catBars" class="bars"></div>
+      </div>
+
+      <div class="panel">
+        <h3>社区面经</h3>
+        <table class="tbl">
+          <thead>
+            <tr><th>公司</th><th>岗位</th><th>结果</th><th>内容</th><th>操作</th></tr>
+          </thead>
+          <tbody id="expBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- 通用弹窗 -->
+  <div id="modalMask" class="modal-mask hidden">
+    <div class="modal">
+      <div class="modal-head"><span id="modalTitle"></span><span id="modalClose" class="modal-x">×</span></div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-foot" id="modalFoot"></div>
+    </div>
+  </div>
+
+  <script src="/admin/admin.js"></script>
+</body>
+</html>

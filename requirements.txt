@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+apscheduler
+python-dotenv
+httpx
+fpdf2
+python-multipart
