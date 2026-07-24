@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>面试八股文 · 长期记忆训练</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="styles.css?v=20260724">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
+</head>
+<body>
+<div class="app">
+  <!-- 侧边导航 -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">八</div>
+      <div class="b-text">
+        <span class="b-name">面试八股文</span>
+        <small>长期记忆训练系统</small>
+      </div>
+    </div>
+    <nav>
+      <button data-view="bank" class="active"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h7v15H4z"/><path d="M13 5h7v15h-7z"/></svg></span>题库</button>
+      <button data-view="practice"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span>练习</button>
+      <button data-view="memorize"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6c-2-1.6-5-1.6-7 0v13c2-1.6 5-1.6 7 0 2-1.6 5-1.6 7 0V6c-2-1.6-5-1.6-7 0z"/><path d="M12 6v13"/></svg></span>背题</button>
+      <button data-view="wrong"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11v16H5z"/><path d="M8.5 8.5l5 5M13.5 8.5l-5 5"/></svg></span>错题本</button>
+      <button data-view="review"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.3"/><path d="M21 4v5h-5"/></svg></span>复习</button>
+      <button data-view="quiz"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/></svg></span>智能组卷</button>
+      <button data-view="exp"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.3 7.3L4 21l1.7-5.3A8 8 0 1 1 21 12z"/></svg></span>面经</button>
+      <button data-view="heatmap"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg></span>热力图</button>
+      <button data-view="settings"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg></span>设置</button>
+      <div class="nav-sep"></div>
+      <!-- 技术文章摘抄：内嵌 lianglianglee.com 备份站点（单 FastAPI 服务同源托管 ./book）。
+           通过 iframe 嵌入，book/ 目录内容请勿修改；文章站路径由后端 ARTICLES_BOOK_DIR 环境变量控制。 -->
+      <button data-view="articles"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M10 13h5M10 17h5"/></svg></span>技术文章摘抄</button>
+      <button data-view="pomodoro"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg></span>番茄待办</button>
+      <button data-view="growth"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v6h-6"/></svg></span>成长中心</button>
+    </nav>
+    <div class="hint">基于艾宾浩斯遗忘曲线 + GitHub 风格热力图，把八股文真正记牢。</div>
+  </aside>
+
+  <!-- 主区 -->
+  <main class="main">
+    <header class="topbar">
+      <div><span id="viewTitle">题库</span><span class="sub" id="viewSub"></span></div>
+    </header>
+    <div class="content">
+
+      <!-- 题库 -->
+      <section id="bank" class="view active">
+        <div class="toolbar">
+          <div class="search">
+            <span class="si">🔍</span>
+            <input id="bankSearch" placeholder="搜索题目或关键词…">
+          </div>
+          <div class="filters">
+          <select class="diff" id="diffFilter">
+            <option value="0">全部难度</option>
+            <option value="1">简单</option>
+            <option value="2">中等</option>
+            <option value="3">困难</option>
+          </select>
+        </div>
+        <button class="btn sm" id="addQuestionBtn">＋ 添加题目</button>
+      </div>
+        <div class="cat-grid" id="catGrid"></div>
+        <div class="bank-cat-header" id="bankCatHeader" style="display:none;">
+          <button class="btn ghost sm" id="bankCatBack">← 返回全部分类</button>
+          <div class="bank-cat-title" id="bankCatTitle"></div>
+          <div class="bank-cat-sub" id="bankCatSub"></div>
+        </div>
+        <div class="bank-list" id="bankList"></div>
+        <div class="pager" id="bankPager"></div>
+      </section>
+
+      <!-- 背题模式 -->
+      <section id="memorize" class="view">
+        <div class="mem-toolbar">
+          <select class="diff" id="memCat"><option value="">全部分类</option></select>
+          <select class="diff" id="memDiff">
+            <option value="0">全部难度</option>
+            <option value="1">简单</option>
+            <option value="2">中等</option>
+            <option value="3">困难</option>
+          </select>
+          <select class="diff" id="memSize">
+            <option value="1">每页 1 题</option>
+            <option value="5" selected>每页 5 题</option>
+            <option value="10">每页 10 题</option>
+            <option value="20">每页 20 题</option>
+          </select>
+          <span class="muted">选中后自动加载，← / → 或按钮翻页</span>
+        </div>
+        <div class="mem-card" id="memCard">
+          <div class="empty">请选择左侧分类开始背题</div>
+        </div>
+        <div class="mem-nav">
+          <button class="btn ghost" id="memPrev">← 上一页</button>
+          <span id="memProgress" class="muted">—</span>
+          <button class="btn" id="memNext">下一页 →</button>
+        </div>
+      </section>
+
+      <!-- 练习：配置页 -->
+      <section id="practice" class="view">
+        <div class="card">
+          <div class="practice-header">
+            <h2>刷题模式</h2>
+            <p class="muted">选定分类和模式，开始刻意练习。随机模式下不会重复抽到本轮刚刷过的题。</p>
+          </div>
+
+          <div class="practice-config" id="pmConfig">
+            <!-- 模式选择 -->
+            <div class="cfg-section">
+              <div class="cfg-title"><span class="cfg-num">1</span>选择模式</div>
+              <div class="opt-grid">
+                <div class="opt-card active" data-mode="random" id="pmModeRandom">
+                  <div class="opt-ic">🎲</div>
+                  <div class="opt-body">
+                    <div class="opt-name">随机练习</div>
+                    <div class="opt-desc">在范围内随机抽题，全部刷完才重置</div>
+                  </div>
+                </div>
+                <div class="opt-card" data-mode="sequential" id="pmModeSeq">
+                  <div class="opt-ic">📋</div>
+                  <div class="opt-body">
+                    <div class="opt-name">顺序闯关</div>
+                    <div class="opt-desc">按题库顺序逐题推进，循环往复</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 范围选择 -->
+            <div class="cfg-section">
+              <div class="cfg-title"><span class="cfg-num">2</span>选择范围</div>
+              <div class="opt-row">
+                <div class="opt-pill active" data-scope="single" id="pmScopeSingle">
+                  <span class="pill-ic">🎯</span> 单分类
+                </div>
+                <div class="opt-pill" data-scope="multi" id="pmScopeMulti">
+                  <span class="pill-ic">🗂️</span> 多分类
+                </div>
+              </div>
+            </div>
+
+            <!-- 分类选择 -->
+            <div class="cfg-section">
+              <div class="cfg-title"><span class="cfg-num">3</span>选择分类</div>
+              <div class="cat-grid-sm" id="pmCatGrid"></div>
+              <div class="muted" style="margin-top:8px">已选 <strong id="pmSelCount">1</strong> 个分类 · 共 <strong id="pmSelTotal">-</strong> 题</div>
+            </div>
+          </div>
+
+          <div class="practice-action" id="pmAction">
+            <button class="btn pm-start" id="pmStart">开始刷题</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 练习：刷题页（独立视图） -->
+      <section id="practiceSession" class="view">
+        <div class="card session-card">
+          <div class="session-header">
+            <button class="btn ghost sm" id="pmExit">← 返回配置</button>
+            <div class="session-meta">
+              <span class="session-scope" id="pmSessionScope"></span>
+              <span class="session-progress" id="pmSessionProgress"></span>
+            </div>
+          </div>
+          <div id="sessionBox"></div>
+          <div class="session-nav">
+            <button class="btn ghost" id="pmPrev">上一题</button>
+            <button class="btn" id="pmSubmit">提交判题</button>
+            <button class="btn" id="pmNext2">下一题</button>
+          </div>
+          <div id="pmRoundTip" class="muted" style="margin-top:8px;text-align:center"></div>
+        </div>
+      </section>
+
+      <!-- 错题本 -->
+      <section id="wrong" class="view">
+        <div class="card">
+          <h2>错题本</h2>
+          <div class="toolbar">
+            <div class="search" style="max-width:320px">
+              <span class="si">🔍</span>
+              <input id="wbCategory" placeholder="按分类筛选，留空=全部">
+            </div>
+            <label style="display:flex;align-items:center;gap:6px;margin:0;color:var(--ink);font-weight:500">
+              <input type="checkbox" id="wbOnlyReviewing" style="width:auto"> 仅看待复习
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;margin:0;color:var(--ink);font-weight:500">
+              <input type="checkbox" id="wbGroupReason" style="width:auto"> 按错误原因聚类
+            </label>
+            <button class="btn ghost sm" id="wbRefresh">刷新</button>
+            <button class="btn sm" id="wbExport">导出 PDF</button>
+            <button class="btn sm" id="wbExportMd">导出 Markdown</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="tbl">
+              <thead><tr><th>题目</th><th>分类</th><th>错误原因</th><th>错误次数</th><th>首次错误</th><th>状态</th><th>操作</th></tr></thead>
+              <tbody id="wbBody"></tbody>
+            </table>
+            <div id="wbGroups"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 复习 -->
+      <section id="review" class="view">
+        <div class="card">
+          <h2>待复习</h2>
+          <p class="muted" style="margin-top:0">根据艾宾浩斯曲线，以下题目到了复习时间。记住了就推进间隔，没记住提前再推。</p>
+          <div id="reviewList"></div>
+        </div>
+      </section>
+
+      <!-- 热力图 -->
+      <section id="heatmap" class="view">
+        <div class="card">
+          <h2>作答热力图</h2>
+          <div class="toolbar" style="margin-bottom:12px">
+            <select id="hmRange" class="diff">
+              <option value="1">最近 1 年</option>
+              <option value="2">最近 2 年</option>
+              <option value="all">全部历史</option>
+            </select>
+            <span class="muted" id="hmRangeInfo"></span>
+          </div>
+          <div id="heatmapArea">
+            <div id="heatmapDays"></div>
+            <div id="heatmapScroll">
+              <div id="heatmapGrid"></div>
+            </div>
+          </div>
+          <div class="legend">少
+            <span class="day" style="background:var(--lv0)"></span>
+            <span class="day" style="background:var(--lv1)"></span>
+            <span class="day" style="background:var(--lv2)"></span>
+            <span class="day" style="background:var(--lv3)"></span>
+            <span class="day" style="background:var(--lv4)"></span> 多
+          </div>
+          <p class="muted" style="margin-top:10px">颜色深浅 = 当天答题数。hover 查看详情。滑到最右侧可看到今天。</p>
+        </div>
+      </section>
+
+      <!-- 设置 -->
+      <section id="settings" class="view">
+        <div class="card">
+          <h2>设置</h2>
+          <div class="row">
+            <div><label>复习邮件接收邮箱</label><input id="setEmail" placeholder="you@qq.com"></div>
+            <div><label>每日推送时间 (HH:MM)</label><input id="setPush" placeholder="09:00"></div>
+          </div>
+          <div class="row">
+            <div><label>艾宾浩斯间隔序列（天，逗号分隔）</label><input id="setSteps" placeholder="1,2,4,7,15,30,60"></div>
+            <div><label>应用基础地址（热力图链接前缀）</label><input id="setBase" placeholder="http://localhost:8000"></div>
+          </div>
+          <div style="margin-top:16px">
+            <button class="btn" id="saveSettings">保存设置</button>
+            <span id="setMsg" class="muted" style="margin-left:10px"></span>
+          </div>
+          <p class="muted" style="margin-top:10px">邮件发送需配置 SMTP 环境变量（SMTP_USER / SMTP_PASSWORD 等），见 .env.example。</p>
+        </div>
+      </section>
+
+      <!-- 智能组卷 / 模拟面试 -->
+      <section id="quiz" class="view">
+        <div class="card">
+          <h2>智能组卷</h2>
+          <p class="muted" style="margin-top:0">按薄弱点或目标公司智能组卷，科学刷题；切到「模拟面试」还会生成复盘报告。</p>
+
+          <div class="pmode-bar">
+            <div class="pmodes">
+              <span class="pm-label">模式</span>
+              <button class="qmode active" data-qmode="practice">🎯 组卷练习</button>
+              <button class="qmode" data-qmode="interview">🎤 模拟面试</button>
+            </div>
+          </div>
+
+          <div class="qcfg">
+            <label>题数 <input type="number" id="qCount" value="10" min="1" max="50" class="diff"></label>
+            <label>分类
+              <select id="qCat" class="diff"><option value="">全部</option></select>
+            </label>
+            <label>目标公司 <input id="qCompany" placeholder="如 字节 / 美团（可选）" class="diff"></label>
+          </div>
+
+          <div class="pmode-bar" style="margin-top:10px">
+            <div class="pscope">
+              <span class="pm-label">出题策略</span>
+              <label class="rd"><input type="radio" name="qstrategy" value="weak" checked> 薄弱优先</label>
+              <label class="rd"><input type="radio" name="qstrategy" value="mixed"> 混合</label>
+              <label class="rd"><input type="radio" name="qstrategy" value="random"> 纯随机</label>
+            </div>
+          </div>
+
+          <div style="margin-top:14px">
+            <button class="btn" id="qStart">开始组卷</button>
+            <span id="qProgress" class="muted" style="margin-left:10px"></span>
+          </div>
+          <div id="quizBox" style="margin-top:14px"></div>
+        </div>
+      </section>
+
+      <!-- 面经社区 -->
+      <section id="exp" class="view">
+        <div class="card">
+          <h2>面经社区</h2>
+          <p class="muted" style="margin-top:0">分享真实面试经历与被问到的真题，互相背书命中率。</p>
+          <div class="toolbar" style="margin-bottom:12px">
+            <div class="search" style="max-width:320px">
+              <span class="si">🔍</span>
+              <input id="expCompany" placeholder="按公司筛选，留空=全部">
+            </div>
+            <button class="btn sm" id="expAddBtn">+ 添加面经</button>
+          </div>
+          <div id="expList"></div>
+          <div id="expForm" class="exp-form" style="display:none">
+            <h3>添加面经</h3>
+            <div class="exp-grid">
+              <label>公司 *<input id="expCompanyIn" placeholder="如 字节跳动"></label>
+              <label>岗位 <input id="expRoleIn" placeholder="如 后端开发"></label>
+              <label>城市/级别 <input id="expPosIn" placeholder="如 北京 / 校招"></label>
+              <label>面试结果 <input id="expResultIn" placeholder="如 已拿offer / 二面挂"></label>
+            </div>
+            <label>经历描述 *<textarea id="expContentIn" rows="4" placeholder="面试流程、感受、坑点…"></textarea></label>
+            <label>被问到的题（每行一道）<textarea id="expQIn" rows="4" placeholder="1. 讲讲 HashMap 扩容\n2. 如何实现分布式锁"></textarea></label>
+            <div style="margin-top:8px">
+              <button class="btn" id="expSave">提交</button>
+              <button class="btn ghost" id="expCancel">取消</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 技术文章摘抄（内嵌 iframe，同源指向 /articles，由当前 FastAPI 单服务托管；book/ 内容零改动） -->
+      <section id="articles" class="view articles-view">
+        <div class="art-bar">
+          <span class="muted">技术文章摘抄 · lianglianglee.com 备份站（静态）</span>
+          <a class="art-open" href="/articles/" target="_blank" rel="noopener">↗ 新窗口打开（完整站）</a>
+        </div>
+        <!-- iframe 内布局（fullwidth + 路径改写）由后端 ArticleRewriteMiddleware 统一处理，
+             前端不再重复注入 CSS，避免与后端 !important 规则互相覆盖导致 max-width 还原。 -->
+        <iframe class="art-frame" src="/articles/" title="技术文章摘抄" loading="lazy"></iframe>
+      </section>
+
+      <!-- 番茄待办：抽象自番茄Todo —— 待办清单 + 番茄钟 + 专注统计 -->
+      <section id="pomodoro" class="view">
+        <div class="pomo-wrap">
+          <!-- 左：待办清单 -->
+          <div class="card pomo-todos">
+            <div class="pomo-head">
+              <h2>待办清单</h2>
+              <div class="pomo-cats" id="pomCats"></div>
+            </div>
+            <form class="pomo-add" id="pomAddForm" autocomplete="off">
+              <input id="pomTitle" placeholder="添加一个待办，回车保存…" maxlength="200">
+              <div class="pomo-add-row">
+                <select id="pomCat"><option>默认</option></select>
+                <select id="pomPri" title="优先级">
+                  <option value="1">P0 高</option>
+                  <option value="2" selected>P1</option>
+                  <option value="3">P2</option>
+                  <option value="4">P3 低</option>
+                </select>
+                <input id="pomDue" type="date" title="截止日期">
+                <button class="btn sm" type="submit">添加</button>
+              </div>
+            </form>
+            <ul class="pomo-list" id="pomList"></ul>
+          </div>
+
+          <!-- 中：番茄钟 -->
+          <div class="card pomo-timer">
+            <h2>番茄钟</h2>
+            <div class="pomo-ring">
+            <svg viewBox="0 0 120 120" class="pomo-svg">
+              <defs>
+                <linearGradient id="pomoGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#6366f1"/>
+                  <stop offset="100%" stop-color="#2563eb"/>
+                </linearGradient>
+              </defs>
+              <circle class="pomo-bg" cx="60" cy="60" r="52"></circle>
+              <circle class="pomo-fg" id="pomArc" cx="60" cy="60" r="52"></circle>
+            </svg>
+              <div class="pomo-ring-center">
+                <div class="pomo-time" id="pomTime">25:00</div>
+                <div class="pomo-phase" id="pomPhase">专注</div>
+              </div>
+            </div>
+            <select id="pomTodoSel" class="pomo-todosel">
+              <option value="">自由专注（不关联待办）</option>
+            </select>
+            <div class="pomo-ctrls">
+              <button class="btn" id="pomStart">开始</button>
+              <button class="btn ghost" id="pomPause">暂停</button>
+              <button class="btn ghost" id="pomReset">重置</button>
+            </div>
+            <div class="pomo-cfg">
+              <label>专注 <input id="cfgFocus" type="number" min="1" max="120" value="25"> 分</label>
+              <label>休息 <input id="cfgBreak" type="number" min="1" max="60" value="5"> 分</label>
+            </div>
+            <div class="pomo-count">今日已完成 🍅 <b id="pomTodayCount">0</b></div>
+          </div>
+
+          <!-- 右：专注统计 -->
+          <div class="card pomo-stats">
+            <h2>专注统计</h2>
+            <div class="pomo-stat-row">
+              <div class="pomo-stat"><b id="stTodayMin">0</b><span>今日分钟</span></div>
+              <div class="pomo-stat"><b id="stWeekMin">0</b><span>本周分钟</span></div>
+              <div class="pomo-stat"><b id="stMonthMin">0</b><span>本月分钟</span></div>
+            </div>
+            <div class="pomo-block">
+              <div class="pomo-block-title">近 17 周专注热力图</div>
+              <div class="heatmap" id="pomHeat"></div>
+            </div>
+            <div class="pomo-block">
+              <div class="pomo-block-title">本周纵览</div>
+              <div class="pomo-week" id="pomWeek"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 成长中心：连续天数 / 成就徽章 / 学习报告 / 本月目标 -->
+      <section id="growth" class="view">
+        <div class="growth-wrap">
+          <!-- 连胜 Hero -->
+          <div class="card growth-hero">
+            <div class="flame" id="grFlame">🔥</div>
+            <div class="growth-streak">
+              <div class="streak-num"><b id="grStreak">0</b><span>天连续</span></div>
+              <div class="streak-sub">最长连胜 <b id="grLongest">0</b> 天</div>
+            </div>
+            <div class="growth-progress">
+              <div class="gp-item"><b id="grTotal">0</b><span>累计作答</span></div>
+              <div class="gp-item"><b id="grFocus">0</b><span>专注分钟</span></div>
+              <div class="gp-item"><b id="grBadges">0/0</b><span>成就</span></div>
+            </div>
+          </div>
+
+          <!-- 本月目标 -->
+          <div class="card growth-goal">
+            <div class="growth-goal-head">
+              <h2>🎯 本月目标</h2>
+              <button class="btn sm ghost" id="grGoalEdit">设置</button>
+            </div>
+            <div class="goal-bar"><div class="goal-fill" id="grGoalFill"></div></div>
+            <div class="goal-meta"><span id="grGoalText">0 / 100 题</span><span id="grGoalPct">0%</span></div>
+            <div class="goal-edit" id="grGoalEditBox" style="display:none">
+              <input type="number" id="grGoalInput" min="1" value="100">
+              <button class="btn sm" id="grGoalSave">保存</button>
+            </div>
+          </div>
+
+          <!-- 学习报告 -->
+          <div class="growth-reports">
+            <div class="card growth-rep">
+              <h3>📅 本周</h3>
+              <div class="rep-row"><span>作答</span><b id="grWeekAns">0</b></div>
+              <div class="rep-row"><span>正确率</span><b id="grWeekAcc">0%</b></div>
+              <div class="rep-row"><span>专注</span><b id="grWeekFocus">0</b> 分</div>
+            </div>
+            <div class="card growth-rep">
+              <h3>🗓️ 本月</h3>
+              <div class="rep-row"><span>作答</span><b id="grMonthAns">0</b></div>
+              <div class="rep-row"><span>正确率</span><b id="grMonthAcc">0%</b></div>
+              <div class="rep-row"><span>专注</span><b id="grMonthFocus">0</b> 分</div>
+            </div>
+          </div>
+
+          <!-- 成就徽章 -->
+          <div class="card growth-badges">
+            <h2>🏆 成就徽章 <span class="muted" id="grBadgeCount">0/0</span></h2>
+            <div class="badge-grid" id="grBadgeGrid"></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- 移动端底部 tab（桌面隐藏，由同一套 data-view 驱动，无需改 app.js） -->
+  <nav class="bottom-nav">
+    <button data-view="bank"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h7v15H4z"/><path d="M13 5h7v15h-7z"/></svg></span>题库</button>
+    <button data-view="practice"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span>练习</button>
+    <button data-view="wrong"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11v16H5z"/><path d="M8.5 8.5l5 5M13.5 8.5l-5 5"/></svg></span>错题</button>
+    <button data-view="quiz"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/></svg></span>组卷</button>
+    <button data-view="heatmap"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg></span>热力</button>
+  </nav>
+</div>
+
+<!-- 题目详情抽屉 -->
+<div class="drawer-mask" id="drawerMask"></div>
+<aside class="drawer" id="detailDrawer">
+  <div class="dhead">
+    <span id="dqBadge" class="badge"></span>
+    <h2 id="dqText"></h2>
+    <button class="close" id="drawerClose">×</button>
+  </div>
+  <div class="dtags" id="dqTags"></div>
+  <div class="dbody">
+    <div class="answer-box" id="dqAnswer" style="display:none">
+      <h3>参考答案</h3>
+      <div id="dqAnswerBody"></div>
+    </div>
+    <div class="answer-edit" id="dqEdit" style="display:none">
+      <label>编辑参考答案（支持 Markdown，可插入图片）</label>
+      <textarea id="dqAnswerEdit" rows="9" placeholder="在此编写参考答案，可用 ![图片说明](图片地址) 插入配图…"></textarea>
+      <div class="edit-tools">
+        <input type="file" id="dqImgFile" accept="image/*" hidden>
+        <button type="button" class="btn sm" id="dqImgBtn">📷 上传图片并插入</button>
+        <span id="dqImgTip" class="muted"></span>
+      </div>
+      <p class="muted edit-hint">提示：一图胜千言。上传后图片会作为 ![图片](地址) 插入到光标处；保存后答案即带配图展示。</p>
+    </div>
+  </div>
+  <div class="dfoot">
+    <button class="btn block" id="dqReveal">查看答案</button>
+    <button class="btn ghost block" id="dqEditBtn">编辑答案</button>
+    <button class="btn ghost block" id="dqPractice">练习此题</button>
+    <button class="btn block" id="dqSave" style="display:none">保存</button>
+    <button class="btn ghost block" id="dqCancel" style="display:none">取消</button>
+  </div>
+</aside>
+
+<!-- 添加题目弹窗 -->
+<div class="drawer-mask" id="addMask"></div>
+<div class="modal" id="addModal">
+  <div class="modal-head">
+    <h3>添加题目</h3>
+    <button class="close" id="addClose">×</button>
+  </div>
+  <div class="modal-body">
+    <div class="form-row">
+      <label>分类 <span class="req">*</span></label>
+      <input id="addCat" list="catList" placeholder="如 MySQL / Redis / 操作系统">
+      <datalist id="catList"></datalist>
+    </div>
+    <div class="form-row two">
+      <div>
+        <label>难度</label>
+        <select id="addDiff">
+          <option value="1">简单</option>
+          <option value="3" selected>中等</option>
+          <option value="5">困难</option>
+        </select>
+      </div>
+      <div>
+        <label>来源平台（可选）</label>
+        <input id="addPlatform" placeholder="如 字节 / 美团">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>标签（逗号分隔，可选）</label>
+      <input id="addTags" placeholder="如 索引,事务,锁">
+    </div>
+    <div class="form-row">
+      <label>题目 <span class="req">*</span></label>
+      <textarea id="addQuestion" rows="4" placeholder="输入题目内容…"></textarea>
+    </div>
+    <div class="form-row">
+      <label>参考答案 <span class="req">*</span></label>
+      <textarea id="addAnswer" rows="6" placeholder="支持 Markdown，可插入 ![图片说明](图片地址)"></textarea>
+    </div>
+    <div class="modal-err" id="addErr"></div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn ghost" id="addCancel">取消</button>
+    <button class="btn" id="addSave">保存入库</button>
+  </div>
+</div>
+
+<div class="tooltip" id="tip"></div>
+<script src="app.js?v=20260723e"></script>
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+</body>
+</html>
