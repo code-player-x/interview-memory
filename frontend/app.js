@@ -2250,10 +2250,11 @@ function grBindOnce() {
 const _ART_OVERRIDE_CSS = `
   html, body { height: 100% !important; min-height: 100% !important; overflow-x: hidden !important; }
   .book-sidebar { width: 10rem !important; }
-  .off-canvas-content { margin-left: 10rem !important; padding: 1rem !important; }
-  .off-canvas-content .book-content { padding: 0 1rem !important; max-width: none !important; box-sizing: border-box !important; overflow-x: hidden !important; }
+  .off-canvas-content { margin-left: 10rem !important; padding: 1rem !important; overflow-y: auto !important; }
+  .off-canvas-content .book-content { padding: 0 1rem !important; max-width: none !important; box-sizing: border-box !important; overflow-x: hidden !important; overflow-y: auto !important; }
   .off-canvas-content .book-content .book-post { max-width: none !important; width: 100% !important; }
   .off-canvas-content .book-content .book-post pre { max-width: 100% !important; overflow-x: auto !important; }
+  .book-content-inner, .book-content > * { max-width: none !important; width: 100% !important; }
   @media (max-width: 799px) {
     .off-canvas-content { margin-left: 0 !important; }
   }
@@ -2271,6 +2272,8 @@ function _applyArticleOverride() {
     doc.head.appendChild(s);
   }
   // 2) DOM API 直接改写 .book-content inline style —— 比 CSS !important 优先级更高
+  //    注意：lianglianglee 文章页在 .book-content 上有 inline style="overflow-y:hidden"，
+  //    不覆盖这一项会导致正文超长时直接被切、不出滚动条（用户报"底部没滑动条"）
   const contents = doc.querySelectorAll(".book-content");
   contents.forEach(c => {
     c.style.maxWidth = "none";
@@ -2281,6 +2284,18 @@ function _applyArticleOverride() {
     c.style.paddingRight = "1rem";
     c.style.boxSizing = "border-box";
     c.style.overflowX = "hidden";
+    c.style.overflowY = "auto";
+  });
+  // 3) 兜底改父级 off-canvas-content —— 万一某篇文档 .book-content 找不到，父级至少能滚
+  const off = doc.querySelectorAll(".off-canvas-content");
+  off.forEach(o => {
+    o.style.overflowY = "auto";
+    o.style.overflowX = "hidden";
+  });
+  // 4) 兜底改所有正文容器：book-content-inner / book-post，确保渲染层不限宽
+  doc.querySelectorAll(".book-content-inner, .book-post, .book-content > *").forEach(el => {
+    el.style.maxWidth = "none";
+    el.style.width = "100%";
   });
   return true;
 }

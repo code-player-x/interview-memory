@@ -83,13 +83,21 @@ _ART_HTML_SNIFF = (
 #   5. 窄屏（<=799px）侧栏隐藏，归零 margin-left、给点 padding-left。
 _ART_FULLWIDTH_CSS = (
     "<style data-interview-memory='fullwidth'>"
+    # 文章页 .book-content：解锁 inline max-width/overflow，让正文铺满 iframe 右半
+    # 并允许纵向滚动（lianglianglee 模板 inline overflow-y:hidden 会切掉滚动）
     "html body .book-content{"
     "max-width:none!important;width:100%!important;"
     "margin-left:12rem!important;margin-right:0!important;"
     "margin-top:0!important;margin-bottom:0!important;"
     "padding-left:0!important;padding-right:2rem!important;"
-    "box-sizing:border-box!important;overflow-x:hidden!important;"
+    "box-sizing:border-box!important;"
+    "overflow-x:hidden!important;overflow-y:auto!important;"
     "}"
+    # 父级 off-canvas-content 兜底也允许纵向滚，避免被父容器切掉滚动条
+    "html body .off-canvas-content{overflow-y:auto!important;}"
+    # body 自身去掉横向 hidden，确保如果有代码块过长也能横向滚而不是被切
+    "html body{overflow-x:auto!important;}"
+    # 窄屏（<=799px）侧栏隐藏，归零 margin-left、给点 padding-left
     "@media (max-width:799px){"
     "html body .book-content{margin-left:0!important;padding-left:1.25rem!important;}"
     "}"
