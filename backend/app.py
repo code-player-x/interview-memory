@@ -617,11 +617,13 @@ def list_questions(
     difficulty: int = 0,
     level: int = 0,
     tags: str = "",
+    order: str = "asc",
     db: Session = Depends(get_db),
 ):
     """题库列表：支持关键词搜索、分类/难度/多标签筛选、分页，返回 {total, items}。
 
     difficulty: 精确匹配 1~5；level: 1=简单(≤2) 2=中等(=3) 3=困难(≥4)；tags: 逗号分隔多标签。
+    order: 'asc' (按 id 升序 = 按学习顺序, 默认) 或 'desc' (最新在前).
     """
     q = db.query(models.Question)
     if keyword:
@@ -641,7 +643,8 @@ def list_questions(
         q = q.filter(models.Question.difficulty >= 4)
     q = _tag_filter(q, tags)
     total = q.count()
-    qs = q.order_by(models.Question.id.desc()).offset(offset).limit(limit).all()
+    _sort = models.Question.id.asc() if order == "asc" else models.Question.id.desc()
+    qs = q.order_by(_sort).offset(offset).limit(limit).all()
     return {"total": total, "items": [{
         "id": x.id, "platform": x.platform, "category": x.category,
         "tags": x.tags, "difficulty": x.difficulty, "question_text": x.question_text,

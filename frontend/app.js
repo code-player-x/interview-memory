@@ -145,11 +145,14 @@ function _wrapUnindentedCode(text) {
     // 注释行（// 行内 / # Python / -- SQL / /* 块注释起始）即使含中文也不算段落分隔
     // 注意：不要把 markdown 加粗 **xx** 误判成注释，所以 * 单独不识别
     if (/^\s*(\/\/|#\s|--\s|\/\*)/.test(t)) return "code";
+    // 优先识别 SQL 关键字开头：即使后面有中文表名/字段名（"FROM 表名;"）
+    // 也算 code，不要被 hasCN 误判为段落分隔
+    if (/^(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE|EXPLAIN|DESCRIBE|SHOW|GRANT|REVOKE|COMMIT|ROLLBACK|BEGIN|START|VALUES|FIELDS|LINES|TERMINATED|ENCLOSED|OPTIONALLY|FROM|WHERE|GROUP|ORDER|HAVING|LIMIT|OFFSET|JOIN|UNION|INTO|ON|USING|AS|AND|OR|NOT|NULL|DEFAULT|PRIMARY|KEY|INDEX|CONSTRAINT|REFERENCES)\b/i.test(t)) return "code";
     // 剥掉行尾 // / # / -- 注释后再判断是否含中文
     const withoutTailComment = t.replace(/(\s\/\/.*|\s#.*|\s--.*)$/, "").trim();
     if (hasCN(withoutTailComment)) return "cn";
     // 强代码信号
-    if (/^(func|package|import|def|class|return|var|const|let|for|if|else|while|switch|case|default|defer|go|wg\.|fmt\.|println|print\(|print\s|console\.|echo\s|SELECT\b|INSERT\b|UPDATE\b|DELETE\b|FROM\b|WHERE\b|<\?php|#include|@interface|@protocol|wg\.Add|wg\.Done|wg\.Wait|ch\s*<-|->\s*ch|:=|^\s*[}\])\]]\s*$|^\s*[{}\[\(]\s*$)/i.test(t)) return "code";
+    if (/^(func|package|import|def|class|return|var|const|let|for|if|else|while|switch|case|default|defer|go|wg\.|fmt\.|println|print\(|print\s|console\.|echo\s|<\?php|#include|@interface|@protocol|wg\.Add|wg\.Done|wg\.Wait|ch\s*<-|->\s*ch|:=|^\s*[}\])\]]\s*$|^\s*[{}\[\(]\s*$)/i.test(t)) return "code";
     if (/^[{}\[\]()]/.test(t)) return "code";
     if (/^[a-zA-Z_]\w*\s*[:=]/.test(t)) return "code";
     if (/^[a-zA-Z_]\w*\(/.test(t)) return "code";
@@ -183,7 +186,7 @@ function _wrapUnindentedCode(text) {
     while (buf.length && !buf[0].trim()) buf.shift();
     let end = buf.length;
     while (end > 0 && !buf[end - 1].trim()) end--;
-    if (codeCount >= 3) {
+    if (codeCount >= 2) {
       const block = buf.slice(0, end).join("\n");
       out.push("```" + detectLang(block) + "\n" + block + "\n```");
       for (let i = end; i < buf.length; i++) out.push(buf[i]);
@@ -650,7 +653,7 @@ async function memLoadPage() {
   const qs = [];
   if (mem.category) qs.push("category=" + encodeURIComponent(mem.category));
   if (mem.level) qs.push("level=" + mem.level);
-  qs.push("limit=" + mem.limit + "&offset=" + mem.offset);
+  qs.push("limit=" + mem.limit + "&offset=" + mem.offset + "&order=asc");
   const data = await (await fetch("/api/questions?" + qs.join("&"))).json();
   mem.total = data.total || 0;
   mem.items = mem.items.concat(data.items || []);
