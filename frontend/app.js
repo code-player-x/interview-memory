@@ -448,6 +448,7 @@ const TITLES = {
 
 // ---------------- 视图切换 ----------------
 function switchView(name) {
+  if (name === "admin") { window.location.href = "/admin/"; return; }
   const navName = name === "practiceSession" ? "practice" : name;
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.view === navName));
   document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === name));
