@@ -15,10 +15,15 @@
 import os
 import re
 import sys
+import json
 import argparse
 import sqlite3
+import urllib.request
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 让本脚本能复用后端的存储抽象层（backend/storage.py）
+sys.path.insert(0, os.path.join(BASE_DIR, "backend"))
+from storage import get_storage
 DB_PATH = os.path.join(BASE_DIR, "data", "interview_memory.db")
 DEFAULT_MD = os.path.join(BASE_DIR, "data", "feishu_cs_qa.md")
 
@@ -76,7 +81,7 @@ def _strip_xml(text: str) -> str:
     # 引用 / 容器：保留内部文字或整体移除
     text = re.sub(r"<cite[^>]*>.*?</cite>", "", text, flags=re.S)
     text = re.sub(r"<callout[^>]*>.*?</callout>", "", text, flags=re.S)
-    text = re.sub(r"<img[^>]*>", "", text)
+    # 注意：不再删除 <img>。图片交由 _resolve_images 下载到存储层后转成 markdown
     text = re.sub(r"<sheet[^>]*>.*?</sheet>", "", text, flags=re.S)
     text = re.sub(r"<bitable[^>]*>.*?</bitable>", "", text, flags=re.S)
     text = re.sub(r"<readonly-block[^>]*>.*?</readonly-block>", "", text, flags=re.S)
@@ -86,21 +91,87 @@ def _strip_xml(text: str) -> str:
     return text
 
 
+# ----------------------------- 图片处理（下载到存储层） -----------------------------
+_IMG_TAG = re.compile(r'<img\b[^>]*?src=["\']([^"\']+)["\'][^>]*>', re.I)
+_IMG_MD = re.compile(r'!\[[^\]]*\]\([^)]*\)')  # 含残缺 ![]( 也能匹配
+
+
+def _download(url: str):
+    """下载图片字节；失败（403/网络/超时）返回 None。可选 FEISHU_IMG_COOKIE 用于飞书鉴权。"""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        cookie = os.environ.get("FEISHU_IMG_COOKIE")
+        if cookie:
+            req.add_header("Cookie", cookie)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.read()
+    except Exception:
+        return None
+
+
+def _resolve_images(text: str):
+    """扫描正文 <img> 与 ![alt](url)，下载到存储后端并替换为可访问 URL。
+    下载失败则保留原 URL（信息不丢，前端可能 403）。返回 (新文本, url 列表)。"""
+    storage = get_storage()
+    urls = []
+
+    def _save(url):
+        url = url.strip()
+        if not url:
+            return url
+        data = _download(url)
+        new_url = storage.save(data, url.split("?")[0].rsplit("/", 1)[-1] or "img", None) if data else url
+        if new_url not in urls:
+            urls.append(new_url)
+        return new_url
+
+    def _rep_tag(m):
+        return "![图片](" + _save(m.group(1)) + ")"
+
+    def _rep_md(m):
+        return "![%s](%s)" % (m.group(1), _save(m.group(2)))
+
+    text = _IMG_TAG.sub(_rep_tag, text)
+    text = _IMG_MD.sub(_rep_md, text)
+    return text, urls
+
+
+def _extract_img_urls(text: str):
+    """从正文 markdown 提取图片 URL 列表（不下载，仅解析）。"""
+    urls = []
+    for inner in _IMG_MD.findall(text):
+        mm = re.match(r"!\[[^\]]*\]\(([^)\s]+)\)", inner)
+        if mm:
+            u = mm.group(1).strip()
+            if u and u not in urls:
+                urls.append(u)
+    return urls
+
+
 def clean_answer(text: str) -> str:
     out = []
     for ln in text.split("\n"):
         s = ln.strip()
-        # 整行是图片/纯链接（飞书导出会把图片转成 ![...](internal-api-drive...) 超长 URL）-> 直接丢弃
-        if s.startswith("!") and "](" in s:
-            continue
-        # 链接：去掉 URL / #锚点编码，仅保留可见文字
-        s = re.sub(r"\]\(https?://[^)]*\)", "](", s)
-        s = re.sub(r"\]\(#[^)]*\)", "](", s)
-        s = re.sub(r"https?://\S+", "", s)
+        # 整行是图片：保留（稍后 _resolve_images 下载 / 或保留原 markdown）
         out.append(s)
     text = "\n".join(out)
-    # 归一化飞书导出的 XML 富文本块
+    # 归一化飞书导出的 XML 富文本块（<img> 不再删除）
     text = _strip_xml(text)
+    # 抽离图片 markdown 占位，避免被下方「普通链接去 URL」误伤
+    placeholders = []
+
+    def _stash(m):
+        placeholders.append(m.group(0))
+        return "\x00IMG%d\x00" % (len(placeholders) - 1)
+
+    text = _IMG_MD.sub(_stash, text)
+    # 普通链接：去掉 URL / #锚点编码，仅保留可见文字（图片已抽离，不受影响）
+    text = re.sub(r"\]\(https?://[^)]*\)", "](", text)
+    text = re.sub(r"\]\(#[^)]*\)", "](", text)
+    text = re.sub(r"https?://\S+", "", text)
+    # 还原图片 markdown
+    for i, ph in enumerate(placeholders):
+        text = text.replace("\x00IMG%d\x00" % i, ph)
     # 折叠多余空行（>=3 个换行 -> 2 个）
     text = re.sub(r"\n{3,}", "\n\n", text)
     # 已知错字修正
@@ -185,12 +256,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--md", default=DEFAULT_MD, help="飞书导出的 Markdown 路径")
     ap.add_argument("--dry-run", action="store_true", help="只打印解析结果，不写库")
+    ap.add_argument("--download-images", action="store_true",
+                    help="把正文的 <img>/![alt](url) 下载到存储层（默认本地 data/images/），替换为可访问 URL")
+    ap.add_argument("--update", action="store_true",
+                    help="对已存在的题，若解析出图片则更新其 images 列（不改动正文）")
     args = ap.parse_args()
 
     items = parse(args.md)
     print(f"解析得到 {len(items)} 道题")
 
-    # 分类分布
     from collections import Counter
     dist = Counter(c for c, _, _, _ in items)
     print("\n分类分布：")
@@ -204,23 +278,32 @@ def main():
         return
 
     db = sqlite3.connect(DB_PATH)
-    seen = set(r[0] for r in db.execute("SELECT TRIM(question_text) FROM questions"))
-    ins = 0
-    skip = 0
+    existing = {r[0]: r[1] for r in db.execute("SELECT TRIM(question_text), id FROM questions")}
+    ins = skip = upd = 0
     for c, q, a, t in items:
         key = q.strip()
-        if key in seen:
-            skip += 1
+        # 解析图片：下载模式替换为存储 URL；否则仅从正文提取原 URL 列表
+        if args.download_images:
+            a, imgs = _resolve_images(a)
+        else:
+            imgs = _extract_img_urls(a)
+        if key in existing:
+            if args.update and imgs:
+                db.execute("UPDATE questions SET images=? WHERE id=?",
+                           (json.dumps(imgs, ensure_ascii=False), existing[key]))
+                upd += 1
+            else:
+                skip += 1
             continue
         db.execute(
             "INSERT INTO questions (platform, category, tags, difficulty, question_text, reference_answer, created_at, images, keywords) "
-            "VALUES (?,?,?,?,?,?, datetime('now'), '', ?)",
-            (PLATFORM, c, t, None, q, a, ""),
+            "VALUES (?,?,?,?,?,?, datetime('now'), ?, ?)",
+            (PLATFORM, c, t, None, q, a, json.dumps(imgs, ensure_ascii=False), ""),
         )
-        seen.add(key)
+        existing[key] = None
         ins += 1
     db.commit()
-    print(f"\n入库完成：新增 {ins} 题，跳过重复 {skip} 题（platform={PLATFORM}）")
+    print(f"\n入库完成：新增 {ins} 题，更新 {upd} 题图片，跳过重复 {skip} 题（platform={PLATFORM}）")
 
 
 if __name__ == "__main__":

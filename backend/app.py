@@ -30,6 +30,7 @@ from .judge import judge
 from .scheduler import start_scheduler
 from .ebbinghaus import get_steps, next_review_for_stage, advance_stage, is_mastered
 from .todo_routes import router as todo_router
+from .storage import get_storage
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
@@ -676,17 +677,14 @@ async def upload_image(file: UploadFile = File(...)):
             status_code=400,
             detail="仅支持图片格式：png / jpg / jpeg / gif / webp / svg / bmp",
         )
-    images_dir = os.path.join(BASE_DIR, "data", "images")
-    os.makedirs(images_dir, exist_ok=True)
-    # 用 uuid 重命名，避免中文/空格/重复导致的问题
-    fname = uuid.uuid4().hex + ext
-    dest = os.path.join(images_dir, fname)
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="空文件")
-    with open(dest, "wb") as f:
-        f.write(content)
-    return {"url": "/data/images/" + fname, "filename": fname}
+    # 通过存储抽象层保存：本地模式落 data/images/，S3 模式传对象存储
+    storage = get_storage()
+    url = storage.save(content, file.filename or "image", getattr(file, "content_type", None))
+    fname = url.rsplit("/", 1)[-1]
+    return {"url": url, "filename": fname}
 
 
 @app.put("/api/questions/{qid}", summary="更新题目（含答案与配图）")
