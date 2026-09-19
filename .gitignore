@@ -30,3 +30,26 @@ Thumbs.db
 uvicorn*.log
 demo_bold_fix.html
 test_report.txt
+
+# ---- 备份目录 / 日志 / 项目运行数据（补充 2026-09-19）----
+*_bak_*/
+*_bak*/
+*.log
+.workbuddy/
+
+# ---- crawler writer 中间产物（批量脚本 / 解析中间件，不入库）----
+crawler/questions_v2/*_batch*.py
+crawler/questions_v2/batch*.py
+crawler/questions_v2/*_dump.txt
+crawler/questions_v2/*_parsed.json
+crawler/questions_v2/*_slim.txt
+crawler/questions_v2/*_compact.txt
+crawler/questions_v2/build.py
+crawler/questions_v2/parse_*.py
+crawler/questions_v2/redump.py
+crawler/questions_v2/pools/
+crawler/questions_v2/authored/_*
+crawler/questions_v2/authored/gen*.py
+crawler/questions_v2/authored/qparse.py
+crawler/questions_v2/authored/append_batch.py
+crawler/questions_v2/authored/*.count
