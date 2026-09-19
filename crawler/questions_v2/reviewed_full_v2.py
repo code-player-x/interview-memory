@@ -21,6 +21,12 @@ MERGED_INTO = {
     "q1711": "q1441", "q3447": "q1240",
     "q3582": "q3559", "q0071": "q152", "q2020": "q1094",
     "q2893": "q1203", "q2894": "q2112",
+    # A scraped course-promotion fragment duplicating the online AI product
+    # architecture question retained in q2008.
+    "q3708": "q2008",
+    # Same three Transformer architecture comparison, retained with the
+    # corrected distinction between task unification and model architecture.
+    "q3881": "q1490",
 }
 
 MOVE_TO = {

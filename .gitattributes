@@ -1,0 +1,6 @@
+# The curated corpus is deliberately stored with CRLF line endings.  Treat the
+# carriage return as an EOL marker so `git diff --check` does not report every
+# changed corpus line as trailing whitespace.
+crawler/questions_v2/authored/** whitespace=cr-at-eol
+crawler/questions_v2/full_v2/** whitespace=cr-at-eol
+crawler/questions_v2/review_archive/** whitespace=cr-at-eol

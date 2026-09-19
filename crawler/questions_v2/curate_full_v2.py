@@ -13,12 +13,22 @@ import re
 from pathlib import Path
 
 from reviewed_full_v2 import FIELD_FIXES, MERGED_INTO, MOVE_TO, OVERRIDES
+from reviewed_extra_v2 import (
+    EXTRA_DROP_IDS,
+    EXTRA_FIELD_FIXES,
+    EXTRA_FRAGMENT_RE,
+    EXTRA_MERGED_INTO,
+    EXTRA_MOVE_TO,
+    EXTRA_OVERRIDES,
+    EXTRA_RANGE_MOVES,
+    EXTRA_TITLE_REWRITES,
+)
 
 ROOT = Path(__file__).resolve().parent
 AUTHORED = ROOT / "authored"
 OUTPUT = ROOT / "full_v2"
 
-DOMAINS = {
+AI_DOMAINS = {
     "agent": "Agent 架构与工程",
     "ai-product": "AI 产品与应用",
     "evaluation": "评估与可观测",
@@ -30,6 +40,33 @@ DOMAINS = {
     "rag": "RAG 与向量检索",
     "safety": "安全与沙箱",
 }
+
+# The remote corpus added these domains after the AI-only second pass.  Keep
+# them in the same deterministic pipeline, but retain separately reviewed
+# rules and a separate raw-record archive so provenance remains clear.
+EXTRA_DOMAINS = {
+    "algorithm": "算法与数据结构",
+    "behavioral": "行为与项目面试",
+    "design-pattern": "设计模式",
+    "distributed": "分布式系统",
+    "engineering": "工程化与 DevOps",
+    "frontend": "前端工程",
+    "general": "通用技术与职业问题",
+    "go": "Go",
+    "java": "Java",
+    "mq": "消息队列",
+    "mysql": "MySQL",
+    "os-network": "操作系统与网络",
+    "puzzle": "智力与开放题",
+    "redis": "Redis",
+    "system-design": "系统设计",
+}
+
+DOMAINS = AI_DOMAINS | EXTRA_DOMAINS
+ALL_MERGED_INTO = MERGED_INTO | EXTRA_MERGED_INTO
+ALL_MOVE_TO = MOVE_TO | EXTRA_MOVE_TO
+ALL_OVERRIDES = OVERRIDES | EXTRA_OVERRIDES
+ALL_FIELD_FIXES = FIELD_FIXES | EXTRA_FIELD_FIXES
 
 
 def write_crlf(path: Path, content: str) -> None:
@@ -218,7 +255,6 @@ TITLE_REWRITES = {
     "q2260": "如何用 Agent 设计一个可靠的游戏策划工具？",
     "q2896": "Agent 与传统 RPA 的核心区别是什么？二者如何组合？",
     "q3678": "LlamaIndex 主要解决什么问题？它与 LangChain 应该如何选型？",
-    "q2390": "Matryoshka Embedding 为什么能支持多种向量维度？",
     "q2044": "在百万级向量检索中，什么时候适合选择 HNSW？如何与其他索引比较？",
     "q2254": "Prompt Tuning 与 Prompt Engineering、全量微调有什么区别？",
     "q3489": "自动化评测体系的题库和标准答案应如何构建？如何支持动态更新？",
@@ -243,6 +279,8 @@ TITLE_REWRITES = {
     "q3994": "移除大模型后，AI 平台还能保留哪些确定性能力？",
     "q3893": "DPO 的数学目标如何从带 KL 约束的 RLHF 目标推导出来？",
 }
+
+ALL_TITLE_REWRITES = TITLE_REWRITES | EXTRA_TITLE_REWRITES
 
 META_REWRITES = {
     "q1161": {
@@ -361,11 +399,12 @@ ANSWER_REWRITES = {
 }
 
 
-def should_drop(item: dict) -> bool:
-    if item["id"] in DROP_IDS:
+def should_drop(item: dict, domain: str) -> bool:
+    if item["id"] in DROP_IDS or item["id"] in EXTRA_DROP_IDS:
         return True
     title = item.get("title", "")
-    if any(pattern.search(title) for pattern in FRAGMENT_RE):
+    patterns = FRAGMENT_RE if domain in AI_DOMAINS else EXTRA_FRAGMENT_RE
+    if any(pattern.search(title) for pattern in patterns):
         return True
     if "?" not in title and "？" not in title and not QUESTION_SIGNAL_RE.search(title):
         return True
@@ -380,6 +419,8 @@ def normalize_title(title: str) -> str:
         flags=re.IGNORECASE,
     )
     title = re.sub(r"^[．。\s]+", "", title).replace("⭐", "").strip()
+    title = re.sub(r"^(?:追问|补充)\s*[:：]\s*", "", title, flags=re.IGNORECASE)
+    title = re.sub(r"\s*[√×]\s*(?:（[^）]*）|\([^)]*\))?", "", title)
     title = title.replace("。？", "？").replace("。?", "?")
     title = re.sub(r"[？?]+$", "？", title)
     if not title.endswith(("？", "?")) and QUESTION_SIGNAL_RE.search(title):
@@ -393,6 +434,38 @@ def strip_boilerplate(answer: str) -> str:
     return "\n\n".join(paragraphs).strip()
 
 
+def collapse_accidental_leading_repeat(answer: str) -> str:
+    """Remove an exact, immediately repeated long opening sentence.
+
+    A legacy scraper sometimes concatenated the answer lead twice (for example
+    ``"Docker 是…。Docker 是…。"``).  This is deliberately narrower than
+    general text de-duplication: it only removes adjacent, textually identical
+    opening sentences of a meaningful length, so a deliberate summary followed
+    by a differently worded explanation is preserved.
+    """
+    sentence_pair = re.compile(
+        r"^(?P<prefix>\s*)"
+        r"(?P<first>(?:[-*+]\s*)?[^。！？!?]{16,}[。！？!?])"
+        r"\s*"
+        r"(?P<second>(?:[-*+]\s*)?[^。！？!?]+[。！？!?])",
+        flags=re.DOTALL,
+    )
+
+    def canonical(sentence: str) -> str:
+        sentence = re.sub(r"^\s*(?:[-*+]\s*)?", "", sentence)
+        return re.sub(r"\s+", " ", sentence).strip().rstrip("。！？!?").strip()
+
+    while True:
+        match = sentence_pair.match(answer)
+        if not match or canonical(match.group("first")) != canonical(match.group("second")):
+            return answer
+        answer = (
+            match.group("prefix")
+            + match.group("first")
+            + answer[match.end("second"):]
+        )
+
+
 def clean_editorial_fields(item: dict) -> dict:
     """Remove copied coaching appendices, not substantive answer paragraphs.
 
@@ -404,6 +477,7 @@ def clean_editorial_fields(item: dict) -> dict:
     coaching = re.search(r"(?:【)?(?:加分点|常见雷区)(?:】|[:：]|是)", answer)
     if coaching:
         answer = answer[:coaching.start()].rstrip()
+    answer = collapse_accidental_leading_repeat(answer)
     item["answer"] = answer
     focus = item.get("kaodian", "")
     generic = re.fullmatch(
@@ -432,8 +506,8 @@ def clean_editorial_fields(item: dict) -> dict:
 def curate_item(item: dict) -> dict:
     item = dict(item)
     qid = item["id"]
-    if qid in TITLE_REWRITES:
-        item["title"] = TITLE_REWRITES[qid]
+    if qid in ALL_TITLE_REWRITES:
+        item["title"] = ALL_TITLE_REWRITES[qid]
     item["title"] = normalize_title(item["title"])
     if qid in META_REWRITES:
         item.update(META_REWRITES[qid])
@@ -441,12 +515,23 @@ def curate_item(item: dict) -> dict:
         item["answer"] = ANSWER_REWRITES[qid]
     else:
         item["answer"] = strip_boilerplate(item.get("answer", ""))
-    if qid in OVERRIDES:
-        item.update(OVERRIDES[qid])
+    if qid in ALL_OVERRIDES:
+        item.update(ALL_OVERRIDES[qid])
         # A legacy Chinese key must not shadow a reviewed follow-up.
         item.pop("追问", None)
-    item.update(FIELD_FIXES.get(qid, {}))
+    item.update(ALL_FIELD_FIXES.get(qid, {}))
     return clean_editorial_fields(item)
+
+
+def destination_for(domain: str, item: dict) -> str:
+    """Return an explicitly reviewed destination for a retained item."""
+    qid = item["id"]
+    if qid in ALL_MOVE_TO:
+        return ALL_MOVE_TO[qid]
+    for lower, upper, destination in EXTRA_RANGE_MOVES.get(domain, ()):
+        if lower <= qid <= upper:
+            return destination
+    return domain
 
 
 def curate_domains() -> dict[str, list[dict]]:
@@ -458,22 +543,38 @@ def curate_domains() -> dict[str, list[dict]]:
     }
     results = {name: [] for name in DOMAINS}
     moved = []
-    archive_path = ROOT / "review_archive" / "second_pass_originals.jsonl"
+    archive_paths = {
+        "ai": ROOT / "review_archive" / "second_pass_originals.jsonl",
+        "extra": ROOT / "review_archive" / "third_pass_extra_originals.jsonl",
+    }
     archived = {}
-    if archive_path.exists():
-        archived = {row["item"]["id"]: row for row in map(json.loads, archive_path.read_text().splitlines())}
+    for key, archive_path in archive_paths.items():
+        if archive_path.exists():
+            archived[key] = {row["item"]["id"]: row for row in map(json.loads, archive_path.read_text().splitlines())}
+        else:
+            archived[key] = {}
+    # A third-pass item can move into an AI domain.  Its original record still
+    # belongs to the third-pass archive; do not create a second, already-
+    # curated pseudo-original in the older AI archive on a subsequent run.
+    for qid in set(archived["ai"]) & set(archived["extra"]):
+        del archived["ai"][qid]
     for name, items in original.items():
         for item in items:
             qid = item["id"]
-            removed = qid in MERGED_INTO or should_drop(item)
+            archive_key = "extra" if qid in archived["extra"] or name not in AI_DOMAINS else "ai"
+            removed = qid in ALL_MERGED_INTO or should_drop(item, name)
             updated = None if removed else curate_item(item)
-            destination = MOVE_TO.get(qid, name)
+            destination = destination_for(name, item)
             if removed or updated != item or destination != name:
-                archived.setdefault(qid, {
+                archive_row = archived[archive_key].setdefault(qid, {
                     "domain": name, "item": item,
-                    "merged_into": MERGED_INTO.get(qid),
+                    "merged_into": ALL_MERGED_INTO.get(qid),
                     "destination": None if removed else destination,
                 })
+                # The first-seen row is the immutable source record, while
+                # disposition follows the current deterministic review rules.
+                archive_row["merged_into"] = ALL_MERGED_INTO.get(qid)
+                archive_row["destination"] = None if removed else destination
             if removed:
                 continue
             if destination == name:
@@ -484,19 +585,30 @@ def curate_domains() -> dict[str, list[dict]]:
         results[destination].append(item)
     ids = [item["id"] for items in results.values() for item in items]
     assert len(ids) == len(set(ids)), "Duplicate ID after domain migration"
-    assert set(MERGED_INTO.values()) <= set(ids), "A merge target is missing"
+    assert set(ALL_MERGED_INTO.values()) <= set(ids), "A merge target is missing"
     for name, items in results.items():
         assert all(item["answer"].strip() for item in items), f"Empty answer in {name}"
     # Preserve first-seen originals while keeping their final disposition up
     # to date if a later review merges or moves an already archived question.
-    for qid, row in archived.items():
-        if qid in MERGED_INTO:
-            row["merged_into"] = MERGED_INTO[qid]
-            row["destination"] = None
-        elif qid in MOVE_TO:
-            row["destination"] = MOVE_TO[qid]
-    archive_path.parent.mkdir(exist_ok=True)
-    write_crlf(archive_path, "".join(json.dumps(archived[qid], ensure_ascii=False) + "\n" for qid in sorted(archived)))
+    final_destination = {
+        item["id"]: domain
+        for domain, items in results.items()
+        for item in items
+    }
+    for archive_key, archive_rows in archived.items():
+        for qid, row in archive_rows.items():
+            if qid in ALL_MERGED_INTO:
+                row["merged_into"] = ALL_MERGED_INTO[qid]
+                row["destination"] = None
+            else:
+                # A record may have been removed on a later idempotent pass
+                # after title normalization exposed an incomplete fragment.
+                # Always archive its final corpus disposition, not a stale
+                # intermediate destination.
+                row["destination"] = final_destination.get(qid)
+        archive_path = archive_paths[archive_key]
+        archive_path.parent.mkdir(exist_ok=True)
+        write_crlf(archive_path, "".join(json.dumps(archive_rows[qid], ensure_ascii=False) + "\n" for qid in sorted(archive_rows)))
     for name, items in results.items():
         write_crlf(AUTHORED / f"{name}.jsonl", "".join(json.dumps(item, ensure_ascii=False) + "\n" for item in items))
     return results
@@ -582,7 +694,7 @@ def main() -> None:
         render_domain(name, label, items)
         print(f"{name}: kept={len(items)}")
     render_index(results)
-    print(f"curated AI total: {sum(map(len, results.values()))}")
+    print(f"curated full_v2 total: {sum(map(len, results.values()))}")
 
 
 if __name__ == "__main__":
