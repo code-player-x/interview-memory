@@ -396,7 +396,7 @@ function renderHeatmap(activity) {
   for (let i = 29; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    const key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
     const n = map[key] || 0;
     let lvl = 0;
     if (n >= 1) lvl = 1;

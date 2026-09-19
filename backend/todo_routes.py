@@ -60,10 +60,17 @@ def _todo_out(t: models.Todo) -> dict:
 
 
 @router.get("")
-def list_todos(done: Optional[bool] = None, db: Session = Depends(get_db)):
+def list_todos(
+    done: Optional[bool] = None,
+    category: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """列出未删除待办；category 为精确分类筛选（空值不筛选）。"""
     q = db.query(models.Todo).filter(models.Todo.deleted == False)
     if done is not None:
         q = q.filter(models.Todo.done == done)
+    if category is not None and category.strip():
+        q = q.filter(models.Todo.category == category.strip())
     rows = q.order_by(models.Todo.order_no, models.Todo.id).all()
     return [_todo_out(t) for t in rows]
 

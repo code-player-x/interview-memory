@@ -4,16 +4,25 @@ services:
   app:
     build: .
     ports:
-      - "8000:8000"
+      # 默认仅发布到本机；公网部署请经带 TLS/鉴权的反向代理。
+      - "127.0.0.1:8000:8000"
     environment:
-      - DATABASE_URL=sqlite:////data/interview_memory.db
-      - AGENT_JUDGE_URL=${AGENT_JUDGE_URL}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_USE_SSL=${SMTP_USE_SSL}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASSWORD=${SMTP_PASSWORD}
-      - APP_BASE_URL=${APP_BASE_URL}
+      - DATABASE_URL=sqlite:////app/data/interview_memory.db
+      - AGENT_JUDGE_URL=${AGENT_JUDGE_URL:-}
+      - AGENT_JUDGE_TOKEN=${AGENT_JUDGE_TOKEN:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-}
+      - SMTP_USE_SSL=${SMTP_USE_SSL:-}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - APP_BASE_URL=${APP_BASE_URL:-http://localhost:8000}
+      - CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-}
+      - MAX_QUIZ_ITEMS=${MAX_QUIZ_ITEMS:-50}
+      - MAX_CONCURRENT_JUDGES=${MAX_CONCURRENT_JUDGES:-8}
     volumes:
-      - ./data:/data
+      # DB、上传图片和 PDF 导出共用同一个应用数据目录。
+      - ./data:/app/data
     restart: unless-stopped

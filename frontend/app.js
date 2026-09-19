@@ -97,6 +97,10 @@ function curatedTagsHtml(category, platform, tags, max) {
 function _safeUrl(u) {
   return /^(https?:|data:image\/)/i.test(u.trim()) ? u.trim() : "#";
 }
+function _safeUrlAttr(u) {
+  // 此时 Markdown 文本已整体 escapeHtml；再转义会把查询参数中的 &amp; 变成 &amp;amp;。
+  return _safeUrl(u);
+}
 const _MD_IMG = /!\[([^\]]*)\]\(([^)\s]+)\)/g;
 const _MD_LINK = /\[([^\]]+)\]\(([^)\s]+)\)/g;
 // 残缺链接：URL 部分为空或缺失（飞书导入时大量 [text]( 被截断），但意图是链接。
@@ -106,6 +110,28 @@ const _MD_LINK_BROKEN_CLOSED = /\[([^\]\n]{2,200})\]\(\s*\)/g;
 const _MD_LINK_BROKEN_OPEN   = /\[([^\]\n]{2,200})\]\(\s*$/gm;
 const _MD_CODE = /`([^`]+)`/g;
 const _MD_BOLD = /\*\*([^*]+)\*\*/g;
+
+function renderInlineMarkdown(text) {
+  let s = escapeHtml(text == null ? "" : String(text));
+  s = s.replace(_MD_IMG, (m, alt, url) =>
+    "<img class='md-img' src='" + _safeUrlAttr(url) + "' alt='" + alt + "' loading='lazy'>");
+  s = s.replace(_MD_CODE, "<code class='md-code'>$1</code>");
+  s = s.replace(_MD_BOLD, "<strong>$1</strong>");
+  s = s.replace(_MD_LINK, (m, label, url) =>
+    "<a class='md-link' href='" + _safeUrlAttr(url) + "' target='_blank' rel='noopener'>" + label + "</a>");
+  return s.replace(/\r?\n+/g, " ");
+}
+
+function _paragraphizeMarkdownHtml(html, blockToken) {
+  return html.split(blockToken).map(part => {
+    if (!part) return "";
+    if (blockToken.test(part)) return part;
+    return part.split(/\n{2,}/).map(paragraph => {
+      if (!paragraph.trim()) return "";
+      return "<p class='md-p'>" + paragraph.replace(/\n/g, "<br>") + "</p>";
+    }).join("");
+  }).join("");
+}
 // 启发式：把「连续 2+ 行、每行以 ≥4 空格/Tab 缩进、且含代码特征、无中文标点」的段落
 // 包成 ``` 围栏，便于统一渲染为高亮代码块（飞书导入的纯文本代码题也能识别）。
 function _wrapIndentedCode(text) {
@@ -303,11 +329,34 @@ function _highlightCode(code, lang) {
   return escapeHtml(code);
 }
 
+async function writeClipboardText(value) {
+  const text = String(value == null ? "" : value);
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) {}
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0;";
+  document.body.appendChild(textarea);
+  textarea.select();
+  let copied = false;
+  try { copied = document.execCommand("copy"); } catch (e) {}
+  textarea.remove();
+  return copied;
+}
+
 // 代码块「复制」按钮回调
 function copyCode(btn) {
   const c = btn.getAttribute("data-c") || "";
-  if (navigator.clipboard) navigator.clipboard.writeText(c).then(() => { btn.textContent = "已复制"; }, () => {});
-  else btn.textContent = "已复制";
+  const old = btn.textContent;
+  writeClipboardText(c).then(copied => {
+    btn.textContent = copied ? "已复制" : "复制失败";
+    setTimeout(() => { btn.textContent = old; }, 1200);
+  });
 }
 
 function renderMarkdown(text, keywords) {
@@ -346,19 +395,19 @@ function renderMarkdown(text, keywords) {
       if (!kw) return;
       try {
         const re = new RegExp(escapeRegExp(kw), "g");
-        s = s.replace(re, "<mark class='kw'>" + kw + "</mark>");
+        s = s.replace(re, "<mark class='kw'>" + escapeHtml(kw) + "</mark>");
       } catch (e) {}
     });
   }
   // 4) 图片 / 行内代码 / 加粗 / 链接
   s = s.replace(_MD_IMG, (m, alt, url) =>
-    "<img class='md-img' src='" + _safeUrl(url) + "' alt='" + alt + "' loading='lazy'>");
+    "<img class='md-img' src='" + _safeUrlAttr(url) + "' alt='" + alt + "' loading='lazy'>");
   s = s.replace(_MD_CODE, "<code class='md-code'>$1</code>");
   s = s.replace(_MD_BOLD, "<strong>$1</strong>");
   s = s.replace(_MD_LINK, (m, t, url) =>
-    "<a class='md-link' href='" + _safeUrl(url) + "' target='_blank' rel='noopener'>" + t + "</a>");
-  // 5) 段落换行
-  s = s.replace(/\n{2,}/g, "</p><p class='md-p'>").replace(/\n/g, "<br>");
+    "<a class='md-link' href='" + _safeUrlAttr(url) + "' target='_blank' rel='noopener'>" + t + "</a>");
+  // 5) 文本段落与代码/列表块作为同级节点，避免把 block 元素塞进 <p>。
+  s = _paragraphizeMarkdownHtml(s, new RegExp("(" + _P0 + "[KL]\\d+" + _P1 + ")"));
   // 6) 还原代码块为高亮 <pre>
   s = s.replace(/K(\d+)/g, (m, i) => {
     const b = blocks[+i];
@@ -393,19 +442,19 @@ function renderMarkdown(text, keywords) {
           if (!kw) return;
           try {
             const re = new RegExp(escapeRegExp(kw), "g");
-            c = c.replace(re, "<mark class='kw'>" + kw + "</mark>");
+            c = c.replace(re, "<mark class='kw'>" + escapeHtml(kw) + "</mark>");
           } catch (e) {}
         });
       }
       // 行内 markdown（顺序与外层 step 4 一致：img > code > bold > link）
       c = c.replace(_MD_IMG, (mm, alt, url) =>
-        "<img class='md-img' src='" + _safeUrl(url) + "' alt='" + alt + "' loading='lazy'>");
+        "<img class='md-img' src='" + _safeUrlAttr(url) + "' alt='" + alt + "' loading='lazy'>");
       c = c.replace(_MD_CODE, "<code class='md-code'>$1</code>");
       c = c.replace(_MD_BOLD, "<strong>$1</strong>");
       c = c.replace(_MD_LINK, (mm, t, url) =>
-        "<a class='md-link' href='" + _safeUrl(url) + "' target='_blank' rel='noopener'>" + t + "</a>");
-      // 段落/换行
-      c = c.replace(/\n{2,}/g, "</p><p class='md-p'>").replace(/\n/g, "<br>");
+        "<a class='md-link' href='" + _safeUrlAttr(url) + "' target='_blank' rel='noopener'>" + t + "</a>");
+      // 段落/换行：围栏代码占位符必须保持为段落同级节点。
+      c = _paragraphizeMarkdownHtml(c, /(\x00F\d+\x00)/);
       // 还原围栏代码块为高亮 <pre>
       c = c.replace(/\x00F(\d+)\x00/g, (mm, idx) => {
         const b = itemFences[+idx];
@@ -425,10 +474,10 @@ function renderMarkdown(text, keywords) {
     const t = brokenLinks[+i];
     if (t == null) return m;
     const et = escapeHtml(t);
-    return "<a class='md-link md-link-broken' href='javascript:void(0)' data-q='" + et +
+    return "<a class='md-link md-link-broken' href='#' data-q='" + et +
       "' title='链接 URL 缺失，点击用百度搜索：&#10;" + et + "'>" + et + "</a>";
   });
-  return "<p class='md-p'>" + s + "</p>";
+  return "<div class='md'>" + s + "</div>";
 }
 
 const TITLES = {
@@ -472,6 +521,7 @@ function switchView(name) {
   else if (name === "quiz") loadQuizCats();
   else if (name === "exp") loadExperiences();
   else if (name === "settings") loadSettings();
+  else if (name === "articles") loadArticles();
   else if (name === "pomodoro") loadPomodoro();
   else if (name === "growth") loadGrowth();
 }
@@ -494,6 +544,7 @@ async function loadCategoryGrid() {
   const header = document.getElementById("bankCatHeader");
   const list = document.getElementById("bankList");
   const pager = document.getElementById("bankPager");
+  const total = detailOk ? cats.reduce((sum, c) => sum + (c.count || 0), 0) : null;
 
   // 列表模式：隐藏分类网格，显示头部 + 题目列表
   if (bank.inList) {
@@ -502,13 +553,14 @@ async function loadCategoryGrid() {
     const activeCat = cats.find(c => c.name === bank.category) || {};
     const titleText = bank.category
       ? (activeCat.icon || "📄") + " " + bank.category
-      : "📚 全部题目";
+      : "📚 全部分类";
     document.getElementById("bankCatTitle").textContent = titleText;
+    const selectedCount = bank.category ? activeCat.count : total;
     document.getElementById("bankCatSub").textContent =
       (bank.category
         ? (activeCat.description || bank.category + " 面试题")
         : "全部分类面试题合集") +
-      (bank.category && activeCat.count != null ? " · 共 " + activeCat.count + " 题" : "");
+      (selectedCount != null ? " · 共 " + selectedCount + " 题" : "");
     list.style.display = "";
     pager.style.display = "";
   } else {
@@ -525,7 +577,8 @@ async function loadCategoryGrid() {
   wrap.innerHTML = "";
 
   const mk = (label, val, icon, count, desc) => {
-    const el = document.createElement("div");
+    const el = document.createElement("button");
+    el.type = "button";
     el.className = "cat-card";
     el.innerHTML =
       "<div class='cat-icon'>" + icon + "</div>" +
@@ -542,8 +595,7 @@ async function loadCategoryGrid() {
     return el;
   };
 
-  const total = cats.reduce((s, c) => s + (c.count || 0), 0);
-  wrap.appendChild(mk("全部题目", "", "📚", total, "全部分类面试题合集"));
+  wrap.appendChild(mk("全部分类", "", "📚", total, "全部分类面试题合集"));
   cats.forEach(c => wrap.appendChild(mk(c.name, c.name, c.icon || "📄", c.count, c.description)));
 
   if (!detailOk && cats.length) {
@@ -633,6 +685,182 @@ function renderPager() {
 
 // ---------------- 背题模式 ----------------
 const mem = { category: "", level: 0, items: [], idx: 0, total: 0, offset: 0, limit: 5, pageSize: 5, loading: false };
+const memCategoryPicker = { items: [] };
+
+function selectedMemCategory() {
+  const value = document.getElementById("memCat").value;
+  return memCategoryPicker.items.find(item => item.value === value) || memCategoryPicker.items[0];
+}
+
+function updateMemCategoryTrigger() {
+  const selected = selectedMemCategory();
+  const total = memCategoryPicker.items
+    .filter(item => item.value)
+    .reduce((sum, item) => sum + (Number.isFinite(item.count) ? item.count : 0), 0);
+  const label = document.getElementById("memCatLabel");
+  const meta = document.getElementById("memCatMeta");
+  const totalEl = document.getElementById("memCatTotal");
+  if (label) label.textContent = selected ? selected.name : "全部分类";
+  if (meta) {
+    meta.textContent = selected && selected.value
+      ? (Number.isFinite(selected.count) ? "共 " + selected.count + " 题" : "该分类题目")
+      : (total ? "全部 " + total + " 题" : "全部题目");
+  }
+  if (totalEl) totalEl.textContent = total ? total + " 题" : "按分类浏览";
+}
+
+function renderMemCategoryOptions() {
+  const options = document.getElementById("memCatOptions");
+  const search = document.getElementById("memCatSearch");
+  if (!options) return;
+  const query = (search ? search.value : "").trim().toLocaleLowerCase();
+  const selectedValue = document.getElementById("memCat").value;
+  const items = memCategoryPicker.items.filter(item => !query || item.name.toLocaleLowerCase().includes(query));
+  options.innerHTML = "";
+  if (!items.length) {
+    options.innerHTML = "<div class='mem-category-empty'>没有匹配的分类</div>";
+    return;
+  }
+  items.forEach(item => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "mem-category-option";
+    button.dataset.value = item.value;
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-selected", String(item.value === selectedValue));
+    const name = document.createElement("span");
+    name.className = "mem-category-option-name";
+    name.textContent = item.name;
+    const count = document.createElement("span");
+    count.className = "mem-category-option-count";
+    count.textContent = item.value && Number.isFinite(item.count) ? item.count + " 题" : "全部";
+    button.append(name, count);
+    options.appendChild(button);
+  });
+}
+
+function visibleMemCategoryOptions() {
+  return Array.from(document.querySelectorAll("#memCatOptions .mem-category-option"));
+}
+
+function focusMemCategoryOption(where = "selected") {
+  const items = visibleMemCategoryOptions();
+  if (!items.length) return;
+  const activeIndex = items.indexOf(document.activeElement);
+  const selectedIndex = items.findIndex(item => item.getAttribute("aria-selected") === "true");
+  let index = selectedIndex >= 0 ? selectedIndex : 0;
+  if (where === "first") index = 0;
+  else if (where === "last") index = items.length - 1;
+  else if (where === "next") index = activeIndex >= 0 ? Math.min(activeIndex + 1, items.length - 1) : 0;
+  else if (where === "previous") index = activeIndex >= 0 ? Math.max(activeIndex - 1, 0) : items.length - 1;
+  items[index].focus();
+}
+
+function positionMemCategoryMenu() {
+  const picker = document.getElementById("memCatPicker");
+  const trigger = document.getElementById("memCatTrigger");
+  if (!picker || !trigger) return;
+  const bounds = trigger.getBoundingClientRect();
+  const roomBelow = window.innerHeight - bounds.bottom;
+  picker.classList.toggle("opens-up", roomBelow < 310 && bounds.top > roomBelow);
+}
+
+function closeMemCategoryPicker({ focus = false } = {}) {
+  const picker = document.getElementById("memCatPicker");
+  const trigger = document.getElementById("memCatTrigger");
+  const menu = document.getElementById("memCatMenu");
+  if (!trigger || !menu) return;
+  trigger.setAttribute("aria-expanded", "false");
+  menu.hidden = true;
+  if (picker) picker.classList.remove("is-open", "opens-up");
+  if (focus) trigger.focus();
+}
+
+function openMemCategoryPicker({ focusSearch = false } = {}) {
+  const picker = document.getElementById("memCatPicker");
+  const trigger = document.getElementById("memCatTrigger");
+  const menu = document.getElementById("memCatMenu");
+  const search = document.getElementById("memCatSearch");
+  if (!trigger || !menu) return;
+  if (search) search.value = "";
+  trigger.setAttribute("aria-expanded", "true");
+  menu.hidden = false;
+  if (picker) picker.classList.add("is-open");
+  positionMemCategoryMenu();
+  renderMemCategoryOptions();
+  requestAnimationFrame(() => {
+    const selected = document.querySelector("#memCatOptions .mem-category-option[aria-selected='true']");
+    if (selected) selected.scrollIntoView({ block: "nearest" });
+    if (focusSearch && search) search.focus();
+  });
+}
+
+function chooseMemCategory(value) {
+  const select = document.getElementById("memCat");
+  select.value = value;
+  updateMemCategoryTrigger();
+  closeMemCategoryPicker({ focus: true });
+  memStart();
+}
+
+function setupMemCategoryPicker() {
+  const picker = document.getElementById("memCatPicker");
+  const trigger = document.getElementById("memCatTrigger");
+  const search = document.getElementById("memCatSearch");
+  const options = document.getElementById("memCatOptions");
+  if (!picker || !trigger || !search || !options) return;
+  trigger.onclick = () => {
+    if (trigger.getAttribute("aria-expanded") === "true") closeMemCategoryPicker();
+    else openMemCategoryPicker({ focusSearch: false });
+  };
+  search.oninput = renderMemCategoryOptions;
+  options.onclick = event => {
+    const option = event.target.closest(".mem-category-option");
+    if (option) chooseMemCategory(option.dataset.value || "");
+  };
+  picker.onkeydown = event => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeMemCategoryPicker({ focus: true });
+    }
+  };
+  trigger.onkeydown = event => {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    event.preventDefault();
+    openMemCategoryPicker();
+    focusMemCategoryOption(event.key === "ArrowDown" ? "selected" : "last");
+  };
+  search.onkeydown = event => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      focusMemCategoryOption("first");
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      focusMemCategoryOption("last");
+    } else if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      focusMemCategoryOption(event.key === "Home" ? "first" : "last");
+    }
+  };
+  options.onkeydown = event => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      focusMemCategoryOption("next");
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      focusMemCategoryOption("previous");
+    } else if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      focusMemCategoryOption(event.key === "Home" ? "first" : "last");
+    }
+  };
+  document.addEventListener("pointerdown", event => {
+    if (!picker.contains(event.target)) closeMemCategoryPicker();
+  });
+  window.addEventListener("resize", () => {
+    if (trigger.getAttribute("aria-expanded") === "true") positionMemCategoryMenu();
+  });
+}
 
 async function loadMemorize() {
   let cats = [];
@@ -640,13 +868,17 @@ async function loadMemorize() {
   const sel = document.getElementById("memCat");
   const cur = sel.value;
   sel.innerHTML = "<option value=''>全部分类</option>";
+  memCategoryPicker.items = [{ value: "", name: "全部分类", count: null }];
   cats.forEach(c => {
     const o = document.createElement("option");
     o.value = c.name;
     o.textContent = c.name + " (" + (c.count == null ? "-" : c.count) + ")";
     sel.appendChild(o);
+    memCategoryPicker.items.push({ value: c.name, name: c.name, count: c.count });
   });
-  if (cur) sel.value = cur;
+  if (cur && cats.some(c => c.name === cur)) sel.value = cur;
+  updateMemCategoryTrigger();
+  renderMemCategoryOptions();
   memStart();
 }
 
@@ -693,12 +925,9 @@ async function memRender() {
   const kwHtml = kws.length
     ? "<div class='mem-kws'>" + kws.map(k => "<span class='kw-pill'>" + escapeHtml(k) + "</span>").join("") + "</div>"
     : "";
-  const likeN = (q.id || 0) * 7 + 233;
   const statsHtml =
     "<div class='mem-stats'>" +
-      "<span class='act' title='收藏/标记'>🔖 标记</span>" +
-      "<span class='act' title='复制链接' data-qid='" + q.id + "' onclick='copyShareLink(this)'>🔗 分享</span>" +
-      "<span class='like' title='有用'>👍 " + likeN + " 有用</span>" +
+      "<button class='mem-share' type='button' title='复制链接' data-qid='" + q.id + "' onclick='copyShareLink(this)'>🔗 分享题目</button>" +
     "</div>";
   const tagsHtml =
     "<div class='mem-tags'>" +
@@ -710,7 +939,7 @@ async function memRender() {
     "<article class='mem-article'>" +
       "<h1 class='mem-title'>" +
         "<span class='mem-qid'>#" + q.id + "</span>" +
-        renderMarkdown(q.question_text || "") +
+        "<span class='md-inline'>" + renderInlineMarkdown(q.question_text || "") + "</span>" +
       "</h1>" +
       tagsHtml +
       statsHtml +
@@ -723,7 +952,7 @@ async function memRender() {
         "<div class='mem-a-body'>" + renderMarkdown(q.reference_answer || "（暂无参考答案）", kws) + "</div>" +
       "</section>" +
       "<section class='mem-notes' id='memNotesSection'>" +
-        "<div class='mem-notes-head'>📝 我的笔记 <span class='muted'>（个人 · 落库 · 仅自己可见）</span></div>" +
+        "<div class='mem-notes-head'>📝 我的笔记 <span class='muted'>（保存到当前应用实例）</span></div>" +
         "<div class='mem-note-editor'>" +
           "<textarea id='memNoteInput' placeholder='写点自己的理解 / 记忆口诀 / 易错点…'></textarea>" +
           "<div class='mem-note-actions'>" +
@@ -759,6 +988,17 @@ function memNext() {
 }
 
 // ---------------- 笔记：增/查/改/删（落库） ----------------
+function formatNoteTimestamp(value) {
+  if (!value) return "";
+  const normalized = String(value).trim().replace(" ", "T");
+  if (!normalized) return "";
+  // SQLite 等后端常返回无时区的 UTC 时间；显式补 Z，避免浏览器按本地时间错误解析。
+  const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized);
+  const date = new Date(hasTimezone ? normalized : normalized + "Z");
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
 async function memNoteLoad(qid) {
   const list = document.getElementById("memNoteList");
   if (!list) return;
@@ -775,8 +1015,8 @@ async function memNoteLoad(qid) {
       "<div class='mem-note' data-nid='" + n.id + "'>" +
         "<div class='mem-note-meta'>" +
           "<span class='mem-note-dot'></span>" +
-          "<span>" + (n.created_at ? new Date(n.created_at).toLocaleString("zh-CN", {month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}) : "") + "</span>" +
-          "<span class='mem-note-del' onclick='memNoteDelete(" + qid + "," + n.id + ")'>删除</span>" +
+          "<span>" + formatNoteTimestamp(n.created_at) + "</span>" +
+          "<button class='mem-note-del' type='button' onclick='memNoteDelete(" + qid + "," + n.id + ")'>删除</button>" +
         "</div>" +
         "<div class='mem-note-text'>" + escapeHtml(n.content).replace(/\n/g, "<br>") + "</div>" +
       "</div>"
@@ -806,16 +1046,20 @@ async function memNoteSave(qid) {
     tip.textContent = "保存失败：" + e.message;
   }
 }
-function copyShareLink(el) {
+async function copyShareLink(el) {
   const qid = el.getAttribute('data-qid');
-  const url = location.href.split('?')[0].split('#')[0] + '?q=' + qid;
-  navigator.clipboard.writeText(url).then(() => {
+  const url = new URL(location.href);
+  url.search = "";
+  url.hash = "";
+  url.searchParams.set("q", qid);
+  const copied = await writeClipboardText(url.toString());
+  if (copied) {
     const old = el.textContent;
     el.textContent = '✓ 已复制';
     setTimeout(() => { el.textContent = old; }, 1200);
-  }).catch(() => {
-    prompt('复制失败，请手动复制：', url);
-  });
+  } else {
+    prompt('复制失败，请手动复制：', url.toString());
+  }
 }
 
 async function memNoteDelete(qid, nid) {
@@ -894,8 +1138,15 @@ let currentDetailId = null;
 let currentDetail = null;   // 原始题目对象（含 reference_answer 原始 markdown）
 async function openDetail(id) {
   currentDetailId = id;
-  let q = {};
-  try { q = await (await fetch("/api/question/" + id)).json(); } catch (e) { q = {}; }
+  let q;
+  try {
+    const response = await fetch("/api/question/" + id);
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    q = await response.json();
+  } catch (e) {
+    alert("题目不存在或暂时无法加载");
+    return;
+  }
   currentDetail = q;
   const dm = diffMeta(q.difficulty);
   const badge = document.getElementById("dqBadge");
@@ -1082,14 +1333,21 @@ async function pmSubmit() {
   if (!uaEl) return;
   const ua = uaEl.value;
   if (!ua.trim()) { alert("请先输入答案"); return; }
-  let out = {};
+  let out;
   try {
     const r = await fetch("/api/answer", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question_id: q.id, user_answer: ua })
     });
-    out = await r.json();
-  } catch (e) { out = {}; }
+    const payload = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(payload.detail || ("HTTP " + r.status));
+    out = payload;
+  } catch (e) {
+    const resEl = document.getElementById("res");
+    resEl.className = "result show bad";
+    resEl.innerHTML = "<div class='bad'>提交失败：" + escapeHtml(e.message || "请检查后端服务") + "。答案未记录，可修改后重试。</div>";
+    return;
+  }
   practice.answered[q.id] = { user_answer: ua, result: out };
 
   const resEl = document.getElementById("res");
@@ -1102,6 +1360,8 @@ async function startPractice(id) {
   practice.isSingleQuestion = true;
   practice.history = [];
   practice.historyIdx = -1;
+  practice.current = null;
+  practice.answered = {};
   practice.seenIds = [];
   practice.seqOffset = 0;
   enterPracticeSession();
@@ -1109,8 +1369,14 @@ async function startPractice(id) {
   box.innerHTML = "<p class='muted'>加载中…</p>";
   let q;
   try {
-    q = await (await fetch("/api/question/" + id)).json();
-  } catch (e) { box.innerHTML = "<p class='muted'>加载失败。</p>"; return; }
+    const response = await fetch("/api/question/" + id);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.detail || ("HTTP " + response.status));
+    q = payload;
+  } catch (e) {
+    box.innerHTML = "<p class='muted'>加载失败：" + escapeHtml(e.message || "请检查后端服务") + "</p>";
+    return;
+  }
   q.total = 1;
   practice.history = [q];
   practice.historyIdx = 0;
@@ -1196,8 +1462,10 @@ function togglePracticeCat(cat) {
 function syncPracticeSelection() {
   const single = practice.scope === "single";
   let selected = single ? [practice.singleCat] : Array.from(practice.multiCats);
-  let total = 0;
-  selected.forEach(c => total += practice.catTotals[c] || 0);
+  const allCategories = single && practice.singleCat === "";
+  const total = allCategories
+    ? Object.values(practice.catTotals).reduce((sum, count) => sum + count, 0)
+    : selected.reduce((sum, category) => sum + (practice.catTotals[category] || 0), 0);
 
   document.querySelectorAll("#pmCatGrid .cat-chip").forEach(el => {
     const cat = el.dataset.cat;
@@ -1206,7 +1474,9 @@ function syncPracticeSelection() {
     el.classList.toggle("disabled", !single && cat === ""); // 全部只在单分类下可用
   });
 
-  document.getElementById("pmSelCount").textContent = selected.length;
+  document.getElementById("pmSelLabel").textContent = allCategories ? "" : "已选";
+  document.getElementById("pmSelCount").textContent = allCategories ? "全部分类" : selected.length;
+  document.getElementById("pmSelUnit").textContent = allCategories ? "· 共" : "个分类 · 共";
   document.getElementById("pmSelTotal").textContent = total;
 }
 
@@ -1243,6 +1513,8 @@ async function pmStart() {
   practice.seqOffset = 0;
   practice.history = [];
   practice.historyIdx = -1;
+  practice.current = null;
+  practice.total = 0;
   practice.answered = {};
   document.getElementById("pmRoundTip").textContent = "";
   enterPracticeSession();
@@ -1327,7 +1599,8 @@ function updateSessionMeta() {
   }
   const scopeText = practice.isSingleQuestion
     ? "指定题目练习"
-    : (practice.scope === "multi" ? "多分类" : "单分类") + " · " + (practice.mode === "random" ? "随机" : "顺序");
+    : (practice.scope === "multi" ? "多分类" : (practice.singleCat ? "单分类" : "全部分类"))
+      + " · " + (practice.mode === "random" ? "随机" : "顺序");
   document.getElementById("pmSessionScope").textContent = scopeText;
   document.getElementById("pmSessionProgress").textContent = shown + " / " + q.total;
 }
@@ -1477,7 +1750,7 @@ async function loadHeatmap() {
   if (range === "2") weeks = 106;
   if (range === "all") {
     // 根据最早记录或默认近两年
-    const first = data.length ? new Date(data[0].day) : new Date(today);
+    const first = data.length ? parseLocalDay(data[0].day) : new Date(today);
     const daysSpan = Math.ceil((today - first) / (1000 * 60 * 60 * 24));
     weeks = Math.max(53, Math.ceil(daysSpan / 7) + 2);
   }
@@ -1490,6 +1763,27 @@ async function loadHeatmap() {
 
   document.getElementById("hmRangeInfo").textContent =
     "展示 " + formatDate(start) + " 至 " + formatDate(end);
+
+  const visible = data.filter(d => {
+    const day = parseLocalDay(d.day);
+    return day >= start && day <= today;
+  });
+  const total = visible.reduce((sum, d) => sum + (d.answered || 0), 0);
+  const correct = visible.reduce((sum, d) => sum + (d.correct || 0), 0);
+  const wrong = visible.reduce((sum, d) => sum + (d.wrong || 0), 0);
+  const judged = correct + wrong;
+  let streak = 0;
+  const cursor = new Date(today);
+  while ((map[formatDate(cursor)] || {}).answered > 0) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  document.getElementById("hmTotal").textContent = total;
+  document.getElementById("hmAccuracy").textContent = judged ? Math.round(correct * 100 / judged) + "%" : "—";
+  document.getElementById("hmStreak").textContent = streak;
+  document.getElementById("hmNote").textContent = total
+    ? "颜色越深，代表当天完成的题目越多。悬停可查看详情。"
+    : "从今天开始答第一题，点亮属于你的学习轨迹。";
 
   const daysEl = document.getElementById("heatmapDays");
   const grid = document.getElementById("heatmapGrid");
@@ -1526,14 +1820,15 @@ async function loadHeatmap() {
       dt.setDate(start.getDate() + w * 7 + d);
       const cell = document.createElement("div");
       cell.className = "day";
-      if (dt > today) { cell.style.background = "transparent"; col.appendChild(cell); continue; }
+      if (dt > today) { cell.classList.add("is-future"); col.appendChild(cell); continue; }
       const key = dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0") + "-" + String(dt.getDate()).padStart(2, "0");
       const rec = map[key];
       const n = rec ? rec.answered : 0;
       cell.style.background = lv[lvl(n)];
+      const c = rec ? rec.correct : 0, wn = rec ? rec.wrong : 0;
+      cell.title = key + " · 答题 " + n + " 道（对" + c + "/错" + wn + "）";
       cell.addEventListener("mousemove", ev => {
         tip.style.opacity = 1;
-        const c = rec ? rec.correct : 0, wn = rec ? rec.wrong : 0;
         tip.textContent = key + " · 答题 " + n + " 道（对" + c + "/错" + wn + "）";
         tip.style.left = (ev.clientX + 12) + "px";
         tip.style.top = (ev.clientY + 12) + "px";
@@ -1549,6 +1844,11 @@ async function loadHeatmap() {
     const scroll = document.getElementById("heatmapScroll");
     if (scroll) scroll.scrollLeft = scroll.scrollWidth;
   }, 0);
+}
+
+function parseLocalDay(value) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 function formatDate(d) {
@@ -1572,11 +1872,17 @@ async function saveSettings() {
     app_base_url: document.getElementById("setBase").value
   };
   try {
-    await fetch("/api/settings", {
+    const response = await fetch("/api/settings", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
     });
-  } catch (e) {}
-  document.getElementById("setMsg").textContent = "已保存";
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || ("HTTP " + response.status));
+    }
+    document.getElementById("setMsg").textContent = "已保存";
+  } catch (e) {
+    document.getElementById("setMsg").textContent = "保存失败：" + (e.message || "请检查后端服务");
+  }
 }
 
 // ---------------- 智能组卷 / 模拟面试 ----------------
@@ -1957,6 +2263,7 @@ document.getElementById("diffFilter").addEventListener("change", () => {
   loadBank();
 });
 // 背题模式
+setupMemCategoryPicker();
 document.getElementById("memCat").addEventListener("change", memStart);
 document.getElementById("memDiff").addEventListener("change", memStart);
 document.getElementById("memSize").addEventListener("change", memStart);
@@ -2004,7 +2311,16 @@ document.getElementById("expSave").onclick = addExperience;
 document.getElementById("expCancel").onclick = () => { document.getElementById("expForm").style.display = "none"; };
 document.getElementById("expCompany").addEventListener("input", debounce(loadExperiences, 300));
 
+function openSharedQuestionFromUrl() {
+  const rawId = new URLSearchParams(window.location.search).get("q");
+  if (!rawId || !/^\d+$/.test(rawId)) return;
+  const id = Number(rawId);
+  if (!Number.isSafeInteger(id) || id <= 0) return;
+  openDetail(id);
+}
+
 switchView("bank");
+openSharedQuestionFromUrl();
 
 // ==================== 番茄待办（抽象自番茄Todo：待办清单 + 番茄钟 + 专注统计） ====================
 const pom = {
@@ -2020,6 +2336,7 @@ const pom = {
   todoId: null,
   filterCat: "",
   _bound: false,
+  initialized: false,
 };
 
 function pomClampInt(v, lo, hi, dflt) {
@@ -2058,8 +2375,14 @@ async function loadPomodoro() {
   pom.durations.short = pomClampInt(document.getElementById("cfgShort").value, 1, 60, 5);
   pom.durations.long = pomClampInt(document.getElementById("cfgLong").value, 1, 60, 15);
   pom.longInterval = pomClampInt(document.getElementById("cfgInterval").value, 1, 12, 4);
-  pomSetMode("focus", false);
   pomBindOnce();
+  // 仅首次进入初始化。之后切换视图时保留正在运行或已暂停的剩余时间。
+  if (!pom.initialized) {
+    pom.initialized = true;
+    pomSetMode("focus", false);
+  } else {
+    pomRenderTimer();
+  }
   await Promise.all([pomLoadCats(), pomLoadTodos(), pomLoadStats()]);
 }
 
@@ -2494,6 +2817,26 @@ function _applyArticleOverride() {
     el.style.boxSizing = "border-box";
   });
   return true;
+}
+
+async function loadArticles() {
+  const frame = document.querySelector(".art-frame");
+  const unavailable = document.getElementById("articlesUnavailable");
+  if (!frame || !unavailable) return;
+  // 新版后端会显式说明文章资源是否已配置；旧版/网络失败时保留原 iframe，保证兼容。
+  try {
+    const response = await fetch("/api/articles/status");
+    if (!response.ok) return;
+    const status = await response.json();
+    if (status && status.available === false) {
+      unavailable.textContent = status.message || "技术文章资源尚未配置，暂时无法打开。";
+      unavailable.hidden = false;
+      frame.hidden = true;
+      return;
+    }
+    unavailable.hidden = true;
+    frame.hidden = false;
+  } catch (e) {}
 }
 function installArticleFrameHooks() {
   const f = document.querySelector(".art-frame");

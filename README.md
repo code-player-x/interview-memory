@@ -64,18 +64,44 @@ interview-memory/
 ## 快速开始（本地）
 
 ```bash
-cd G:\interview-memory
-python -m venv .venv && .venv\Scripts\activate      # 或用受控 Python 环境
+# macOS / Linux
+cd /path/to/interview-memory
+python3 -m venv .venv && source .venv/bin/activate
+
+# Windows（PowerShell）
+# py -m venv .venv; .\.venv\Scripts\Activate.ps1
+
 pip install -r requirements.txt
-cp .env.example .env                                 # 按需填写 SMTP / Agent / LLM 配置
-uvicorn backend.app:app --host 0.0.0.0 --port 8000 --reload
+# macOS / Linux：cp .env.example .env
+# Windows：copy .env.example .env
+uvicorn backend.app:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 打开 http://localhost:8000 即可看到热力图 / 错题本 / 练习 / 设置页面。
 
-## 导入 AI 面试题库
+## 导入已审核题库
 
-系统启动后，执行一次批量导入即可把现有题库（如 Claw/题库/agent_interview_bank.json）写入数据库：
+系统启动后，执行一次命令即可把仓库内已审核的 **2,637 道** `questions_v2` 题目写入数据库；按题面去重，可安全重复运行：
+
+```bash
+python scripts/import_questions_v2.py
+```
+
+如果本地已经导入过旧版 `questions_v2`，且这些题没有关联答题、错题、复习或笔记记录，可使用安全同步模式更新为当前审核版：
+
+```bash
+python scripts/import_questions_v2.py --replace
+```
+
+存在关联学习记录时，该命令会拒绝替换，避免破坏学习进度。
+
+Docker 容器内也已内置导入脚本和已审核题库，启动后可执行：
+
+```bash
+docker compose exec app python scripts/import_questions_v2.py
+```
+
+也支持导入其他旧版 JSON 题库：
 
 ```bash
 curl -X POST http://localhost:8000/api/questions/import-batch \
@@ -100,6 +126,9 @@ LLM_MODEL=gpt-4o-mini
 
 若两者都未配置，则回退到本地启发式判题（仅跑通主流程，不准确）。
 
+默认不会开启跨域访问；单服务前端与 API 同源时无需配置。若把前端部署到另一域名，
+请在 `.env` 中显式设置 `CORS_ALLOW_ORIGINS=https://study.example.com`，可用逗号分隔多个来源。
+
 ## 数据模型
 
 - `questions`：题库（platform / category / tags / difficulty / question_text / reference_answer）
@@ -115,6 +144,7 @@ LLM_MODEL=gpt-4o-mini
 | --- | --- | --- |
 | POST | `/api/questions/import` | 导入单题 |
 | POST | `/api/questions/import-batch` | 批量导入 JSON 题库 |
+| POST | `/api/questions/import-json` | 批量导入标准题目 JSON 数组 |
 | GET | `/api/questions` | 题库列表（关键词/分类/难度/标签筛选） |
 | GET | `/api/question/{id}` | 题目详情（含参考答案） |
 | GET | `/api/questions/random` | 随机抽题（真正随机） |
@@ -134,6 +164,7 @@ OpenAPI 交互文档已自带：`http://localhost:8000/docs`
 ## 测试
 
 ```bash
+pip install -r requirements-dev.txt
 pytest tests/ -q            # 单元测试
 python verify_flows.py      # 全流程回归验证
 ```
@@ -148,6 +179,14 @@ python verify_flows.py      # 全流程回归验证
 cp .env.example .env   # 填写 SMTP_PASSWORD / LLM_API_KEY 等
 docker compose up -d --build
 ```
+
+`docker-compose.yml` 默认只把服务发布到 `127.0.0.1:8000`，数据库、上传图片和 PDF
+导出统一持久化在 `./data`。不要直接把应用端口暴露到公网；公网部署请在前方使用具备
+TLS、访问鉴权与限流能力的反向代理，并按需显式配置 CORS。
+
+技术文章摘抄是可选资源，仓库和镜像不打包第三方 `book` 目录。未设置
+`ARTICLES_BOOK_DIR` 时页面会清晰提示未配置；本地可将其设为该目录绝对路径，容器场景
+还需以只读卷挂载该目录并令变量指向容器内路径。
 
 ## 实施里程碑
 

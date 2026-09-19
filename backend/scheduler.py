@@ -2,16 +2,14 @@
 
 - 优先用 APScheduler（BackgroundScheduler）注册 daily_review 定时任务；
 - 若未安装 apscheduler 或启动失败，返回 _NullScheduler（no-op），保证 app 不崩；
-- 邮件发送依赖环境变量 SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS，未配置则静默跳过；
+- 邮件发送由 emailer 固定模板处理，依赖 SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD；
 - daily_review 内部任何异常都被吞掉，避免影响主进程。
 """
-import os
-import smtplib
-from email.mime.text import MIMEText
 from datetime import datetime
 
 from .db import SessionLocal
 from . import models
+from .emailer import send_review_email
 
 
 class _NullScheduler:
@@ -33,44 +31,62 @@ class _NullScheduler:
         return None
 
 
-def _send_review_email(to_email: str, due_count: int):
-    host = os.getenv("SMTP_HOST")
-    user = os.getenv("SMTP_USER")
-    pwd = os.getenv("SMTP_PASS")
-    if not (host and user and pwd):
-        return  # 未配置 SMTP，跳过
-    port = int(os.getenv("SMTP_PORT", "465"))
-    msg = MIMEText(
-        f"你有 {due_count} 道题待复习（艾宾浩斯遗忘曲线）。打开应用完成今日复习，巩固长期记忆。",
-        "plain", "utf-8",
-    )
-    msg["Subject"] = "面试八股文 · 今日复习提醒"
-    msg["From"] = user
-    msg["To"] = to_email
-    try:
-        with smtplib.SMTP_SSL(host, port) as s:
-            s.login(user, pwd)
-            s.sendmail(user, [to_email], msg.as_string())
-    except Exception:
-        pass
-
-
-def _daily_review():
+def run_daily_review() -> int:
+    """发送当天到期题目的固定模板邮件，成功发送时返回题目数。"""
     db = SessionLocal()
     try:
         s = db.query(models.Settings).first()
         if not s or not s.email:
-            return
-        due = db.query(models.ReviewSchedule).filter(
+            return 0
+        rows = db.query(models.ReviewSchedule, models.WrongBook, models.Question).join(
+            models.Question, models.ReviewSchedule.question_id == models.Question.id
+        ).outerjoin(
+            models.WrongBook, models.WrongBook.question_id == models.ReviewSchedule.question_id
+        ).filter(
             models.ReviewSchedule.status == "pending",
             models.ReviewSchedule.next_review_at <= datetime.utcnow(),
-        ).count()
-        if due > 0:
-            _send_review_email(s.email, due)
+        ).order_by(models.ReviewSchedule.next_review_at).all()
+        items = [
+            {
+                "category": question.category,
+                "question_text": question.question_text,
+                "reference_answer": question.reference_answer,
+                "last_user_answer": wrong.last_user_answer if wrong else "",
+                "first_wrong_at": wrong.first_wrong_at if wrong else None,
+                "wrong_count": wrong.wrong_count if wrong else 1,
+            }
+            for _schedule, wrong, question in rows
+        ]
+        if not items:
+            return 0
+        base_url = (s.app_base_url or "http://localhost:8000").rstrip("/")
+        return len(items) if send_review_email(s.email, items, base_url) else 0
     except Exception:
+        return 0
+    finally:
+        db.close()
+
+
+def _daily_review():
+    """APScheduler 入口：异常由 run_daily_review 吞掉，不影响主进程。"""
+    run_daily_review()
+
+
+def _configured_push_time() -> tuple[int, int]:
+    """读取持久化推送时间；旧库/异常配置安全回退到 09:00。"""
+    db = SessionLocal()
+    try:
+        setting = db.query(models.Settings.push_time).first()
+        raw = (setting[0] if setting else "09:00") or "09:00"
+        hour_text, minute_text = str(raw).strip().split(":", 1)
+        hour, minute = int(hour_text), int(minute_text)
+        if 0 <= hour <= 23 and 0 <= minute <= 59:
+            return hour, minute
+    except (TypeError, ValueError):
         pass
     finally:
         db.close()
+    return 9, 0
 
 
 def start_scheduler():
@@ -81,8 +97,9 @@ def start_scheduler():
         return _NullScheduler()
     try:
         sched = BackgroundScheduler()
-        # 默认 09:00 推送；app.py 更新设置时会 reschedule_job 调整
-        sched.add_job(_daily_review, "cron", hour=9, minute=0, id="daily_review")
+        # 进程重启后从持久化设置恢复；更新接口仍会即时 reschedule。
+        hour, minute = _configured_push_time()
+        sched.add_job(_daily_review, "cron", hour=hour, minute=minute, id="daily_review")
         sched.start()
         return sched
     except Exception:

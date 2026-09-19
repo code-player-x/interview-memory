@@ -6,8 +6,8 @@
 <title>面试八股文 · 长期记忆训练</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=20260724f">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+  <link rel="stylesheet" href="styles.css?v=20260919b">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
 </head>
 <body>
@@ -79,7 +79,27 @@
       <!-- 背题模式 -->
       <section id="memorize" class="view">
         <div class="mem-toolbar">
-          <select class="diff" id="memCat"><option value="">全部分类</option></select>
+          <div class="mem-category-picker" id="memCatPicker">
+            <button class="mem-category-trigger" id="memCatTrigger" type="button"
+              aria-haspopup="listbox" aria-expanded="false" aria-controls="memCatOptions">
+              <span class="mem-category-copy">
+                <strong id="memCatLabel">全部分类</strong>
+                <small id="memCatMeta">全部题目</small>
+              </span>
+              <span class="mem-category-chevron" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg></span>
+            </button>
+            <div class="mem-category-menu" id="memCatMenu" hidden>
+              <div class="mem-category-menu-head">
+                <span>选择分类</span><small id="memCatTotal">加载中…</small>
+              </div>
+              <label class="mem-category-search" for="memCatSearch">
+                <span aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="4.5"/><path d="m12 12 4 4"/></svg></span>
+                <input id="memCatSearch" type="search" autocomplete="off" placeholder="搜索分类" aria-label="搜索分类" />
+              </label>
+              <div class="mem-category-options" id="memCatOptions" role="listbox" aria-label="背题分类"></div>
+            </div>
+          </div>
+          <select class="mem-native-select" id="memCat" tabindex="-1" aria-hidden="true"><option value="">全部分类</option></select>
           <select class="diff" id="memDiff">
             <option value="0">全部难度</option>
             <option value="1">简单</option>
@@ -151,7 +171,7 @@
             <div class="cfg-section">
               <div class="cfg-title"><span class="cfg-num">3</span>选择分类</div>
               <div class="cat-grid-sm" id="pmCatGrid"></div>
-              <div class="muted" style="margin-top:8px">已选 <strong id="pmSelCount">1</strong> 个分类 · 共 <strong id="pmSelTotal">-</strong> 题</div>
+              <div class="muted" style="margin-top:8px" id="pmSelSummary"><span id="pmSelLabel">已选</span> <strong id="pmSelCount">1</strong> <span id="pmSelUnit">个分类 · 共</span> <strong id="pmSelTotal">-</strong> 题</div>
             </div>
           </div>
 
@@ -221,9 +241,20 @@
 
       <!-- 热力图 -->
       <section id="heatmap" class="view">
-        <div class="card">
-          <h2>作答热力图</h2>
-          <div class="toolbar" style="margin-bottom:12px">
+        <div class="card heatmap-card">
+          <div class="heatmap-head">
+            <div>
+              <p class="heatmap-eyebrow">LEARNING RHYTHM</p>
+              <h2>作答热力图</h2>
+              <p class="muted heatmap-intro">把每一次作答沉淀成可见的学习节奏。</p>
+            </div>
+            <div class="heatmap-stats" aria-label="当前筛选范围的学习统计">
+              <div><span>总作答</span><strong id="hmTotal">0</strong><em>题</em></div>
+              <div><span>正确率</span><strong id="hmAccuracy">—</strong></div>
+              <div><span>连续作答</span><strong id="hmStreak">0</strong><em>天</em></div>
+            </div>
+          </div>
+          <div class="toolbar heatmap-toolbar">
             <select id="hmRange" class="diff">
               <option value="1">最近 1 年</option>
               <option value="2">最近 2 年</option>
@@ -231,7 +262,7 @@
             </select>
             <span class="muted" id="hmRangeInfo"></span>
           </div>
-          <div id="heatmapArea">
+          <div id="heatmapArea" class="heatmap-surface">
             <div id="heatmapDays"></div>
             <div id="heatmapScroll">
               <div id="heatmapGrid"></div>
@@ -244,7 +275,7 @@
             <span class="day" style="background:var(--lv3)"></span>
             <span class="day" style="background:var(--lv4)"></span> 多
           </div>
-          <p class="muted" style="margin-top:10px">颜色深浅 = 当天答题数。hover 查看详情。滑到最右侧可看到今天。</p>
+          <p class="muted heatmap-note" id="hmNote">颜色越深，代表当天完成的题目越多。悬停可查看详情。</p>
         </div>
       </section>
 
@@ -346,6 +377,7 @@
         </div>
         <!-- iframe 内布局（fullwidth + 路径改写）由后端 ArticleRewriteMiddleware 统一处理，
              前端不再重复注入 CSS，避免与后端 !important 规则互相覆盖导致 max-width 还原。 -->
+        <div class="art-unavailable" id="articlesUnavailable" role="status" aria-live="polite" hidden></div>
         <iframe class="art-frame" src="/articles/" title="技术文章摘抄" loading="lazy"></iframe>
       </section>
 
@@ -500,6 +532,7 @@
   <nav class="bottom-nav">
     <button data-view="bank"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h7v15H4z"/><path d="M13 5h7v15h-7z"/></svg></span>题库</button>
     <button data-view="practice"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span>练习</button>
+    <button data-view="memorize"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6c-2-1.6-5-1.6-7 0v13c2-1.6 5-1.6 7 0 2-1.6 5-1.6 7 0V6c-2-1.6-5-1.6-7 0z"/><path d="M12 6v13"/></svg></span>背题</button>
     <button data-view="wrong"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11v16H5z"/><path d="M8.5 8.5l5 5M13.5 8.5l-5 5"/></svg></span>错题</button>
     <button data-view="quiz"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/></svg></span>组卷</button>
     <button data-view="heatmap"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg></span>热力</button>
@@ -588,7 +621,7 @@
 </div>
 
 <div class="tooltip" id="tip"></div>
-<script src="app.js?v=20260724e"></script>
+<script src="app.js?v=20260919b"></script>
   <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
 </body>
 </html>

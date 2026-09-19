@@ -2,7 +2,9 @@
 类名 = 表名 CamelCase；字段名 = 列名；类型按 PRAGMA table_info 推断。
 所有字段 nullable 与默认值对齐原库，保证 app.py 的读写与现有数据兼容。
 """
-from sqlalchemy import Column, Integer, String, Text, DateTime, Date, Boolean
+from datetime import datetime
+
+from sqlalchemy import Column, Integer, String, Text, DateTime, Date, Boolean, UniqueConstraint
 from sqlalchemy.sql import func as sqlfunc
 from .db import Base
 
@@ -16,13 +18,15 @@ class Question(Base):
     difficulty = Column(Integer)
     question_text = Column(Text, nullable=False)
     reference_answer = Column(Text)
-    created_at = Column(DateTime)
+    # 旧数据保持原样；之后经 ORM 新建的题目统一写入 UTC 时间。
+    created_at = Column(DateTime, default=datetime.utcnow)
     images = Column(Text, default="")
     keywords = Column(Text, default="")
 
 
 class WrongBook(Base):
     __tablename__ = "wrong_book"
+    __table_args__ = (UniqueConstraint("question_id", name="uq_wrong_book_question_id"),)
     id = Column(Integer, primary_key=True)
     question_id = Column(Integer, nullable=False)
     first_wrong_at = Column(DateTime)
@@ -41,11 +45,12 @@ class Submission(Base):
     is_correct = Column(Boolean)
     judge_by = Column(String(20))
     explanation = Column(Text)
-    submitted_at = Column(DateTime)
+    submitted_at = Column(DateTime, default=datetime.utcnow)
 
 
 class ReviewSchedule(Base):
     __tablename__ = "review_schedule"
+    __table_args__ = (UniqueConstraint("question_id", name="uq_review_schedule_question_id"),)
     id = Column(Integer, primary_key=True)
     question_id = Column(Integer, nullable=False)
     stage = Column(Integer)
@@ -89,7 +94,7 @@ class InterviewExp(Base):
     offer_result = Column(String(100))
     content = Column(Text)
     questions = Column(Text)
-    created_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class GrowthGoal(Base):

@@ -24,9 +24,13 @@ if os.path.exists(TMP_DB):
     os.remove(TMP_DB)
 os.environ["DATABASE_URL"] = "sqlite:///" + TMP_DB
 os.environ["AGENT_JUDGE_URL"] = ""  # 默认走启发式
+os.environ["LLM_BASE_URL"] = ""
+os.environ["LLM_API_KEY"] = ""
+os.environ["LLM_MODEL"] = ""
 
-PROJECT = r"G:\interview-memory"
-sys.path.insert(0, PROJECT)
+PROJECT = os.path.dirname(os.path.abspath(__file__))
+if PROJECT not in sys.path:
+    sys.path.insert(0, PROJECT)
 
 from fastapi.testclient import TestClient  # noqa: E402
 import backend.app as appmod  # noqa: E402  (触发 init_db + start_scheduler)
@@ -182,22 +186,25 @@ class FakeClient:
     async def __aenter__(self): return self
     async def __aexit__(self, *a): return False
     async def post(self, *a, **k): return FakeResp()
-orig_url, orig_client, J.AGENT_JUDGE_URL = J.AGENT_JUDGE_URL, J.httpx.AsyncClient, "http://mock-agent"
-J.httpx.AsyncClient = FakeClient
+import httpx
+orig_url = os.environ.get("AGENT_JUDGE_URL", "")
+orig_client = httpx.AsyncClient
+os.environ["AGENT_JUDGE_URL"] = "http://mock-agent"
+httpx.AsyncClient = FakeClient
 async def j_agent():
     return await J.judge("q", "r", "u")
 ac = loop.run_until_complete(j_agent())
 check("agent 成功分支解析 is_correct/explanation", ac[0] is True and ac[1] == "mock agent ok" and ac[3] == "agent")
-J.httpx.AsyncClient = orig_client  # 恢复真实 AsyncClient，否则(c)会误用 mock
+httpx.AsyncClient = orig_client  # 恢复真实 AsyncClient，否则(c)会误用 mock
 
-# (c) agent 不可用 → 降级 pending（连向关闭端口，连接必失败）
-J.AGENT_JUDGE_URL = "http://127.0.0.1:1/nope"
+# (c) agent 不可用 → pending（连向关闭端口，连接必失败）
+os.environ["AGENT_JUDGE_URL"] = "http://127.0.0.1:1/nope"
 async def j_down():
     return await J.judge("q", "r", "u")
 dc = loop.run_until_complete(j_down())
 check("agent 不可用→降级 (None,'pending')", dc[0] is None and dc[3] == "pending")
 loop.close()
-J.AGENT_JUDGE_URL = orig_url
+os.environ["AGENT_JUDGE_URL"] = orig_url
 
 # ---- 汇总 ----
 print("\n========== 验证汇总 ==========")

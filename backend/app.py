@@ -20,7 +20,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 
 from fpdf import FPDF
 
@@ -35,6 +36,25 @@ from .storage import get_storage
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 BANK_PATH = os.path.join(BASE_DIR, "..", "Claw", "题库", "agent_interview_bank.json")
+DEFAULT_APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8000")
+
+
+def _csv_env(name: str) -> list[str]:
+    """读取逗号分隔环境变量，空值代表不开启对应跨域能力。"""
+    return [item.strip() for item in os.getenv(name, "").split(",") if item.strip()]
+
+
+def _bounded_env_int(name: str, default: int, minimum: int, maximum: int) -> int:
+    """读取安全上限；错误环境值回退默认，避免启动时被无效配置打断。"""
+    try:
+        value = int(os.getenv(name, str(default)))
+    except ValueError:
+        value = default
+    return max(minimum, min(value, maximum))
+
+
+MAX_QUIZ_ITEMS = _bounded_env_int("MAX_QUIZ_ITEMS", 50, 1, 200)
+MAX_CONCURRENT_JUDGES = _bounded_env_int("MAX_CONCURRENT_JUDGES", 8, 1, 32)
 
 app = FastAPI(
     title="面试八股文长期记忆训练系统",
@@ -42,12 +62,16 @@ app = FastAPI(
     description="GitHub 风格热力图 + 错题本 + 艾宾浩斯邮件推送 + 多标签题库筛选 + LLM 判题",
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+_CORS_ALLOW_ORIGINS = _csv_env("CORS_ALLOW_ORIGINS")
+if _CORS_ALLOW_ORIGINS:
+    # 单服务同源访问不需要 CORS。只有明确配置的前端来源才被允许，避免默认把
+    # 题库、学习记录和管理接口暴露给任意网页。
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_CORS_ALLOW_ORIGINS,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization"],
+    )
 
 
 # ----------------------------- 技术文章摘抄（lianglianglee 静态站 · 单服务融合） -----------------------------
@@ -56,10 +80,11 @@ app.add_middleware(
 # 解决方案：把文章站挂载在 /articles 子路径，并用中间件把「响应正文里」的绝对路径改写为
 # /articles/...。磁盘文件零改动，且不再需要单独启动 Gin。
 ARTICLES_BOOK_DIR = os.getenv(
-    "ARTICLES_BOOK_DIR",
-    r"G:/golang_project/lianglianglee-main/lianglianglee-main/book",
-)
+    "ARTICLES_BOOK_DIR", os.path.join(BASE_DIR, "articles_book")
+).strip()
 ARTICLES_PREFIX = "/articles"
+ARTICLES_AVAILABLE = bool(ARTICLES_BOOK_DIR and os.path.isdir(ARTICLES_BOOK_DIR))
+ARTICLES_UNAVAILABLE_MESSAGE = "技术文章资源未配置；请设置 ARTICLES_BOOK_DIR 指向 book 目录。"
 # 兜底约束正文内可能过宽的元素（img/table/pre/svg/video/canvas），避免撑爆 iframe 视口产生横滚
 # max-width:100% + height:auto 让原生超宽的流程图/表格按父容器自适应缩小
 # box-sizing:border-box 让 padding 不外溢
@@ -90,7 +115,7 @@ _ART_HTML_SNIFF = (
 #      内容被右推并顶出视口 → 父级 overflow-x:auto 切出横向滚动条（历史 bug 根因）。
 #   4. `box-sizing:border-box` + padding 两侧对称，避免外溢。
 #   5. `.off-canvas-content` 加 overflow-x:hidden 兜底，杜绝内部横向滚动条。
-#   6. 窄屏（<=820px）隐藏文章自带侧栏并把 off-canvas margin 归零，把空间全部让给正文。
+#   6. 窄屏（<=820px）缩小间距；侧栏仍保留，避免 iframe 中的文章导航不可达。
 _ART_FULLWIDTH_CSS = (
     "<style data-interview-memory='fullwidth'>"
     # 正文容器：铺满父级（off-canvas-content 已让出侧栏宽度），不再右移
@@ -113,9 +138,8 @@ _ART_FULLWIDTH_CSS = (
     "max-width:100%!important;height:auto!important;box-sizing:border-box!important;"
     "}"
     ".book-content pre{overflow-x:auto!important;}"
-    # 窄屏（<=820px）：隐藏文章侧栏，off-canvas 归零 margin，正文占满
+    # 窄屏（<=820px）：缩小正文间距，但不隐藏文章自身的侧栏
     "@media (max-width:820px){"
-    "html body .book-sidebar{display:none!important;}"
     "html body .off-canvas-content{margin-left:0!important;padding-left:0.5rem!important;padding-right:0.5rem!important;}"
     "html body .book-content{padding-left:0!important;padding-right:0!important;}"
     "}"
@@ -237,31 +261,6 @@ app.add_middleware(ArticleRewriteMiddleware)
 
 init_db()
 
-
-def _ensure_keywords_column():
-    """幂等迁移：为 questions 表补充 keywords 列（AI 关键词高亮用）。"""
-    db_url = os.getenv("DATABASE_URL", "")
-    if db_url and "sqlite" not in db_url:
-        return  # 非 SQLite 跳过（MySQL 需另行迁移）
-    db_path = os.path.join(BASE_DIR, "data", "interview_memory.db")
-    if not os.path.exists(db_path):
-        return
-    try:
-        import sqlite3 as _sq
-        c = _sq.connect(db_path)
-        try:
-            c.execute("ALTER TABLE questions ADD COLUMN keywords TEXT DEFAULT ''")
-            c.commit()
-        except Exception:
-            c.rollback()
-        finally:
-            c.close()
-    except Exception:
-        pass
-
-
-_ensure_keywords_column()
-
 scheduler = start_scheduler()
 
 
@@ -292,7 +291,7 @@ class SettingsIn(BaseModel):
     email: str = ""
     push_time: str = "09:00"
     ebbinghaus_steps: str = "1,2,4,7,15,30,60"
-    app_base_url: str = ""
+    app_base_url: str = DEFAULT_APP_BASE_URL
 
 
 class QuestionOut(BaseModel):
@@ -392,34 +391,195 @@ class InterviewExpOut(BaseModel):
 
 
 # ----------------------------- 工具函数 -----------------------------
+_DEFAULT_SETTINGS = {
+    "email": "",
+    "push_time": "09:00",
+    "ebbinghaus_steps": "1,2,4,7,15,30,60",
+    "app_base_url": DEFAULT_APP_BASE_URL,
+}
+
+
 def get_settings(db: Session) -> models.Settings:
     s = db.query(models.Settings).first()
     if not s:
-        s = models.Settings()
+        s = models.Settings(**_DEFAULT_SETTINGS)
         db.add(s)
+        db.commit()
+        db.refresh(s)
+        return s
+
+    # 兼容旧库：早期 Settings 列没有数据库默认值，已有行可能留下 NULL。
+    # 仅补齐 NULL，不覆盖用户已保存的任何非空配置。
+    changed = False
+    for field, default in _DEFAULT_SETTINGS.items():
+        if getattr(s, field) is None:
+            setattr(s, field, default)
+            changed = True
+    if changed:
         db.commit()
         db.refresh(s)
     return s
 
 
 def _tag_filter(query, tags: str):
-    """多标签筛选：逗号分隔，全部匹配（AND）。"""
+    """多标签筛选：逗号分隔、全部精确 token 匹配（AND）。"""
     if not tags:
         return query
     tag_list = [t.strip() for t in tags.split(",") if t.strip()]
     if not tag_list:
         return query
     for tag in tag_list:
-        # 使用逗号前后边界匹配，避免子串误命中（如 'JVM' 命中 'JVM调优'）
-        pattern = "%" + tag + "%"
+        # ``tags`` 是逗号分隔的 token。不能用 ``%tag%``：它会把 JVM 命中
+        # JVM调优，也会把前端分类/题干里的普通词误当标签。
+        # 存量数据会忽略标签内的普通空格；查询 token 要按同一规则标准化。
+        # LIKE 的转义值只能用于 LIKE，不能拿来与原始 token 做等值比较。
+        normalized_tag = tag.replace(" ", "")
+        escaped_like = normalized_tag.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        normalized = func.replace(func.coalesce(models.Question.tags, ""), " ", "")
         query = query.filter(
-            or_(
-                models.Question.tags.like(pattern),
-                models.Question.category.like(pattern),
-                models.Question.question_text.like(pattern),
-            )
+            (normalized == normalized_tag)
+            | normalized.like(escaped_like + ",%", escape="\\")
+            | normalized.like("%," + escaped_like + ",%", escape="\\")
+            | normalized.like("%," + escaped_like, escape="\\")
         )
     return query
+
+
+_PUSH_TIME_RE = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+
+
+def _validated_schedule_settings(payload: SettingsIn) -> tuple[str, str]:
+    """验证设置输入，并返回标准化的 (HH:MM, steps)；失败时绝不改数据库。"""
+    push_time = (payload.push_time or "").strip()
+    if not _PUSH_TIME_RE.fullmatch(push_time):
+        raise HTTPException(status_code=422, detail="push_time 必须是 HH:MM（00:00–23:59）")
+
+    raw_parts = (payload.ebbinghaus_steps or "").split(",")
+    parts = [part.strip() for part in raw_parts]
+    if not parts or any(not part for part in parts):
+        raise HTTPException(status_code=422, detail="ebbinghaus_steps 必须是逗号分隔的正整数")
+    try:
+        steps = [int(part) for part in parts]
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="ebbinghaus_steps 必须是逗号分隔的正整数") from exc
+    if any(step <= 0 for step in steps) or any(a >= b for a, b in zip(steps, steps[1:])):
+        raise HTTPException(status_code=422, detail="ebbinghaus_steps 必须为严格递增的正整数")
+    return push_time, ",".join(str(step) for step in steps)
+
+
+def _increment_activity(db: Session, is_correct: Optional[bool], day: Optional[date] = None):
+    """原子增加当天热力图计数，避免并发请求读改写导致丢计数。"""
+    activity_day = day or date.today()
+    values = {
+        "answered": func.coalesce(models.Activity.answered, 0) + 1,
+    }
+    if is_correct is True:
+        values["correct"] = func.coalesce(models.Activity.correct, 0) + 1
+    elif is_correct is False:
+        values["wrong"] = func.coalesce(models.Activity.wrong, 0) + 1
+
+    updated = (db.query(models.Activity)
+               .filter(models.Activity.day == activity_day)
+               .update(values, synchronize_session=False))
+    if updated:
+        return
+
+    try:
+        # 唯一主键保证两个首答请求不会各自插入一行；竞争失败者回退到原子 UPDATE。
+        with db.begin_nested():
+            db.add(models.Activity(
+                day=activity_day,
+                answered=1,
+                correct=1 if is_correct is True else 0,
+                wrong=1 if is_correct is False else 0,
+            ))
+            db.flush()
+    except IntegrityError:
+        (db.query(models.Activity)
+           .filter(models.Activity.day == activity_day)
+           .update(values, synchronize_session=False))
+
+
+def _update_wrong_book(db: Session, question_id: int, user_answer: str, error_reason: str, now: datetime):
+    """原子创建或更新错题本；唯一索引和 savepoint 覆盖首写竞争。"""
+    values = {
+        # 历史 NULL 表示至少已经记录过一次，不应在下一次答错时退回为 1。
+        "wrong_count": func.coalesce(models.WrongBook.wrong_count, 1) + 1,
+        "last_user_answer": user_answer,
+        "error_reason": error_reason or models.WrongBook.error_reason,
+        "mastery": "reviewing",
+        "updated_at": now,
+        "first_wrong_at": func.coalesce(models.WrongBook.first_wrong_at, now),
+    }
+    updated = (db.query(models.WrongBook)
+               .filter(models.WrongBook.question_id == question_id)
+               .update(values, synchronize_session=False))
+    if updated:
+        return
+
+    try:
+        with db.begin_nested():
+            db.add(models.WrongBook(
+                question_id=question_id,
+                first_wrong_at=now,
+                wrong_count=1,
+                last_user_answer=user_answer,
+                error_reason=error_reason or "",
+                mastery="learning",
+                updated_at=now,
+            ))
+            db.flush()
+    except IntegrityError:
+        # 另一个请求刚好插入同题行，保持其首错时间并给它原子加一。
+        (db.query(models.WrongBook)
+           .filter(models.WrongBook.question_id == question_id)
+           .update(values, synchronize_session=False))
+
+
+def _ensure_review_schedule(db: Session, question_id: int, now: datetime):
+    """只在首次答错时建计划；唯一约束防止并发请求生成重复计划。"""
+    if (db.query(models.ReviewSchedule.id)
+            .filter(models.ReviewSchedule.question_id == question_id)
+            .first()):
+        return
+    try:
+        with db.begin_nested():
+            db.add(models.ReviewSchedule(
+                question_id=question_id,
+                stage=1,
+                next_review_at=now + timedelta(days=1),
+                review_count=0,
+                status="pending",
+            ))
+            db.flush()
+    except IntegrityError:
+        # 竞争者已成功创建，无需覆盖已有的阶段或下次复习时间。
+        pass
+
+
+def _persist_answer_result(
+    db: Session,
+    question: models.Question,
+    user_answer: str,
+    is_correct: Optional[bool],
+    explanation: str,
+    error_reason: str,
+    source: str,
+):
+    """写入一次作答及其所有本地副作用；调用方统一在最后 commit。"""
+    now = datetime.utcnow()
+    db.add(models.Submission(
+        question_id=question.id,
+        user_answer=user_answer,
+        is_correct=is_correct,
+        judge_by=source,
+        explanation=explanation,
+        submitted_at=now,
+    ))
+    _increment_activity(db, is_correct)
+    if is_correct is False:
+        _update_wrong_book(db, question.id, user_answer, error_reason or "", now)
+        _ensure_review_schedule(db, question.id, now)
 
 
 # 分类 -> emoji 图标映射（面试鸭风格的大分类卡片）
@@ -557,6 +717,28 @@ def extract_images(text: str) -> list:
     return out
 
 
+def _question_out(question: models.Question, include_reference_answer: bool = False) -> dict:
+    """将历史可空题目列规范为前端约定的空字符串。
+
+    早期 SQLite 行允许 platform/category/tags/images/keywords 为 NULL；直接把 ORM
+    对象交给 ``QuestionOut`` 会触发 FastAPI 的响应校验 500。读取接口统一在边界
+    转换，既不批量改写用户库，也保持前端字段始终为字符串。
+    """
+    data = {
+        "id": question.id,
+        "platform": question.platform or "",
+        "category": question.category or "",
+        "tags": question.tags or "",
+        "difficulty": question.difficulty if question.difficulty is not None else 1,
+        "question_text": question.question_text or "",
+        "keywords": question.keywords or "",
+        "images": question.images or "",
+    }
+    if include_reference_answer:
+        data["reference_answer"] = question.reference_answer or ""
+    return data
+
+
 # ----------------------------- 题库导入（Agent -> 软件） -----------------------------
 @app.post("/api/questions/import", response_model=QuestionOut, summary="导入单题")
 def import_question(payload: QuestionImport, db: Session = Depends(get_db)):
@@ -567,11 +749,12 @@ def import_question(payload: QuestionImport, db: Session = Depends(get_db)):
         question_text=payload.question_text,
         reference_answer=payload.reference_answer,
         difficulty=payload.difficulty,
+        created_at=datetime.utcnow(),
     )
     db.add(q)
     db.commit()
     db.refresh(q)
-    return q
+    return _question_out(q)
 
 
 @app.post("/api/questions/import-batch", summary="批量导入题库（JSON）")
@@ -614,6 +797,7 @@ def import_question_batch(payload: QuestionImportBatch, db: Session = Depends(ge
             question_text=text,
             reference_answer=item.get("reference_answer", ""),
             difficulty=int(item.get("difficulty", 2)),
+            created_at=datetime.utcnow(),
         )
         db.add(q)
         imported += 1
@@ -672,7 +856,7 @@ def get_question(qid: int, db: Session = Depends(get_db)):
     q = db.query(models.Question).filter(models.Question.id == qid).first()
     if not q:
         raise HTTPException(status_code=404, detail="题目不存在")
-    return q
+    return _question_out(q, include_reference_answer=True)
 
 
 # ----------------------------- 图片上传 & 题目更新（答案配图） -----------------------------
@@ -873,59 +1057,11 @@ async def answer(payload: AnswerIn, db: Session = Depends(get_db)):
         q.question_text, q.reference_answer, payload.user_answer
     )
 
-    sub = models.Submission(
-        question_id=q.id,
-        user_answer=payload.user_answer,
-        is_correct=is_correct,
-        judge_by=source,
-        explanation=explanation,
+    _persist_answer_result(
+        db, q, payload.user_answer, is_correct, explanation, error_reason or "", source,
     )
-    db.add(sub)
+    # 一次作答及其热力图/错题/复习副作用必须同事务落库，避免半成功状态。
     db.commit()
-
-    # 热力图聚合
-    today = date.today()
-    act = db.query(models.Activity).filter(models.Activity.day == today).first()
-    if not act:
-        act = models.Activity(day=today, answered=0, correct=0, wrong=0)
-        db.add(act)
-    act.answered += 1
-    if is_correct is True:
-        act.correct += 1
-    elif is_correct is False:
-        act.wrong += 1
-    db.commit()
-
-    # 错题本 + 复习计划（仅在明确答错时处理）
-    if is_correct is False:
-        wb = db.query(models.WrongBook).filter(models.WrongBook.question_id == q.id).first()
-        if not wb:
-            wb = models.WrongBook(
-                question_id=q.id,
-                first_wrong_at=datetime.utcnow(),
-                wrong_count=1,
-                last_user_answer=payload.user_answer,
-                error_reason=error_reason or "",
-                mastery="learning",
-            )
-            db.add(wb)
-        else:
-            wb.wrong_count += 1
-            wb.last_user_answer = payload.user_answer
-            if error_reason:
-                wb.error_reason = error_reason
-            wb.mastery = "reviewing"
-        db.commit()
-
-        rs = db.query(models.ReviewSchedule).filter(models.ReviewSchedule.question_id == q.id).first()
-        if not rs:
-            rs = models.ReviewSchedule(
-                question_id=q.id, stage=1,
-                next_review_at=datetime.utcnow() + timedelta(days=1),
-                status="pending",
-            )
-            db.add(rs)
-            db.commit()
 
     return {"is_correct": is_correct, "explanation": explanation,
             "error_reason": error_reason or "", "source": source,
@@ -944,31 +1080,35 @@ async def quiz_submit(payload: QuizSubmitIn, db: Session = Depends(get_db)):
     items = payload.items or []
     if not items:
         return {"results": []}
+    if len(items) > MAX_QUIZ_ITEMS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"单次试卷最多提交 {MAX_QUIZ_ITEMS} 道题",
+        )
 
     # 1) 一次性取出所有题目（避免 N 次单查）
-    qids = [it.question_id for it in items if it.question_id]
+    qids = [it.question_id for it in items]
+    if len(set(qids)) != len(qids):
+        raise HTTPException(status_code=422, detail="同一份试卷不能重复提交同一道题")
     qmap = {q.id: q for q in db.query(models.Question).filter(models.Question.id.in_(qids)).all()}
 
-    # 2) 并发调判题（judge 通常是 LLM/Agent IO 密集型）
+    # 2) 有上限地并发调判题（远端 LLM/Agent 为 IO 密集型，但不能把一次请求
+    # 扩张成无限连接/限流压力）。
+    judge_semaphore = _asyncio.Semaphore(MAX_CONCURRENT_JUDGES)
+
     async def _one(it):
         q = qmap.get(it.question_id)
         if not q or not (it.user_answer or "").strip():
             return (it, None, None, None, None)
-        is_correct, explanation, error_reason, source = await judge(
-            q.question_text, q.reference_answer, it.user_answer
-        )
+        async with judge_semaphore:
+            is_correct, explanation, error_reason, source = await judge(
+                q.question_text, q.reference_answer, it.user_answer
+            )
         return (it, q, is_correct, (explanation, error_reason, source), None)
 
     judge_results = await _asyncio.gather(*[_one(it) for it in items], return_exceptions=True)
 
     # 3) 串行写库（SQLAlchemy session 不是 async-safe，串行避免锁竞争）
-    today = date.today()
-    act = db.query(models.Activity).filter(models.Activity.day == today).first()
-    if not act:
-        act = models.Activity(day=today, answered=0, correct=0, wrong=0)
-        db.add(act)
-        db.flush()
-
     out_results: List[QuizResultItem] = []
     for idx, res in enumerate(judge_results):
         # 判题阶段抛异常（一般是 judge() 内部问题） -> 标记为「待重试」，不阻断整卷
@@ -1002,48 +1142,9 @@ async def quiz_submit(payload: QuizSubmitIn, db: Session = Depends(get_db)):
 
         explanation, error_reason, source = judge_meta
 
-        sub = models.Submission(
-            question_id=q.id,
-            user_answer=it.user_answer,
-            is_correct=is_correct,
-            judge_by=source,
-            explanation=explanation,
+        _persist_answer_result(
+            db, q, it.user_answer, is_correct, explanation, error_reason or "", source,
         )
-        db.add(sub)
-
-        act.answered += 1
-        if is_correct is True:
-            act.correct += 1
-        elif is_correct is False:
-            act.wrong += 1
-
-        # 错题本 + 复习计划（与 /api/answer 保持一致）
-        if is_correct is False:
-            wb = db.query(models.WrongBook).filter(models.WrongBook.question_id == q.id).first()
-            if not wb:
-                wb = models.WrongBook(
-                    question_id=q.id,
-                    first_wrong_at=datetime.utcnow(),
-                    wrong_count=1,
-                    last_user_answer=it.user_answer,
-                    error_reason=error_reason or "",
-                    mastery="learning",
-                )
-                db.add(wb)
-            else:
-                wb.wrong_count += 1
-                wb.last_user_answer = it.user_answer
-                if error_reason:
-                    wb.error_reason = error_reason
-                wb.mastery = "reviewing"
-
-            rs = db.query(models.ReviewSchedule).filter(models.ReviewSchedule.question_id == q.id).first()
-            if not rs:
-                db.add(models.ReviewSchedule(
-                    question_id=q.id, stage=1,
-                    next_review_at=datetime.utcnow() + timedelta(days=1),
-                    status="pending",
-                ))
 
         out_results.append(QuizResultItem(
             question_id=q.id, is_correct=is_correct,
@@ -1061,8 +1162,8 @@ async def quiz_submit(payload: QuizSubmitIn, db: Session = Depends(get_db)):
 def get_activity(db: Session = Depends(get_db)):
     rows = db.query(models.Activity).order_by(models.Activity.day).all()
     return [
-        {"day": a.day.isoformat(), "answered": a.answered,
-         "correct": a.correct, "wrong": a.wrong}
+        {"day": a.day.isoformat(), "answered": a.answered or 0,
+         "correct": a.correct or 0, "wrong": a.wrong or 0}
         for a in rows
     ]
 
@@ -1155,6 +1256,11 @@ class PDF(FPDF):
                 r"C:\Windows\Fonts\simsun.ttc",
                 r"C:\Windows\Fonts\msyh.ttc",
                 r"C:\Windows\Fonts\msyhbd.ttc",
+            ]
+        elif sys.platform == "darwin":
+            candidates = [
+                "/System/Library/Fonts/STHeiti Medium.ttc",
+                "/System/Library/Fonts/STHeiti Light.ttc",
             ]
         else:
             candidates = [
@@ -1267,6 +1373,7 @@ def export_wrong_book_pdf(db: Session = Depends(get_db)):
         draw_separator()
 
     out_path = os.path.join(BASE_DIR, "data", "wrong_book_export.pdf")
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
     pdf.output(out_path)
     return {"download_url": "/data/wrong_book_export.pdf", "count": len(rows)}
 
@@ -1362,8 +1469,8 @@ def review_feedback(question_id: int, payload: ReviewFeedback, db: Session = Dep
         raise HTTPException(status_code=404, detail="无复习计划")
     steps = get_steps(get_settings(db).ebbinghaus_steps)
 
-    rs.stage = advance_stage(rs.stage, payload.remembered, steps)
-    rs.review_count += 1
+    rs.stage = advance_stage(rs.stage or 1, payload.remembered, steps)
+    rs.review_count = (rs.review_count or 0) + 1
     rs.last_reviewed_at = datetime.utcnow()
 
     if is_mastered(rs.stage, steps):
@@ -1392,17 +1499,19 @@ def read_settings(db: Session = Depends(get_db)):
 
 @app.post("/api/settings", summary="更新设置")
 def update_settings(payload: SettingsIn, db: Session = Depends(get_db)):
+    # 先验证，再读取/创建 Settings 行；错误输入不会写入半截配置。
+    push_time, steps = _validated_schedule_settings(payload)
     s = get_settings(db)
     s.email = payload.email
-    s.push_time = payload.push_time
-    s.ebbinghaus_steps = payload.ebbinghaus_steps
-    s.app_base_url = s.app_base_url
+    s.push_time = push_time
+    s.ebbinghaus_steps = steps
+    s.app_base_url = (payload.app_base_url or DEFAULT_APP_BASE_URL).strip()
     db.commit()
     # 重启调度以应用新的推送时间
     try:
         scheduler.reschedule_job("daily_review", trigger="cron",
-                                 hour=int(payload.push_time.split(":")[0]),
-                                 minute=int(payload.push_time.split(":")[1]))
+                                 hour=int(push_time.split(":")[0]),
+                                 minute=int(push_time.split(":")[1]))
     except Exception:
         pass
     return {"status": "updated"}
@@ -1499,6 +1608,7 @@ def add_experience(payload: InterviewExpIn, db: Session = Depends(get_db)):
     e = models.InterviewExp(
         company=payload.company, role=payload.role, position=payload.position,
         offer_result=payload.offer_result, content=payload.content, questions=payload.questions,
+        created_at=datetime.utcnow(),
     )
     db.add(e)
     db.commit()
@@ -1512,12 +1622,13 @@ def add_experience(payload: InterviewExpIn, db: Session = Depends(get_db)):
 # A. 题目管理：删除 / 导出 / 批量导入
 @app.delete("/api/questions/{qid}", summary="删除题目")
 def delete_question(qid: int, db: Session = Depends(get_db)):
-    """删除题目，并清理关联的错题本与复习计划（作答记录保留用于统计）。"""
+    """删除题目并清理可级联数据；作答记录保留用于历史统计。"""
     q = db.query(models.Question).filter(models.Question.id == qid).first()
     if not q:
         raise HTTPException(status_code=404, detail="题目不存在")
     db.query(models.WrongBook).filter(models.WrongBook.question_id == qid).delete()
     db.query(models.ReviewSchedule).filter(models.ReviewSchedule.question_id == qid).delete()
+    db.query(models.QuestionNote).filter(models.QuestionNote.question_id == qid).delete()
     db.delete(q)
     db.commit()
     return {"status": "deleted", "id": qid}
@@ -1577,6 +1688,7 @@ def import_questions_json(payload: QuestionImportList, db: Session = Depends(get
             platform=item.platform, category=item.category, tags=item.tags,
             question_text=text, reference_answer=item.reference_answer,
             difficulty=item.difficulty,
+            created_at=datetime.utcnow(),
         ))
         imported += 1
     db.commit()
@@ -1923,12 +2035,27 @@ if os.path.isfile(ADMIN_HTML):
 # 技术文章摘抄（lianglianglee 静态站）单服务融合：挂载在 /articles/，配合上面的路径重写中间件。
 # 必须注册在 "/" 兜底挂载之前，否则会被 SPA 的 "/" 挂载抢走。
 # 注意：StaticFiles 不会把 /articles 自动重定向到 /articles/，故显式补 307，避免前端 iframe(src=/articles) 404。
+@app.get("/api/articles/status", summary="技术文章资源状态")
+def articles_status():
+    """供前端决定是否显示文章 iframe；资源不是镜像/仓库的必需内容。"""
+    return {
+        "available": ARTICLES_AVAILABLE,
+        "message": "" if ARTICLES_AVAILABLE else ARTICLES_UNAVAILABLE_MESSAGE,
+    }
+
+
 @app.get("/articles", include_in_schema=False)
 def _articles_root():
+    if not ARTICLES_AVAILABLE:
+        raise HTTPException(status_code=404, detail=ARTICLES_UNAVAILABLE_MESSAGE)
     return RedirectResponse(url="/articles/", status_code=307)
 
-if os.path.isdir(ARTICLES_BOOK_DIR):
+if ARTICLES_AVAILABLE:
     app.mount(ARTICLES_PREFIX, StaticFiles(directory=ARTICLES_BOOK_DIR, html=True), name="articles")
+else:
+    @app.get("/articles/{article_path:path}", include_in_schema=False)
+    def _articles_unavailable(article_path: str):
+        raise HTTPException(status_code=404, detail=ARTICLES_UNAVAILABLE_MESSAGE)
 
 # 番茄待办 API（待办清单 + 番茄钟 + 专注统计）；必须注册在 "/" 兜底挂载之前。
 # ----------------------------- 番茄待办：分类 / 完成记录 / 专注统计 -----------------------------
@@ -2054,6 +2181,8 @@ def _note_to_out(n):
 
 @app.get("/api/questions/{qid}/notes", response_model=List[NoteOut], summary="列出某题所有笔记（按时间倒序）")
 def list_notes(qid: int, db: Session = Depends(get_db)):
+    if not db.query(models.Question.id).filter(models.Question.id == qid).first():
+        raise HTTPException(status_code=404, detail="题目不存在")
     rows = (db.query(models.QuestionNote)
               .filter(models.QuestionNote.question_id == qid)
               .order_by(models.QuestionNote.created_at.desc(),
@@ -2104,8 +2233,10 @@ def delete_note(qid: int, note_id: int, db: Session = Depends(get_db)):
 #   - 上传图片：/data/images/<file>
 #   - 错题本导出 PDF：/data/wrong_book_export.pdf（显式路由，不暴露其它文件）
 IMAGES_DIR = os.path.join(BASE_DIR, "data", "images")
-if os.path.isdir(IMAGES_DIR):
-    app.mount("/data/images", StaticFiles(directory=IMAGES_DIR), name="images")
+# 启动时保证目录和路由都存在：首次上传前访问图片 URL 不应因为 mount 缺失而被
+# SPA 根路由吞掉。只暴露这一子目录，绝不暴露整个 data/。
+os.makedirs(IMAGES_DIR, exist_ok=True)
+app.mount("/data/images", StaticFiles(directory=IMAGES_DIR), name="images")
 
 @app.get("/data/wrong_book_export.pdf", include_in_schema=False)
 def wrong_book_pdf():

@@ -43,7 +43,7 @@ python -m venv .venv && .venv\Scripts\activate
 # macOS / Linux
 python3 -m venv .venv && source .venv/bin/activate
 
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 > 若计划使用对象存储（见下文「图片存储」），额外安装：`pip install boto3`
@@ -80,7 +80,13 @@ python -m http.server 8088 --directory frontend
 
 首次运行建议先导入题库，否则页面是空的：
 
-- **方式 A（批量 JSON）**：把你的题目 JSON 通过接口导入
+- **方式 A（已审核 questions_v2）**：导入仓库自带的精选题库，命令可重复执行：
+
+  ```bash
+  python scripts/import_questions_v2.py
+  ```
+
+- **方式 B（批量 JSON）**：把你的题目 JSON 通过接口导入
 
   ```bash
   curl -X POST http://localhost:8000/api/questions/import-batch \
@@ -88,7 +94,7 @@ python -m http.server 8088 --directory frontend
     -d '{"path":"/绝对路径/你的题库.json"}'
   ```
 
-- **方式 B（飞书 Markdown）**：解析飞书导出的题库 Markdown
+- **方式 C（飞书 Markdown）**：解析飞书导出的题库 Markdown
 
   ```bash
   python scripts/import_feishu_wiki.py --md data/feishu_go_qa.md
@@ -139,8 +145,8 @@ python -m http.server 8088 --directory frontend
 核心模块有 `pytest` 单测（当前覆盖图片存储抽象层）：
 
 ```bash
-pip install pytest
-pytest tests/
+pytest tests/ -q
+python verify_flows.py
 ```
 
 提交前请保证本地测试通过。新增功能建议同步补测试。
