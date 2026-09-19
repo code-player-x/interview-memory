@@ -544,7 +544,21 @@ def render_domain(name: str, label: str, items: list[dict]) -> None:
 
 
 def render_index(results: dict[str, list[dict]]) -> None:
-    total = sum(len(items) for items in results.values())
+    # Curate only the reviewed AI domains, but retain other independently
+    # maintained domains in the shared index after cross-device merges.
+    entries = {name: (DOMAINS[name], len(items)) for name, items in results.items()}
+    for path in sorted(OUTPUT.glob("*.md")):
+        if path.stem == "INDEX" or path.stem in entries:
+            continue
+        content = path.read_text()
+        title = re.search(r"^# (.+)$", content, re.MULTILINE)
+        declared = re.search(r"^> 题目数量：\*\*(\d+)\*\*", content, re.MULTILINE)
+        if not title or not declared:
+            continue
+        count = len(re.findall(r"^## \d+\. ", content, re.MULTILINE))
+        assert count == int(declared.group(1)), f"Question count mismatch: {path}"
+        entries[path.stem] = (title.group(1), count)
+    total = sum(count for _, count in entries.values())
     lines = [
         "# 全量题库（精选标准 · 按领域）",
         "",
@@ -553,8 +567,8 @@ def render_index(results: dict[str, list[dict]]) -> None:
         "| 文件名 | 领域 | 题目数量 |",
         "| --- | --- | ---: |",
     ]
-    for name, label in DOMAINS.items():
-        lines.append(f"| [{name}.md](./{name}.md) | {label} | {len(results[name])} |")
+    for name, (label, count) in sorted(entries.items()):
+        lines.append(f"| [{name}.md](./{name}.md) | {label} | {count} |")
     lines.append(f"| **合计** | | **{total}** |")
     lines.append("")
     write_crlf(OUTPUT / "INDEX.md", "\n".join(lines))
@@ -568,7 +582,7 @@ def main() -> None:
         render_domain(name, label, items)
         print(f"{name}: kept={len(items)}")
     render_index(results)
-    print(f"total: {sum(map(len, results.values()))}")
+    print(f"curated AI total: {sum(map(len, results.values()))}")
 
 
 if __name__ == "__main__":

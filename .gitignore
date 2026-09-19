@@ -53,3 +53,5 @@ crawler/questions_v2/authored/gen*.py
 crawler/questions_v2/authored/qparse.py
 crawler/questions_v2/authored/append_batch.py
 crawler/questions_v2/authored/*.count
+crawler/questions_v2/_tmp/
+crawler/questions_v2/_chunks/
