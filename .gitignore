@@ -6,6 +6,8 @@
 # ---- 数据与运行时产物 ----
 # SQLite 库、上传的图片、导出的 PDF 等均自动生成，不入库
 data/
+# 技术文章摘抄 book 目录的本地目录联接（第三方资源，体积大，不入库）
+articles_book/
 
 # ---- Python ----
 __pycache__/
@@ -24,6 +26,8 @@ env/
 *.swp
 .DS_Store
 Thumbs.db
+# AI 编码助手的工作记忆/会话数据，不入库
+.codebuddy/
 
 # ---- 备份 / 日志 / 临时产物（不入库）----
 *.bak*
@@ -55,3 +59,8 @@ crawler/questions_v2/authored/append_batch.py
 crawler/questions_v2/authored/*.count
 crawler/questions_v2/_tmp/
 crawler/questions_v2/_chunks/
+
+# ---- crawler 历史一次性/调试脚本（探针、登录诊断、临时批次，不入库）----
+# 沿用既有约定：下划线开头的脚本视为中间产物。本地文件保留，仅不进版本库。
+crawler/scripts/_*
+crawler/scripts/xhs_probe*.py

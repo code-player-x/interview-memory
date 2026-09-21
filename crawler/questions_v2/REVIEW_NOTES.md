@@ -114,3 +114,15 @@ python3 crawler/questions_v2/curate_full_v2.py
 当前验证要求：25 个 JSONL、Markdown 题序/ID 与 INDEX 一致；2,637 个 ID 和标题唯一；必填教学字段非空；已登记的合并源不出现在当前库且目标题存在。生成器连续运行必须保持源、渲染文件和归档内容不变。数据库导入器题数常量同步为 2,637。
 
 语义去重仍采用“候选相似度 + 人工边界判断”：共享必要定义不算重复，只有题目会要求学习者反复掌握同一整套内容时才合并。技术产品和运行时行为仍可能随版本变化，涉及当前版本时应以题目附带的官方来源为准。
+
+## 第八至九轮全库复核（当前：2,633 题，25 分类）
+
+在 2,637 题基线上做了一次全库审读 + 自动化体检，结果如下：
+
+- **人工规则集中登记**：新增 [reviewed_manual_fixes.py](./reviewed_manual_fixes.py)，由 `curate_full_v2.py` 合并进 `ALL_MOVE_TO` / `ALL_TITLE_REWRITES` / `ALL_OVERRIDES`，并新增 `MANUAL_DROP_IDS`（生成器 `should_drop` 已支持）。人工规则优先级高于既有 AI / extra 规则，保证 `import_questions_v2.py --replace` 不会回退这些改动。
+- **分类迁移**：`MANUAL_MOVE_TO` 共 603 条，主要来自通用域筛出的错分题（前端 CSS/Vue/JS、LLM 推理部署与量化、评测 Harness、向量检索、算法、行为面试等）。
+- **题干重写**：`MANUAL_TITLE_REWRITES` 共 131 条。抓取残片（如「原理：…」「加分点：…」「→ 加 priority/weight？」「└── 不敏感 → 任务复杂吗？」）依据各自答案重写为自包含问题；同时清理源里包裹引号、markdown 加粗残留与结尾重复问号（迁移进 AI 域后这些会命中 `FRAGMENT_RE` 被误删）。
+- **无效题删除**：`MANUAL_DROP_IDS` 4 道（答案自述「缺少具体题干 / 无法作答 / 与面试无关」的条目：q2488、q2845、q3039、q3042）。原记录仍写入 `review_archive/`，可回查恢复。题数因此由 2,637 变为 **2,633**，`scripts/import_questions_v2.py` 的 `CURATED_QUESTION_COUNT` 已同步。
+- **生成器修正**：`read_text()` 显式指定 UTF-8（Windows 默认 GBK 会崩）；人工题干重写先于碎片判定生效，归档仍保存未经改写的原始记录。
+
+体检项：题面/答案非空、tags 与分类一致、题面与答案均无重复、DB 与源逐分类数量及答案集合一致、渲染 Markdown 与库一致、生成器连续运行字节哈希不变。残留碎片式题面为 0。

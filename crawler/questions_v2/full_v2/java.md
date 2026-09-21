@@ -1,6 +1,6 @@
 # Java
 
-> 题目数量：**53** ｜ 渲染时间：自动 ｜ 源：authored/java.jsonl
+> 题目数量：**59** ｜ 渲染时间：自动 ｜ 源：authored/java.jsonl
 
 ---
 
@@ -1534,5 +1534,137 @@ wait/notify 操作的是对象监视器（Monitor），必须在持有该对象�
 通常非公平锁性能更好，因为它避免了线程唤醒后重新排队和上下文切换的开销，允许新线程直接抢占，提高了吞吐量。在Java中，ReentrantLock支持公平锁和非公平锁。公平锁严格按照FIFO顺序获取锁，非公平锁允许插队。性能差异主要源于： 1. 公平锁：当锁释放时，会唤醒等待队列头部的线程。被唤醒的线程需要从内核态返回到用户态，并重新竞争锁。如果此时有新的线程尝试获取锁，由于公平锁的机制，新线程会直接进入队列等待，不会抢占。但被唤醒的线程可能因为调度延迟未能及时获取锁，导致锁空闲时间增加。 2. 非公平锁：当锁释放时，会先尝试快速获取锁（CAS），如果成功则直接执行，无需唤醒等待线程。这减少了线程上下文切换和唤醒开销。同时，新来的线程可以直接抢占锁，提高了吞吐量。但可能导致等待队列中的线程饥饿。 实际测试表明，非公平锁的吞吐量通常比公平锁高一个数量级。例如，在高度竞争的场景下，非公平锁的吞吐量可能是公平锁的5-10倍。 但公平锁能保证线程获取锁的顺序，避免饥饿，适用于对公平性有要求的场景。
 
 **常见追问**：高并发下死锁如何排查与避免？ 分库分表后跨分片查询和分布式事务怎么处理？
+
+---
+
+## 54. 回收算法： 标记-复制（年轻代），标记-整理（老年代），标记-清除（已废弃）。理解它们如何解决内存碎片？
+
+> 原题 ID：`q2516`
+
+**高频程度**：★★★
+
+**考察点**：考察对「回收算法： 标记-复制（年轻代），标记-整理（老年代）…」的掌握，重点看能否讲清：垃圾回收要解决两个问题：找出垃圾（可达性分析/引用计数）和回收垃圾（释放内存）
+
+**回答框架**：
+
+垃圾回收要解决两个问题：找出垃圾（可达性分析/引用计数）和回收垃圾（释放内存）；回收后内存是否连续，直接影响后续分配大对象的能力，这就是内存碎片问题；1）标记-复制（Mark-Copy）：把内存分成两块（如 from/to），GC 时从 GC Roots 标记存活对象，然后把存活对象按顺序紧凑复制到另一块空闲区，最后整块清空原区域；因为复制时是挨着放的，所以天然没有碎片，分配只需移动指针（bump-the-pointer），速度极快；代价是始终有一半空间闲置，且存活对象多时复制成本高；因此它最适合“朝生夕死”的年轻代：绝大多数对象活不过一次 GC，复制量小、收益大
+
+**参考回答**：
+
+三种垃圾回收算法分别用复制、整理、清除来处理存活对象，核心差异在于是否移动对象以及如何应对内存碎片：标记-复制无碎片但浪费空间，标记-整理无碎片但移动成本高，标记-清除有碎片且已基本被淘汰。
+
+垃圾回收要解决两个问题：找出垃圾（可达性分析/引用计数）和回收垃圾（释放内存）。回收后内存是否连续，直接影响后续分配大对象的能力，这就是内存碎片问题。 1）标记-复制（Mark-Copy）：把内存分成两块（如 from/to），GC 时从 GC Roots 标记存活对象，然后把存活对象按顺序紧凑复制到另一块空闲区，最后整块清空原区域。因为复制时是挨着放的，所以天然没有碎片，分配只需移动指针（bump-the-pointer），速度极快。代价是始终有一半空间闲置，且存活对象多时复制成本高。因此它最适合“朝生夕死”的年轻代：绝大多数对象活不过一次 GC，复制量小、收益大。典型如 HotSpot 的 Serial/ParNew/Parallel Scavenge，配合 Eden + 两个 Survivor 的 8:1:1 布局，只浪费 10% 空间。 2）标记-整理（Mark-Compact）：先标记存活对象，然后把它们向内存一端滑动/压缩，再清理边界外的内存。它不浪费空间，也没有碎片，但移动对象后必须修正所有指向这些对象的引用（栈、寄存器、其他对象字段），成本高、停顿长。适合存活率高的老年代，如 Serial Old、Parallel Old，以及 CMS 失败后的兜底 Full GC。 3）标记-清除（Mark-Sweep）：标记存活对象后，直接回收未标记对象，不移动任何对象。实现简单、不移动对象所以停顿相对可控，但会产生大量不连续的空闲块，导致分配大对象时可能找不到连续空间而提前触发 GC，且分配需要维护空闲链表，效率低于指针碰撞。它是最早的算法，现代 JVM 中已不作为主流独立回收器使用（CMS 主体是标记-清除，但已被移除/废弃），常作为理解其他算法的基础。 通俗类比：宿舍楼退宿。标记-复制像把还在住的人全部搬到新楼，旧楼直接清空，房间连续好分配，但永远空着一栋楼；标记-整理像让留下的人往一楼集中，腾出高层，楼不浪费但要挨个通知换门牌（改引用）；标记-清除像谁走就空出谁的房间，不折腾人，但房间东一个西一个，来个大家庭（大对象）就住不下。
+
+**常见追问**：如何避免「1）误以为标记-清除“已废弃”是因为算法本身错误，其实是因为碎片和分配效率问题，且 CMS 主体就是它，只是现代回收器不再单独采用」？ 「2）把标记-复制说成“没有浪费空间”，忽略它需要双倍空间或 Survivor 预留」在真实项目中应如何规避？
+
+---
+
+## 55. 常用哪些内存分析工具定位内存泄漏和 GC 问题？
+
+> 原题 ID：`q3397`
+
+**高频程度**：★★★
+
+**考察点**：考察对「用到过内存分析工具吗」的掌握，重点看能否讲清：内存分析工具的核心目标是回答三个问题：内存被谁占了、为什么没释放、GC 为什么频繁或停顿长
+
+**回答框架**：
+
+命令行/JDK 自带：jps 看 Java 进程，jstat 看 GC 频率和各代使用量，jmap 导出堆快照或看直方图，jstack 看线程栈，jcmd 是更现代的聚合入口。；堆快照分析：jhat 已过时，主流是 Eclipse MAT，能看支配树、直方图、Leak Suspects、GC Roots 引用链，快速定位大对象和泄漏点。；可视化/采样：VisualVM、JProfiler、YourKit 可实时看堆、线程、CPU、GC，并支持采样或 instrumentation。；在线诊断：Arthas 的 dashboard、heapdump、memory、profiler，async-profiler 的 alloc 和 wall-clock 模式，适合生产环境低开销排查。；Native/堆外：pmap、gperftools、jemalloc、NMT、ByteBuddy Agent 等，用于 DirectByteBuffer、Netty、JNI 导致的内存问题。；频繁 Full GC 且老年代下不去：先 jstat 确认，再 jmap dump，MAT 找支配对象和 GC Roots。
+
+**参考回答**：
+
+用过，内存分析工具用于定位内存泄漏、内存溢出、对象生命周期异常和 GC 压力问题，常见有 jmap/jstat/jhat、MAT、VisualVM、JProfiler、Arthas、async-profiler 等。
+
+内存分析工具的核心目标是回答三个问题：内存被谁占了、为什么没释放、GC 为什么频繁或停顿长。 常见工具分几类： 1. 命令行/JDK 自带：jps 看 Java 进程，jstat 看 GC 频率和各代使用量，jmap 导出堆快照或看直方图，jstack 看线程栈，jcmd 是更现代的聚合入口。 2. 堆快照分析：jhat 已过时，主流是 Eclipse MAT，能看支配树、直方图、Leak Suspects、GC Roots 引用链，快速定位大对象和泄漏点。 3. 可视化/采样：VisualVM、JProfiler、YourKit 可实时看堆、线程、CPU、GC，并支持采样或 instrumentation。 4. 在线诊断：Arthas 的 dashboard、heapdump、memory、profiler，async-profiler 的 alloc 和 wall-clock 模式，适合生产环境低开销排查。 5. Native/堆外：pmap、gperftools、jemalloc、NMT、ByteBuddy Agent 等，用于 DirectByteBuffer、Netty、JNI 导致的内存问题。 通俗类比：内存像仓库，对象像货物。jstat 是看仓库每天进出多少货、爆仓频率；jmap 是给仓库拍全景照；MAT 是照片分析软件，能找出哪堆货最大、谁还拽着不放；Arthas/async-profiler 是实时监控摄像头。 典型场景： - 频繁 Full GC 且老年代下不去：先 jstat 确认，再 jmap dump，MAT 找支配对象和 GC Roots。 - OOM: Java heap space：看堆快照中最大对象及引用链。 - OOM: Metaspace：排查动态代理、CGLIB、类加载器泄漏。 - OOM: Direct buffer memory：查 Netty、NIO、-XX:MaxDirectMemorySize。 - 内存缓慢增长：用 async-profiler alloc 采样分配热点，或多次 dump 对比。 回答时最好给出一次真实排查链路：告警 -> jstat 看 GC -> jmap dump -> MAT 支配树 -> 定位到静态 Map/ThreadLocal/缓存未清理 -> 修复并加监控。
+
+**常见追问**：如何避免「只说用过 VisualVM 看内存曲线，讲不出具体排查方法和引用链分析。」？ 「把 jmap dump 当成无成本操作，不知道会 STW，生产大堆可能导致服务卡顿甚至 OOM。」在真实项目中应如何规避？
+
+---
+
+## 56. 为什么使用 MapStruct？
+
+> 原题 ID：`q1976`
+
+**高频程度**：★★★
+
+**考察点**：考察对「为什么使用 MapStruct」的掌握，重点看能否讲清：MapStruct 的核心定位是“编译期代码生成器”，而不是运行时框架
+
+**回答框架**：
+
+性能：手写映射最快，但重复劳动多；BeanUtils.copyProperties 这类反射方案在热点路径上慢，且容易因字段名不一致而静默失败。MapStruct 生成的是编译后的字节码，调用开销接近手写代码。；类型安全：字段名、类型不匹配在编译期就报错，而不是运行时才发现。；可维护性：映射规则集中写在 @Mapper 接口里，字段增删改时编译器会提醒你更新映射，避免“漏拷贝”的隐蔽 bug。；可调试：生成的实现类在 target/generated-sources 下可见，出问题可以直接看生成代码。
+
+**参考回答**：
+
+MapStruct 是一个编译期生成 Java Bean 映射代码的注解处理器，用它可以替代手写 getter/setter 或反射式映射，兼顾性能、类型安全和可维护性。
+
+MapStruct 的核心定位是“编译期代码生成器”，而不是运行时框架。它通过 JSR 269 注解处理器在 javac 编译阶段读取 @Mapper 接口，为接口生成实现类，实现类里就是普通的 getter/setter 调用，没有反射、没有运行时代理。 为什么用它？可以从几个角度理解： 1. 性能：手写映射最快，但重复劳动多；BeanUtils.copyProperties 这类反射方案在热点路径上慢，且容易因字段名不一致而静默失败。MapStruct 生成的是编译后的字节码，调用开销接近手写代码。 2. 类型安全：字段名、类型不匹配在编译期就报错，而不是运行时才发现。 3. 可维护性：映射规则集中写在 @Mapper 接口里，字段增删改时编译器会提醒你更新映射，避免“漏拷贝”的隐蔽 bug。 4. 可调试：生成的实现类在 target/generated-sources 下可见，出问题可以直接看生成代码。 通俗类比：MapStruct 像“编译期帮你把两个箱子之间的物品清单翻译成搬运工指令”，而不是运行时派一个机器人去猜每个物品该放哪。 典型用法： @Mapper public interface UserMapper { UserMapper INSTANCE = Mappers.getMapper(UserMapper.class); UserDTO toDto(User user); User toEntity(UserDTO dto); } 编译后会生成 UserMapperImpl，里面逐字段赋值。对于字段名不同、类型不同、集合映射、嵌套映射，可以用 @Mapping、@Mappings、@MappingTarget、@AfterMapping 等注解定制。 适用场景：DTO/VO/Entity 之间的转换、分层架构中的对象隔离、微服务接口参数转换、需要高性能且字段较多的映射。不适用场景：映射逻辑极其复杂、需要动态字段、或者团队更愿意用运行时反射方案快速原型。
+
+**常见追问**：如何避免「误以为 MapStruct 是运行时反射框架，和 BeanUtils 一样；实际上它是编译期生成代码，运行时没有反射开销。」？ 「以为只要加 @Mapper 就能自动映射所有字段；实际上字段名不同、类型不同、嵌套对象、集合元素类型不同时，需要显式配置，否则可能编译报错或静默忽略。」在真实项目中应如何规避？
+
+---
+
+## 57. 学习如何在追求极致响应速度的场景下，优雅、安全地处理 Entity 与 DTO 之间的复杂映射？
+
+> 原题 ID：`q1989`
+
+**高频程度**：★★★
+
+**考察点**：考察对「学习如何在追求极致响应速度的场景下，优雅、安全地处理 Entity…」的掌握，重点看能否讲清：核心问题是：Entity 是持久化模型（带 ORM 代理、懒加载、双向关联、可变状态），DTO 是接口契约（稳定、可序列化、按需裁剪）
+
+**回答框架**：
+
+反例：`BeanUtils.copyProperties(entity, dto)` 在循环里对 1 万条数据映射，反射+字符串匹配，CPU 高且可能触发 lazy。；正例：MapStruct 接口 `UserDto toDto(User entity)`，编译生成 `dto.setName(entity.getName())`；或 `new UserDto(entity.getId(), entity.getName())`。；更极致：查询直接返回 DTO：`@Query("select new com.x.UserDto(u.id,u.name) from User u where ...")`，零 Entity 实例化。
+
+**参考回答**：
+
+在极致响应速度场景下，Entity↔DTO 映射应优先用编译期生成/手写映射（MapStruct、Record 构造器、显式 setter），避免运行时反射与对象分配，同时通过不可变 DTO、字段裁剪和懒加载控制保证安全与性能。
+
+核心问题是：Entity 是持久化模型（带 ORM 代理、懒加载、双向关联、可变状态），DTO 是接口契约（稳定、可序列化、按需裁剪）。映射本质是“翻译”，如果每次请求都用反射框架（如 BeanUtils、ModelMapper）逐字段读写，会带来反射开销、临时对象、触发懒加载、甚至把内部字段泄露给前端。 追求极致响应速度时，原则是： 1) 编译期确定映射：MapStruct 在编译期生成 getter/setter 调用，无反射；Java 16+ 可用 record + 构造器/静态工厂，JIT 易内联。 2) 减少对象分配：DTO 用不可变对象，避免中间 Map/BeanWrapper；批量场景用投影（JPA Projection / MyBatis resultMap）直接查 DTO，跳过 Entity。 3) 控制加载边界：在事务内完成映射，避免在序列化阶段触发懒加载（N+1、LazyInitializationException）；用 fetch join / EntityGraph 一次取齐。 4) 安全：DTO 只暴露必要字段，防止 Mass Assignment 和内部字段泄露；入参用独立 Command/DTO 并做校验，出参不直接返回 Entity。 通俗类比：Entity 是后厨的原始食材和半成品（带保鲜膜、可能还没解冻），DTO 是端上桌的摆盘。映射就是装盘。反射框架像让服务员每次现场查菜谱再摆盘，慢且容易把后厨杂物端出去；编译期映射像提前印好摆盘图，直接照做。 例子： - 反例：`BeanUtils.copyProperties(entity, dto)` 在循环里对 1 万条数据映射，反射+字符串匹配，CPU 高且可能触发 lazy。 - 正例：MapStruct 接口 `UserDto toDto(User entity)`，编译生成 `dto.setName(entity.getName())`；或 `new UserDto(entity.getId(), entity.getName())`。 - 更极致：查询直接返回 DTO：`@Query("select new com.x.UserDto(u.id,u.name) from User u where ...")`，零 Entity 实例化。
+
+**常见追问**：如何避免「1) 认为“DTO 只是多此一举”，直接返回 Entity，导致懒加载异常、字段泄露、循环引用」？ 「2) 用 BeanUtils/ModelMapper 做热路径映射，忽略反射和临时对象成本」在真实项目中应如何规避？
+
+---
+
+## 58. 内存引用及LeakCanary原理？
+
+> 原题 ID：`q2499`
+
+**高频程度**：★★★
+
+**考察点**：考察对「内存引用及LeakCanary原理」的掌握，重点看能否讲清：一、内存引用基础 Java/Android 中 GC 判断对象是否存活采用可达性分析：从 GC Roots（栈帧局部变量、静态变量、JNI 引用
+
+**回答框架**：
+
+强引用：普通赋值，只要可达就绝不回收，是内存泄漏的根源。；软引用 SoftReference：内存不足时才回收，适合做缓存。；弱引用 WeakReference：只要发生 GC 就回收，不管内存是否充足。；虚引用 PhantomReference：无法通过它拿到对象，唯一用途是配合 ReferenceQueue 在对象被回收时收到通知。；监听阶段：对 Activity/Fragment 等生命周期对象，在 onDestroy 后创建 KeyedWeakReference（弱引用）并关联 ReferenceQueue。；触发 GC：等待一段时间后，主动调用 Runtime.gc() 并触发一次 GC，然后检查 ReferenceQueue。若弱引用已入队，说明对象已被回收，无泄漏；若仍在队列外，说明对象仍被强引用持有，疑似泄漏。
+
+**参考回答**：
+
+内存引用是对象可达性的判定依据，LeakCanary 通过弱引用+引用队列监听对象是否被回收，未回收则用 Debug.dumpHprofData 抓取堆快照并用 Shark 分析最短引用链，定位内存泄漏。
+
+一、内存引用基础 Java/Android 中 GC 判断对象是否存活采用可达性分析：从 GC Roots（栈帧局部变量、静态变量、JNI 引用、活跃线程等）出发，能走到的对象存活，走不到的可回收。引用类型决定回收时机： 1. 强引用：普通赋值，只要可达就绝不回收，是内存泄漏的根源。 2. 软引用 SoftReference：内存不足时才回收，适合做缓存。 3. 弱引用 WeakReference：只要发生 GC 就回收，不管内存是否充足。 4. 虚引用 PhantomReference：无法通过它拿到对象，唯一用途是配合 ReferenceQueue 在对象被回收时收到通知。 通俗类比：GC Roots 是“活人名单”，引用链是“人际关系”。只要有人能顺着关系找到你，你就“还活着”；弱引用像“点头之交”，GC 一“大扫除”就断；虚引用像“讣告订阅”，人没了才通知你。 二、LeakCanary 原理 核心思路：一个对象如果本该被回收，却因为被强引用链意外持有而无法回收，就是泄漏。LeakCanary 用“弱引用 + 引用队列”来检测： 1. 监听阶段：对 Activity/Fragment 等生命周期对象，在 onDestroy 后创建 KeyedWeakReference（弱引用）并关联 ReferenceQueue。 2. 触发 GC：等待一段时间后，主动调用 Runtime.gc() 并触发一次 GC，然后检查 ReferenceQueue。若弱引用已入队，说明对象已被回收，无泄漏；若仍在队列外，说明对象仍被强引用持有，疑似泄漏。 3. 抓取快照：确认泄漏后调用 Debug.dumpHprofData() 生成 hprof 堆转储文件。 4. 分析阶段：用 Shark（LeakCanary 2.x 自研的 hprof 解析库，替代早期 HAHA）解析 hprof，从泄漏对象出发做广度优先搜索，找到到 GC Roots 的最短强引用路径，即“泄漏引用链”。 5. 报告：输出引用链，指出哪个类/字段持有了本该释放的对象，帮助定位。 三、适用场景 开发/测试阶段检测 Activity、Fragment、View、Presenter 等生命周期对象泄漏；不适合线上全量开启，因为 dump hprof 会 STW 卡顿且文件大。 四、常见泄漏场景 非静态内部类/匿名类持有 Activity、Handler 延时消息未移除、单例持有 Context、静态集合未清理、监听器未反注册、线程/AsyncTask 未结束等。
+
+**常见追问**：如何避免「误以为弱引用对象一定立即回收：弱引用只是“GC 时回收”，若对象还被强引用链持有，弱引用不会入队，这正是检测依据。」？ 「把 LeakCanary 当成万能：它只能检测“生命周期对象”泄漏，对 Bitmap 过大、内存抖动、非生命周期对象泄漏无能为力。」在真实项目中应如何规避？
+
+---
+
+## 59. leak原理？
+
+> 原题 ID：`q2500`
+
+**高频程度**：★★★
+
+**考察点**：考察对「leak原理」的掌握，重点看能否讲清：在 Java/Android 等带 GC 的语言里，判断对象是否可回收看的是“可达性分析”：从 GC Roots（栈帧局部变量、静态变量、常量、JNI 引用
+
+**回答框架**：
+
+长生命周期对象持有短生命周期对象。例如单例/静态集合缓存了 Activity、Context；静态 Map 只 put 不 remove。；非静态内部类/匿名类隐式持有外部类。例如 Handler、Runnable、AsyncTask、监听器持有 Activity，消息队列延迟执行导致 Activity 无法释放。；资源未关闭：Cursor、Stream、Bitmap、线程池、RxJava 订阅未 dispose。；注册后未反注册：广播、EventBus、ContentObserver、传感器监听。；集合类对象 hashCode/equals 被修改后无法 remove，或 ThreadLocal 的 key 被回收但 value 仍被 Thread 强引用。
+
+**参考回答**：
+
+Leak 指对象已不再被业务使用，却仍被 GC Roots 强引用而无法回收，导致内存占用持续增长，本质是“可达但无用”。
+
+在 Java/Android 等带 GC 的语言里，判断对象是否可回收看的是“可达性分析”：从 GC Roots（栈帧局部变量、静态变量、常量、JNI 引用、活跃线程等）出发，能顺着引用链走到的对象就存活。Leak（内存泄漏）不是对象丢了，而是它“不该活却还活着”——业务代码已经不再需要它，但某条引用链仍把它连到 GC Roots 上，GC 只能保留它。 通俗类比：GC 像保洁阿姨，只清理“从大门（GC Roots）走不到的房间”。如果某个房间已经没人用，但门被一根绳子（引用）拴在大门上，阿姨就以为里面还有人，不敢清。Leak 就是这根多余的绳子。 常见成因： 1. 长生命周期对象持有短生命周期对象。例如单例/静态集合缓存了 Activity、Context；静态 Map 只 put 不 remove。 2. 非静态内部类/匿名类隐式持有外部类。例如 Handler、Runnable、AsyncTask、监听器持有 Activity，消息队列延迟执行导致 Activity 无法释放。 3. 资源未关闭：Cursor、Stream、Bitmap、线程池、RxJava 订阅未 dispose。 4. 注册后未反注册：广播、EventBus、ContentObserver、传感器监听。 5. 集合类对象 hashCode/equals 被修改后无法 remove，或 ThreadLocal 的 key 被回收但 value 仍被 Thread 强引用。 后果：堆内存逐步被占满，GC 频繁触发（卡顿、掉帧），最终 OOM。注意 leak 与 OOM 不是一回事：leak 是原因，OOM 是可能结果；短时间大量分配也可能 OOM 但不叫 leak。 排查思路：用 MAT/LeakCanary 抓取 heap dump，按 GC Roots 最短路径找引用链；Android 上重点看 Activity/Fragment 是否被静态变量、Handler、监听器持有。修复原则：缩短引用生命周期、及时 remove/unregister/close、用 WeakReference/静态内部类+弱引用、生命周期感知组件。
+
+**常见追问**：如何避免「把 leak 等同于 OOM，认为内存泄漏一定马上崩溃。2. 认为 Java 靠引用计数回收，或认为“没有引用变量指向对象就一定会被回收”，忽略 GC Roots 可达性。3. 认为调用 System.gc() 能解决泄漏——泄漏对象仍可达，GC 不会回收。4. 只背“Handler 泄漏”结论，说不清为什么：非静态内部类隐式持有外部类，Message 又持有 Handler，MessageQueue 持有 Message，主线程 Looper 一直存活。5. 认为 WeakReference 万能，滥用导致缓存被频繁回收、对象提前失效。6. 忽略注册/反注册、close 资源、dispose 订阅这些非引用链型泄漏。7. 把“内存抖动”和“内存泄漏”混为一谈。」？ 能否结合「能区分“内存泄漏”和“内存溢出”：泄漏是可达性异常，溢出是容量不足；泄漏会累积，溢出可能瞬时。2. 能讲清 GC Roots 枚举和可达性分析，而不是只说“引用计数为 0 才回收”——JVM/ART 主流不是引用计数。3. 能提到 WeakReference/SoftReference 的语义差异：Weak 在下次 GC 必被回收，Soft 在内存不足时回收，适合做缓存但要防被提前清。4. 能结合 Android 具体案例：非静态 Handler 持有 Activity，正确写法是 static Handler + WeakReference，并在 onDestroy 移除消息；LeakCanary 的 ReferenceQueue + WeakReference 检测原理。5. 能提到 ThreadLocal 泄漏：Entry 的 key 是弱引用，value 是强引用，线程池复用线程时 value 会一直存活，必须 remove。6. 能说清“可达但无用”这个本质，并指出不是所有长生命周期引用都是泄漏，要看业务是否还需要。」进一步展开？
 
 ---

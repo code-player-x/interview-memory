@@ -13,6 +13,12 @@ import re
 from pathlib import Path
 
 from reviewed_full_v2 import FIELD_FIXES, MERGED_INTO, MOVE_TO, OVERRIDES
+from reviewed_manual_fixes import (
+    MANUAL_ANSWER_OVERRIDES,
+    MANUAL_DROP_IDS,
+    MANUAL_MOVE_TO,
+    MANUAL_TITLE_REWRITES,
+)
 from reviewed_extra_v2 import (
     EXTRA_DROP_IDS,
     EXTRA_FIELD_FIXES,
@@ -64,8 +70,10 @@ EXTRA_DOMAINS = {
 
 DOMAINS = AI_DOMAINS | EXTRA_DOMAINS
 ALL_MERGED_INTO = MERGED_INTO | EXTRA_MERGED_INTO
-ALL_MOVE_TO = MOVE_TO | EXTRA_MOVE_TO
-ALL_OVERRIDES = OVERRIDES | EXTRA_OVERRIDES
+# Manual review (2026-09-20) wins: these moves and rewrites were applied in the
+# app database first and are replayed here so --replace cannot revert them.
+ALL_MOVE_TO = MOVE_TO | EXTRA_MOVE_TO | MANUAL_MOVE_TO
+ALL_OVERRIDES = OVERRIDES | EXTRA_OVERRIDES | MANUAL_ANSWER_OVERRIDES
 ALL_FIELD_FIXES = FIELD_FIXES | EXTRA_FIELD_FIXES
 
 
@@ -280,7 +288,34 @@ TITLE_REWRITES = {
     "q3893": "DPO 的数学目标如何从带 KL 约束的 RLHF 目标推导出来？",
 }
 
-ALL_TITLE_REWRITES = TITLE_REWRITES | EXTRA_TITLE_REWRITES
+ALL_TITLE_REWRITES = TITLE_REWRITES | EXTRA_TITLE_REWRITES | MANUAL_TITLE_REWRITES
+
+
+def load_feishu_answers() -> dict:
+    """飞书知识库答案覆盖表（由 scripts/build_feishu_overrides.py 生成）。
+
+    手写整理的《计算机知识库》答案最贴近真实面试口径，优先于 AI 生成的默认答案；
+    已经过人工勘误的 ANSWER_REWRITES 仍然优先，避免把已修正的事实错误倒回去。
+    """
+    path = ROOT / "feishu_answers.json"
+    if not path.exists():
+        return {}
+    records = json.loads(path.read_text(encoding="utf-8"))
+    return {qid: rec for qid, rec in records.items() if str(rec.get("answer", "")).strip()}
+
+
+FEISHU_ANSWERS = load_feishu_answers()
+
+
+def feishu_source(qid: str) -> str:
+    return str(FEISHU_ANSWERS.get(qid, {}).get("source", ""))
+
+
+def apply_feishu_answer(item: dict, record: dict) -> None:
+    item["answer"] = record["answer"]
+    item["answer_source"] = record["source"]
+    if record.get("chapter"):
+        item["chapter"] = record["chapter"]
 
 META_REWRITES = {
     "q1161": {
@@ -400,7 +435,9 @@ ANSWER_REWRITES = {
 
 
 def should_drop(item: dict, domain: str) -> bool:
-    if item["id"] in DROP_IDS or item["id"] in EXTRA_DROP_IDS:
+    # MANUAL_DROP_IDS：人工复核确认「答案自述无法作答 / 与面试无关」的无效题，
+    # 原记录仍会写入归档，可回查恢复。
+    if item["id"] in DROP_IDS or item["id"] in EXTRA_DROP_IDS or item["id"] in MANUAL_DROP_IDS:
         return True
     title = item.get("title", "")
     patterns = FRAGMENT_RE if domain in AI_DOMAINS else EXTRA_FRAGMENT_RE
@@ -513,6 +550,9 @@ def curate_item(item: dict) -> dict:
         item.update(META_REWRITES[qid])
     if qid in ANSWER_REWRITES:
         item["answer"] = ANSWER_REWRITES[qid]
+    elif feishu_source(qid).startswith("cs:"):
+        # 手写整理的答案优先于既有的人工更正：它是作者本人的真实答题口径。
+        apply_feishu_answer(item, FEISHU_ANSWERS[qid])
     else:
         item["answer"] = strip_boilerplate(item.get("answer", ""))
     if qid in ALL_OVERRIDES:
@@ -520,6 +560,14 @@ def curate_item(item: dict) -> dict:
         # A legacy Chinese key must not shadow a reviewed follow-up.
         item.pop("追问", None)
     item.update(ALL_FIELD_FIXES.get(qid, {}))
+    # Agent 库是 AI 加工版：只填补没有被人工勘误、更正或字段修复覆盖过的题目。
+    if (
+        feishu_source(qid).startswith("agent:")
+        and qid not in ANSWER_REWRITES
+        and qid not in ALL_OVERRIDES
+        and qid not in ALL_FIELD_FIXES
+    ):
+        apply_feishu_answer(item, FEISHU_ANSWERS[qid])
     return clean_editorial_fields(item)
 
 
@@ -538,7 +586,7 @@ def curate_domains() -> dict[str, list[dict]]:
     # Read every domain before writing any: a moved record must not be lost or
     # loaded twice just because its destination sorts before its source.
     original = {
-        name: [json.loads(line) for line in (AUTHORED / f"{name}.jsonl").read_text().splitlines() if line.strip()]
+        name: [json.loads(line) for line in (AUTHORED / f"{name}.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
         for name in DOMAINS
     }
     results = {name: [] for name in DOMAINS}
@@ -550,7 +598,7 @@ def curate_domains() -> dict[str, list[dict]]:
     archived = {}
     for key, archive_path in archive_paths.items():
         if archive_path.exists():
-            archived[key] = {row["item"]["id"]: row for row in map(json.loads, archive_path.read_text().splitlines())}
+            archived[key] = {row["item"]["id"]: row for row in map(json.loads, archive_path.read_text(encoding="utf-8").splitlines())}
         else:
             archived[key] = {}
     # A third-pass item can move into an AI domain.  Its original record still
@@ -559,7 +607,15 @@ def curate_domains() -> dict[str, list[dict]]:
     for qid in set(archived["ai"]) & set(archived["extra"]):
         del archived["ai"][qid]
     for name, items in original.items():
-        for item in items:
+        for raw_item in items:
+            # A manually reviewed title rewrite stands on its own: apply it before
+            # the fragment check, otherwise the original scraped phrasing (for
+            # example "原理：…") would drop the question right after it moves into
+            # an AI domain, whose fragment rules are stricter than the extra ones.
+            # The archive keeps the untouched source record.
+            item = dict(raw_item)
+            if item["id"] in MANUAL_TITLE_REWRITES:
+                item["title"] = MANUAL_TITLE_REWRITES[item["id"]]
             qid = item["id"]
             archive_key = "extra" if qid in archived["extra"] or name not in AI_DOMAINS else "ai"
             removed = qid in ALL_MERGED_INTO or should_drop(item, name)
@@ -567,7 +623,7 @@ def curate_domains() -> dict[str, list[dict]]:
             destination = destination_for(name, item)
             if removed or updated != item or destination != name:
                 archive_row = archived[archive_key].setdefault(qid, {
-                    "domain": name, "item": item,
+                    "domain": name, "item": raw_item,
                     "merged_into": ALL_MERGED_INTO.get(qid),
                     "destination": None if removed else destination,
                 })
@@ -662,7 +718,7 @@ def render_index(results: dict[str, list[dict]]) -> None:
     for path in sorted(OUTPUT.glob("*.md")):
         if path.stem == "INDEX" or path.stem in entries:
             continue
-        content = path.read_text()
+        content = path.read_text(encoding="utf-8")
         title = re.search(r"^# (.+)$", content, re.MULTILINE)
         declared = re.search(r"^> 题目数量：\*\*(\d+)\*\*", content, re.MULTILINE)
         if not title or not declared:

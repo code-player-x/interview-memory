@@ -16,7 +16,7 @@ from typing import Iterable
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SOURCE = ROOT / "crawler" / "questions_v2" / "authored"
-CURATED_QUESTION_COUNT = 2637
+CURATED_QUESTION_COUNT = 2689
 
 DOMAIN_LABELS = {
     "agent": "Agent 架构与工程",
@@ -51,7 +51,9 @@ def load_questions(source: Path) -> Iterable[dict]:
     """读取并校验所有题目；保留 JSONL 文件名作为最终分类依据。"""
     if not source.is_dir():
         raise FileNotFoundError(f"题库目录不存在: {source}")
-    files = sorted(source.glob("*.jsonl"))
+    # 下划线前缀是 authored/ 里的临时批次（如 _b.jsonl），不参与 curate_full_v2.py 渲染，
+    # 不属于 full_v2 正式题库，导入时必须排除，否则会多出未审核的题目。
+    files = sorted(p for p in source.glob("*.jsonl") if not p.name.startswith("_"))
     if not files:
         raise ValueError(f"题库目录中没有 JSONL 文件: {source}")
     for file in files:
