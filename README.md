@@ -81,7 +81,7 @@ uvicorn backend.app:app --host 127.0.0.1 --port 8000 --reload
 
 ## 导入已审核题库
 
-系统启动后，执行一次命令即可把仓库内已审核的 **2,637 道** `questions_v2` 题目写入数据库；按题面去重，可安全重复运行：
+系统启动后，执行一次命令即可把仓库内已审核的 **2,586 道** `questions_v2` 题目写入数据库；脚本会先校验分类文件、题目数量与唯一性，再按题面去重，可安全重复运行：
 
 ```bash
 python scripts/import_questions_v2.py

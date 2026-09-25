@@ -1,6 +1,6 @@
 # 大模型预训练
 
-> 题目数量：**51** ｜ 渲染时间：自动 ｜ 源：authored/llm-pretraining.jsonl
+> 题目数量：**55** ｜ 渲染时间：自动 ｜ 源：authored/llm-pretraining.jsonl
 
 ---
 
@@ -1379,5 +1379,108 @@ Block-Sparse FlashAttention（OpenAI，2022）：在 FlashAttention 的 block �
 处理异构文本数据可以类比‘做菜前备菜’：不同来源的菜（网页、书籍、代码、问答、日志）要先分拣、洗切、按菜谱配比，不能一锅乱炖。 1) 数据画像与分层：统计来源、语言、长度、时间、重复率、敏感/噪声比例，给每批数据打元数据标签（source、quality_score、domain、license）。 2) 清洗： - 格式清洗：HTML 去标签、转义符、乱码、控制字符； - 内容清洗：去广告/导航/模板、去 PII、去有害内容； - 语言识别与过滤：fastText/langid，保留目标语言； - 规则过滤：长度、符号比、重复 n-gram 比、困惑度（用小型 LM 打分）。 3) 去重： - 精确去重：hash（如 SHA1）文档级； - 近似去重：MinHash+LSH、SimHash，段落级/句子级去重，避免评测集泄漏。 4) 质量分级与配比： - 用启发式规则 + 模型打分（如 GPT 打分、分类器）分高/中/低质； - 按目标能力配比：通用语料、领域语料、代码、数学、多语言，避免某来源主导； - 对低质数据降采样或只用于预训练早期。 5) 采样与课程： - 温度采样/按质量加权采样； - 课程学习：先通用后高质量/领域数据； - 动态配比（如 DoReMi、数据混合优化）。 6) 评估与闭环： - 留出验证集，监控下游任务； - 用 ablation 看各来源贡献； - 迭代清洗规则和配比。 适用场景：LLM 预训练、微调数据构建、RAG 知识库、搜索索引。核心原则：来源可追溯、质量可量化、配比可控制、效果可评估。
 
 **常见追问**：如何避免「1) 只做简单去重和长度过滤，忽略来源分层与配比」？ 「2) 认为‘高质量数据’一定越多越好，直接全用高质数据导致多样性不足、过拟合」在真实项目中应如何规避？
+
+---
+
+## 52. 单卡训练 7B 模型显存不够用，有哪些优化手段？
+
+> 原题 ID：`q1066`
+
+**高频程度**：★★★★
+
+**考察点**：面试官考察 AI 工程落地能力：上下文/token 治理、RAG 检索与分块、推理部署与性能成本优化、可观测与线上质量监控；核心是如何把模型‘跑得快、跑得稳、跑得省’。
+
+**回答框架**：
+
+① 明确目标与约束（效果/成本/延迟/稳定性）；② 拆解链路（上下文治理→检索/RAG→推理部署→监控）；③ 给出具体优化手段（压缩/分块/流式/量化/批处理/可观测）；④ 用数据说明 trade-off。
+
+**参考回答**：
+
+**回答：**混合精度(bf16)、梯度检查点(激活重算)、梯度累积(减 batch)、LoRA/QLoRA 只训适配器、8bit 优化器(bitsandbytes)、ZeRO-Offload 卸载到 CPU、减小序列长度/batch。组合使用可在单卡跑通。
+
+**详细展开：**显存四大头：参数、梯度、优化器状态、激活。对应手段：参数用量化/LoRA；优化器用 8bit Adam 或 offload；激活用 gradient checkpointing 重算换显存；再配梯度累积模拟大 batch。极端情况 ZeRO-Infinity 卸载到 NVMe。
+
+**加分项：**提梯度检查点原理(丢激活反向重算)、8bit 优化器、Flash Attention 省激活。
+
+> **⚠️ 雷区：**只知道'减小 batch';分不清显存四大占用来源。
+
+**常见追问**：一次对话烧了 10 万 token，你会从哪些环节降本？
+
+---
+
+## 53. 模型权重单机放不下时，如何选择训练并行与内存优化方案？
+
+> 原题 ID：`q3106`
+
+**高频程度**：★★★
+
+**考察点**：面试官考察你对这一主题的体系化理解与工程落地能力，是否既能讲清原理，也能结合真实场景说清取舍与排障。
+
+**回答框架**：
+
+① 数据并行 DP：复制模型、切分 batch，适合模型能放下但吞吐不足；2）张量并行 TP：切分单层矩阵乘，通信频繁，适合单机 NVLink/高带宽，通常 8 卡内；3）流水并行 PP：按层切分，跨节点通信少，但会有 bubble，需要 mi
+2. 专家并行 EP：MoE 场景按专家切分，配合 all-to-all；5）序列并行 SP/上下文并行 CP：长序列时切分 sequence 维度。模型放不下时的工程组合：ZeRO-1/2/3 或 PyTorch FSDP 分片优化器状态、梯度
+3. 5 倍；FSDP 用 flat parameter + reduce-scatter/all-gather，bucket 大小影响 overlap。TP 在 Megatron 中列并行/行并行配对，前向只需一次 all-reduce，反向两
+4. /(m+p-1)，interleaved 可降到 1/(m*pp)。MoE 的 EP 要处理 all-to-all 的 token 不均衡，常用 capacity factor 和 aux loss。踩坑：TP 跨节点会因 IB 带宽被打爆
+5. 只说“加卡”或“调 batch size”，没有分层定位瓶颈；2）认为 TP 越大越好，忽略跨机通信代价；3）把 DP 和 ZeRO 混为一谈，不知道 ZeRO 是显存优化不是并行维度；4）忽略 PP 的 bubble 和 stage 均衡
+6. 只谈显存不谈吞吐/MFU，导致能跑但极慢；6）量化/offload 不评估精度和 PCIe 带宽；7）忘记激活重计算、梯度累积、micro-batch 这些工程手段。
+
+**参考回答**：
+
+并行度优化要按瓶颈分层选择数据/张量/流水/专家并行，显存放不下时优先用混合并行+ZeRO/FSDP+CPU offload+量化/激活重计算，而不是只调一个参数。先定位瓶颈：是显存不够、单卡算力不够，还是通信/流水气泡导致吞吐低。常见并行维度：1）数据并行 DP：复制模型、切分 batch，适合模型能放下但吞吐不足；2）张量并行 TP：切分单层矩阵乘，通信频繁，适合单机 NVLink/高带宽，通常 8 卡内；3）流水并行 PP：按层切分，跨节点通信少，但会有 bubble，需要 micro-batch 和 1F1B/interleaved schedule；4）专家并行 EP：MoE 场景按专家切分，配合 all-to-all；5）序列并行 SP/上下文并行 CP：长序列时切分 sequence 维度。模型放不下时的工程组合：ZeRO-1/2/3 或 PyTorch FSDP 分片优化器状态、梯度、参数；TP+PP+DP 的 3D 并行；CPU/NVMe offload 换显存；激活重计算用时间换显存；混合精度/FP8/INT4 量化；LoRA/QLoRA 只训练少量参数。调参顺序：先保证能放下（PP/TP/ZeRO/offload），再压 bubble（micro-batch、schedule），再提吞吐（batch、通信 overlap、bucket size），最后看 MFU/显存峰值/通信占比。例子：70B 模型单卡 80G 放不下，可用 8 卡 TP=8 单机放权重，但优化器状态仍大，于是加 ZeRO-3/FSDP 跨节点分片，PP=4 跨机减少 TP 通信域，micro-batch 调大压 bubble。
+
+**常见追问**：这个点在你实际项目里是怎么落地的，踩过什么坑？ 如果规模扩大十倍，这个方案哪里会先成为瓶颈？
+
+---
+
+## 54. Loss 不收敛、出现 NaN，排查思路是什么？
+
+> 原题 ID：`q3841`
+
+**高频程度**：★★★★
+
+**考察点**：面试官考察 AI 工程落地能力：上下文/token 治理、RAG 检索与分块、推理部署与性能成本优化、可观测与线上质量监控；核心是如何把模型‘跑得快、跑得稳、跑得省’。
+
+**回答框架**：
+
+① 先确认现象：loss 是震荡、上升还是直接 NaN；NaN 出现在第几步；是训练 loss 还是验证 loss。若第一步就 NaN，多半是数据/标签/初始化/数值溢出；若训练一段时间后 NaN，多半是学习率过大、梯度爆炸、数值累积。
+2. 查数据与标签：输入是否有 NaN/Inf、异常大值；标签是否越界
+3. 查损失函数：分类用 CrossEntropy 时输入应是 logits，不要先 softmax；BCE 输入是否在 (0,1)；自定义 loss 是否有 log(0)、除零、sqrt(负数)。
+4. 查数值稳定性：softmax/logsumexp 是否用稳定实现；attention 是否除以 sqrt(d) 或加 mask；LayerNorm/BatchNorm 的 eps；混合精度是否溢出。
+5. 查梯度：打印 grad norm，若爆炸则加梯度裁剪、调小学习率、加 warmup；若为 0 则检查激活函数、初始化、是否断梯度。
+6. 查优化器与超参：学习率是否过大，Adam 的 eps 是否过小，weight decay 是否作用到 norm/bias。
+7. 查模型结构：残差、初始化、深网络是否用合适初始化；RNN 是否梯度爆炸/消失。
+
+**参考回答**：
+
+先定位是数据/标签、数值不稳定、学习率/优化器、模型结构还是精度问题，按‘先看数据与损失曲线，再查梯度与数值，最后调超参与结构’的顺序排查。排查 NaN/不收敛要分阶段： 1) 先确认现象：loss 是震荡、上升还是直接 NaN；NaN 出现在第几步；是训练 loss 还是验证 loss。若第一步就 NaN，多半是数据/标签/初始化/数值溢出；若训练一段时间后 NaN，多半是学习率过大、梯度爆炸、数值累积。 2) 查数据与标签：输入是否有 NaN/Inf、异常大值；标签是否越界（如分类标签超出类别数）、是否全为某一类；padding/mask 是否正确；归一化是否合理。 3) 查损失函数：分类用 CrossEntropy 时输入应是 logits，不要先 softmax；BCE 输入是否在 (0,1)；自定义 loss 是否有 log(0)、除零、sqrt(负数)。 4) 查数值稳定性：softmax/logsumexp 是否用稳定实现；attention 是否除以 sqrt(d) 或加 mask；LayerNorm/BatchNorm 的 eps；混合精度是否溢出。 5) 查梯度：打印 grad norm，若爆炸则加梯度裁剪、调小学习率、加 warmup；若为 0 则检查激活函数、初始化、是否断梯度。 6) 查优化器与超参：学习率是否过大，Adam 的 eps 是否过小，weight decay 是否作用到 norm/bias。 7) 查模型结构：残差、初始化、深网络是否用合适初始化；RNN 是否梯度爆炸/消失。 8) 逐步缩小：用极小数据集过拟合，若仍不收敛说明实现有 bug；再逐层/逐模块排查。 通俗类比：像做菜失败，先看食材（数据）是否坏，再看火候（学习率）是否太大，最后看锅具（模型/数值实现）是否有问题。
+
+**常见追问**：一次对话烧了 10 万 token，你会从哪些环节降本？
+
+---
+
+## 55. ZeRO-3 训练时每步前向传播都要通信获取参数，通信开销大不大？怎么优化？
+
+> 原题 ID：`q3903`
+
+**高频程度**：★★★★
+
+**考察点**：面试官考察 AI 工程落地能力：上下文/token 治理、RAG 检索与分块、推理部署与性能成本优化、可观测与线上质量监控；核心是如何把模型‘跑得快、跑得稳、跑得省’。
+
+**回答框架**：
+
+① 把参数、梯度、优化器状态都按数据并行组切分，每个 rank 只持有 1/N 的参数分片。前向时某一层要用到完整参数，就必须对参数做一次 all-gather，把各 rank 的分片拼成完整权重；算完该层后通常立即释放
+2. 通信-计算重叠：DeepSpeed 用 prefetch，在当前层计算时提前 all-gather 下一层参数，把通信藏在计算后面。关键是控制 prefetch 深度
+3. 增大 bucket / 合并小消息：把多个小层参数打包成一个 bucket 再 all-gather，减少 kernel launch 和延迟开销，但会增大峰值显存。
+4. 调整切分粒度：按 Transformer block 而非按单个 Linear 切分，减少 all-gather 次数；或对 embedding/LM head 等大层单独处理。
+5. 混合并行：ZeRO-3 + TP/PP。张量并行把单层内部再切，减少单次 all-gather 规模；流水并行让不同 stage 的通信错峰。
+6. 降低通信量：用 bf16/fp16 通信、梯度压缩、或对不常更新的层用 ZeRO-2/1；对 MoE 只 all-gather 被激活的 expert。
+7. 拓扑感知：把 all-gather 限制在节点内 NVLink，跨节点用更少通信的并行策略；DeepSpeed 支持 hierarchical all-gather。
+
+**参考回答**：
+
+ZeRO-3 每步前向确实要 all-gather 参数，通信量约为模型参数量×2字节×层数级别的重复搬运，开销显著但可通过通信-计算重叠、参数预取、层级/子模块粒度调度、以及混合并行等手段把开销压到可接受范围。ZeRO-3（DeepSpeed 的 Stage-3）把参数、梯度、优化器状态都按数据并行组切分，每个 rank 只持有 1/N 的参数分片。前向时某一层要用到完整参数，就必须对参数做一次 all-gather，把各 rank 的分片拼成完整权重；算完该层后通常立即释放（或保留在 prefetch buffer 中），反向时再 all-gather 一次，反向算完还要 reduce-scatter 梯度。所以每步前向的通信量大致是：每层参数量 × 2 字节（fp16/bf16）× 2（前向+反向各一次 all-gather），再叠加梯度 reduce-scatter。以 100B 参数、N=64 为例，单次 all-gather 全模型约 200GB 量级的数据搬运，分摊到每卡是 200GB/64≈3GB 级别，但这是每步都发生，且是延迟敏感的小消息（按层切分后每层消息更小），所以通信开销确实大，尤其在小 batch、跨节点带宽受限时容易成为瓶颈。 优化思路： 1) 通信-计算重叠：DeepSpeed 用 prefetch，在当前层计算时提前 all-gather 下一层参数，把通信藏在计算后面。关键是控制 prefetch 深度（prefetch bucket 数），太浅藏不住，太深显存爆。 2) 增大 bucket / 合并小消息：把多个小层参数打包成一个 bucket 再 all-gather，减少 kernel launch 和延迟开销，但会增大峰值显存。 3) 调整切分粒度：按 Transformer block 而非按单个 Linear 切分，减少 all-gather 次数；或对 embedding/LM head 等大层单独处理。 4) 混合并行：ZeRO-3 + TP/PP。张量并行把单层内部再切，减少单次 all-gather 规模；流水并行让不同 stage 的通信错峰。 5) 降低通信量：用 bf16/fp16 通信、梯度压缩、或对不常更新的层用 ZeRO-2/1；对 MoE 只 all-gather 被激活的 expert。 6) 拓扑感知：把 all-gather 限制在节点内 NVLink，跨节点用更少通信的并行策略；DeepSpeed 支持 hierarchical all-gather。 7) 增大 micro-batch / gradient accumulation：让计算量变大，相对摊薄通信占比。 实际调参时常用 ds_config 里的 stage3_prefetch_bucket_size、stage3_param_persistence_threshold、stage3_max_live_parameters 等控制显存与通信的权衡。
+
+**常见追问**：一次对话烧了 10 万 token，你会从哪些环节降本？
 
 ---

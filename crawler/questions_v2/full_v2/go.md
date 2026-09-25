@@ -1,32 +1,35 @@
 # Go
 
-> 题目数量：**103** ｜ 渲染时间：自动 ｜ 源：authored/go.jsonl
+> 题目数量：**106** ｜ 渲染时间：自动 ｜ 源：authored/go.jsonl
 
 ---
 
-## 1. 说一下 Go 的 Goroutine 调度模型（GMP），以及 Channel 的底层实现与阻塞/非阻塞？
+## 1. Go 的 GMP 调度器与 channel 分别如何工作？
 
 > 原题 ID：`q0007`
 
 **高频程度**：★★★★★
 
-**考察点**：考察对 Go 并发底层模型的理解：GMP 三要素与调度策略（work-stealing / hand-off / 抢占），以及 Channel 的 hchan 结构与阻塞语义。
+**考察点**：G、M、P 的分工，以及 channel 的阻塞、复制和关闭语义。
 
 **回答框架**：
 
-1.GMP 定义：G 协程 / M 内核线程 / P 逻辑处理器（数量=GOMAXPROCS）；2.调度策略：本地队列减锁、work-stealing 偷半、hand-off 解绑 P、sysmon 基于信号的抢占；3.hchan 结构：环形 buf + recvq/sendq + mutex；4.阻塞语义：无缓冲直接交接，有缓冲满发/空收阻塞；5.雷区：关闭后发送 panic、忘记 close 导致永久阻塞。
+1) G 是 goroutine，M 是操作系统线程，P 提供调度资源
+2) 调度器利用本地队列、工作窃取、网络轮询和抢占
+3) 无缓冲 channel 直接复制元素到接收方；有缓冲 channel 使用缓冲区
+4) 发送到已关闭 channel 会 panic；并非每个 channel 都必须关闭
 
 **参考回答**：
 
-**回答：**GMP：G(goroutine) 用户态协程；M(machine) 内核线程；P(processor) 逻辑处理器（持本地运行队列，数量 = GOMAXPROCS）。M 必须绑 P 才能执行 G，采用抢占式调度。Channel 基于 hchan 结构（环形队列 + 等待队列 sendq/recvq + mutex）；无缓冲 chan 发送阻塞直到接收者就绪，有缓冲 chan 在缓冲满/空时阻塞。
+G 表示 goroutine，M 表示操作系统线程，P 表示执行 Go 代码所需的调度资源；M 通常要持有 P 才能运行 G。调度器结合本地可运行队列、工作窃取、网络轮询和抢占工作，P 的数量由 GOMAXPROCS 决定。
 
-**详细展开：**调度：work-stealing（空闲 P 从别处偷 G）、hand-off（M 阻塞系统调用时把 P 交给别的 M）、sysmon 抢占长时间运行的 G。Channel：hchan 含 qcount / dataqsiz / buf / recvq / sendq；发送时若有等待接收者直接交接（避免拷贝），否则入队或阻塞；关闭时唤醒等待者。
+无缓冲 channel 需要发送和接收匹配。运行时可以直接把元素从发送方复制到接收方，省去中间缓冲区，但这仍是内存复制，并非“零拷贝”。有缓冲 channel 在缓冲区满时阻塞发送，在空时阻塞接收。关闭后发送会 panic；接收可读出剩余元素，之后得到零值且 ok=false。
 
-**加分项：**非均匀窃取、netpoller 处理网络 IO 不阻塞 M；channel 零拷贝传递（直接拷贝到接收者栈）。
+是否关闭由生命周期协议决定。若消费者通过 context 取消或约定次数退出，不关闭 channel 也不必然永久阻塞；一般由唯一发送方或协调方负责关闭。
 
-> **⚠️ 雷区：**认为 goroutine 是 OS 线程（实际 M 才是）；channel 关闭后发送会 panic；忘记 close 导致接收方永久阻塞（用 for-range + ok 或 select）。
+**常见追问**：无缓冲 channel 直接交接时为什么仍有一次内存复制？
 
-**常见追问**：P 的数量由什么决定？sysmon 协作式抢占与 Go 1.14 基于信号的抢占有什么区别？
+**核验资料**：[Go runtime chan.go](https://go.dev/src/runtime/chan.go)
 
 ---
 
@@ -285,7 +288,7 @@ Go官网的回答中提到，**Yes and No**，也就是说Go不是面向对象�
 
 ---
 
-## 11. golang 中 make 和 new 的区别？（基本必问）？
+## 11. Go 中 make 和 new 有什么区别？
 
 > 原题 ID：`q0239`
 
@@ -419,94 +422,53 @@ func deferRun() (res int) {
 
 defer语句中的变量值是在defer语句出现时确定的，而不是在defer函数实际执行时确定的。
 
-**推荐学习**
-
 **常见追问**：为什么开放编码能大幅降低 defer 开销、有什么限制？命名返回值 + defer 修改在生产中有什么实际用途？
 
 ---
 
-## 13. for循环里使用defer会怎样？（好未来社招一面）
+## 13. 在 Go 循环中使用 defer 会发生什么？如何及时释放每轮资源？
 
 > 原题 ID：`q0241`
 
 **高频程度**：★★★★
 
-**考察点**：考察 for 循环里 defer 的执行时机带来的资源堆积与泄漏问题，以及如何用局部函数规避。
+**考察点**：defer 的函数级作用域、资源占用时长、panic 与 os.Exit 的不同语义。
 
 **回答框架**：
 
-1.问题本质：defer 在外层函数返回时才执行，不在每次循环结束时执行；2.后果一：循环里堆积大量待释放资源，句柄/内存压力大；3.后果二：提前 exit（log.Fatal、os.Exit）时已注册 defer 不执行，直接泄漏；4.解决方案：把循环体包成局部匿名函数立即调用，defer 随函数返回即刻释放；5.更稳做法：循环内不要用 log.Fatal/os.Exit 退出进程。
+1) 每次执行 defer 都会注册一次调用，参数在注册时求值
+2) 所有调用在外围函数退出时按后进先出顺序执行
+3) 循环很长时资源可能持续占用，并非每轮结束就释放
+4) 把单轮逻辑提取为函数，可让 defer 在每轮函数返回时执行
 
 **参考回答**：
 
-```Go
-func main() {
-    for i := 0; i < 5; i++ {
-       f, err := os.Open("/path/to/file")
-       if err != nil {
-          log.Fatal(err)
-       }
-       defer f.Close()
+`defer` 绑定的是外围函数，不是 `for` 的代码块。循环每执行一次 `defer` 都会保存一次调用，这些调用会在外围函数返回时按后进先出顺序执行。因此，如果每轮打开文件、获取连接或持有锁，却把 `Close`/`Unlock` defer 到整个长函数结束，资源会在循环期间不断累积，可能先耗尽文件描述符或连接池。
+
+常见做法是把单轮操作提取成一个命名函数或立即调用的函数，让资源的生命周期缩小到一轮：
+
+```go
+for _, path := range paths {
+    if err := func() error {
+        f, err := os.Open(path)
+        if err != nil { return err }
+        defer f.Close()
+        return process(f)
+    }(); err != nil {
+        return err
     }
-
-    zero := 0
-     // 程序执行到这里异常退出，那么上面的循环中打开的 5 个文件句柄全部无法正常回收
-    println(1 / zero)
-}
-
-//因为defer在for循环中调用，
-//编译器不确定会执行多少次，会逃逸到堆上，这样defer就只能分配在堆中了。
-//所以在使用defer延迟调用的时候，尽量不要在循环中使用，
-//否则可能导致性能问题。
-```
-
-**分析**
-
-`defer` 在函数退出时才会执行，在循环中执行 `defer` 释放资源时，如果最终函数未能正常退出可能会引发 `内存泄露问题`。
-
-**回答**
-
- 核心问题：**资源泄露**
-
-- defer 在外层函数返回时才执行，不是在每次循环结束时
-- 循环中堆积的 defer 直到函数结束才释放
-- 如果循环次数多或提前退出（如 `log.Fatal`、`os.Exit`），已注册的 defer 不会执行，导致资源泄露
-
-比如在第 4 次循环的时候，打开文件报错了，接着调用 `log.Fatal(err)` 结束程序，这时候，前面 3 次循环打开的 3 个文件句柄资源无法被释放，**造成资源泄露**。
-
-**解决的方法:** **可以在 `for` 中构造一个局部函数**，然后在局部函数内执行 `defer` 函数释放资源， 这样即使极端情况下程序异常退出，但是已经打开的文件句柄已经全部被释放，不会造成资源泄露。
-
-```Go
-func main() {
-    for i := 0; i < 5; i++ {
-       func() {
-          f, err := os.Open("/path/to/file")
-          if err != nil {
-             log.Fatal(err)// 注意：这里仍可能直接退出， 更安全的做法：避免在循环中使用 log.Fatal
-          }
-          defer f.Close() // 函数结束时立即执行，不堆积
-       }()// 立即执行匿名函数
-    }
-    zero := 0
-    println(1 / zero) // 程序执行到这里异常退出，但是上面的循环中打开的 5 个文件句柄资源已经全部释放，不会造成任何影响
 }
 ```
 
-关键总结
+还要区分异常退出方式。普通 `return` 和 panic 的栈展开都会执行已注册的 defer；若 panic 没有在同一 goroutine 的 defer 中恢复，栈展开完成后程序终止。`os.Exit` 不会执行 defer，`log.Fatal` 调用 `os.Exit(1)`，所以也不会执行 defer。把循环中的 defer 一概描述成“内存泄漏”或认为 panic 一定跳过 defer 都不准确；核心问题是资源释放时机和退出语义。
 
-1. 问题本质：defer 延迟执行 + 循环堆积 = 潜在资源泄露
-2. 根本原因：`log.Fatal`、`os.Exit`、`panic`（未被 recover）会导致程序直接终止，defer 得不到执行
-3. 解决思路：让 defer 在每次循环迭代结束时执行，而不是等到函数返回
+**常见追问**：为什么在循环体里直接调用 Close 也可能不如提取小函数并 defer 安全？
 
-**推荐资料**
-
-Go 陷阱之 for 循环调用函数
-
-**常见追问**：如果循环里必须用 defer 加锁，你会怎么写？defer 的开销在热循环里需要担心吗？
+**核验资料**：[Go language specification: defer and panic](https://go.dev/ref/spec#Defer_statements)
 
 ---
 
-## 14. defer用于解决哪些问题？或者说defer常用于什么场景？（生数科技社招一面）？
+## 14. Go 的 defer 常用于哪些场景？使用时要注意什么？
 
 > 原题 ID：`q0242`
 
@@ -579,12 +541,6 @@ func someFunction() {
 
 `defer` 是 Go 中非常有用的语言特性，它简化了许多常见的编程模式，尤其是那些涉及资源管理和错误处理的情况。正确地使用 `defer` 可以使代码更简洁、易读且不易出错。
 
-**推荐学习**
-
-Go defer 特性和使用场景
-
-zhuanlan.zhihu.com
-
 **常见追问**：defer 在发生 panic 时执行顺序是怎样的？用 defer 做耗时统计有什么要注意的地方？
 
 ---
@@ -652,10 +608,6 @@ func main() {
 }
 ```
 
-**推荐学习**
-
-深信服 Go面试题：如何在defer中修改方法返回值
-
 **常见追问**：命名返回值除了配合 defer 还有什么好处？defer 修改命名返回值能用来实现什么实用模式？
 
 ---
@@ -705,8 +657,6 @@ func main() {
 **回答**
 
 `rune` 类型是 Go 语言的一种特殊数字类型。在 `builtin/builtin.go` 文件中，它的定义是：`type rune = int32`；官方对它的解释是：`rune` 是类型 **`int32` 的别名**，在所有方面都等价于它，**用来区分字符值跟整数值**。使用单引号定义，返回**采用 UTF-8 编码的 Unicode 码点**。Go 语言通过 `rune` 处理中文，支持国际化多语言。
-
-**推荐学习**
 
 **常见追问**：用 len 取中文名字长度会得到什么？为什么 for range 字符串的索引是跳着走的？
 
@@ -832,8 +782,6 @@ Go 中解析的 tag 是通过反射实现的。
 
 **Go 语言反射是通过接口来实现的**，通过隐式转换，普通的类型被转换成 interface 类型，这个过程涉及到类型转换的过程，首先从 Golang 类型转为 interface 类型，再从 interface 类型转换成反射类型，再从反射类型得到相应的类型和值的信息。
 
-**推荐学习**
-
 **常见追问**：反射的 Value 什么时候可以 Set？为什么库里都要缓存反射结果？
 
 ---
@@ -877,7 +825,7 @@ func main() {
 
 ---
 
-## 20. go中"\_"的作用？
+## 20. Go 中空白标识符 `_` 有哪些用途？
 
 > 原题 ID：`q0252`
 
@@ -1007,9 +955,6 @@ type closure struct {
 }
 ```
 
-**推荐学习**
-⁠⁠‌‍‍‌‬‍﻿‌﻿⁠‌⁠﻿‌‍⁠⁠go语言函数
-
 **常见追问**：Go 1.22 是怎么在语言层面修复循环变量捕获的？闭包捕获和函数参数传递在性能上有什么区别？
 
 ---
@@ -1106,8 +1051,6 @@ func add(x, y int) (sum int) {
 //   0x000d 00013 (file.go:6)  MOVQ AX, sum+16(FP) // 写入返回值位置
 ```
 
-**推荐学习**
-
 **常见追问**：返回大结构体时是拷贝还是共享？为什么多返回值不会带来额外性能开销？
 
 ---
@@ -1136,8 +1079,6 @@ func add(x, y int) (sum int) {
 2. 像 slice, struct, map 则一般使用 **`reflect.DeepEqual `**来检测是否相等。
 
 > 但是，有一些异常情况：比如 func 类型是不可比较的类型，只有在两个 func 类型都是 nil 的情况下，才是“深度”相等；**float 类型，由于精度的原因，也是不能使用 == 比较的**；包含 func 类型或者 float 类型的 struct， interface， array 等。
-
-**推荐学习**
 
 **常见追问**：为什么 nil 切片和空切片 DeepEqual 判定不等？比较浮点切片你会怎么做？
 
@@ -1183,52 +1124,36 @@ var c *int = &a
 b = (*float64)(unsafe.Pointer(c))
 ```
 
-**推荐学习**
-
 **常见追问**：为什么 uintptr 转回 unsafe.Pointer 必须在一行内完成？什么场景下你才会用到 unsafe？
 
 ---
 
-## 25. 了解过Golang的弱指针吗？（好未来社招）？
+## 25. Go 的弱指针是什么？适合哪些场景？
 
 > 原题 ID：`q0259`
 
 **高频程度**：★★
 
-**考察点**：考察对弱指针（弱引用）概念的理解及其在 GC 语言中的用途，属于知识面广度题。
+**考察点**：Go 1.24 引入的 weak.Pointer 语义、可达性、Value/KeepAlive 与适用边界。
 
 **回答框架**：
 
-1.定义：弱指针引用内存但不妨碍 GC 回收；2.行为：指向对象被回收后自动置零，不会产生悬挂引用；3.转换：可升级为强指针，升级后阻止回收；4.对比：强引用就是普通的指针；5.用途：缓存（内存紧张时可被回收）、打破循环引用、观察者/回调列表。
+1) weak.Pointer 不会使目标对象保持可达
+2) 用 weak.Make 创建，用 Value 获取可能为 nil 的普通指针
+3) 需要对象继续存活时配合强引用和 runtime.KeepAlive
+4) 主要用于缓存、规范化映射和生命周期关联等底层结构
 
 **参考回答**：
 
-**分析**
+Go 从 1.24 开始在标准库提供 `weak` 包。`weak.Make(ptr)` 创建 `weak.Pointer[T]`；弱指针本身不会让目标对象保持可达。当对象只剩弱引用并被垃圾回收后，`Value()` 会返回 `nil`。即使当前 `Value()` 返回普通指针，代码仍要在需要对象存活的最后位置持有强引用，必要时使用 `runtime.KeepAlive` 表达活跃期。
 
-**弱指针（或其他语言中的弱引用）允许开发人员引用内存，而不妨碍垃圾回收器回收内存**。为防止出现可见的悬挂引用，弱指针在引用的内存被回收时会变为零。
+弱指针主要用于弱缓存、规范化映射（canonicalization map）、弱键映射，以及把一个值的生命周期与另一个值关联等底层设施。它不是普通业务代码的默认内存优化手段，也不是为了解决 Go 中的“引用计数循环”——Go 使用追踪式垃圾回收，普通不可达循环本身可以被回收。
 
-弱指针可以转换为常规（“强”）指针，这样就能防止垃圾回收器回收内存，并允许对内存进行典型使用和访问。
+弱指针的清理时机由 GC 决定，不能用于要求确定释放时间的资源管理；`Value()` 也不保证最终一定变为 `nil`。文件、锁和连接仍应显式关闭。需要在对象不可达后安排清理时，可评估 `runtime.AddCleanup`，但同样不能依赖其及时执行。
 
-弱指针通常比普通指针更难处理，因为它们随时都可能变为零。几乎每一次弱指针到强指针的转换都必须进行 nil 检查。通常，弱指针会在意想不到的时候变为零。
+**常见追问**：为什么弱指针适合缓存索引，却不适合代替文件或数据库连接的 Close？
 
-尽管如此，弱指针仍然存在于许多语言中，因为它们非常有用。**弱指针的主要使用场景与高效内存管理和回收有关**。
-
-可能的场景包含但不限于：
-
-- 为规范化映射有效管理内存，或为生命周期与另一个对象的生命周期绑定的内存（类似于 JavaScript 的 WeakMap）有效管理内存。
-- 弱指针的另一个良好用例是向 GC 提示：可以放弃某些资源，因为以后重建这些资源的成本很低，尤其是在这些资源占用大量内存的情况下。
-
-**回答**
-
-**弱指针（或其他语言中的弱引用）允许开发人员引用内存，而不妨碍垃圾回收器回收内存**。为防止出现可见的悬挂引用，弱指针在引用的内存被回收时会变为零。
-
-弱指针可以转换为常规（“强”）指针，这样就能防止垃圾回收器回收内存，并允许对内存进行典型使用和访问。（弱指针是一种不增加引用计数的指针，它不会阻止所指向的对象被垃圾回收器回收。弱指针通常用于解决循环引用问题，特别是在有垃圾回收机制的语言中。）
-
-**推荐学习**
-
-Go 将会支持弱指针 weak！你知道吗？
-
-**常见追问**：没有弱指针时怎么模拟弱引用？为什么不直接用 map 缓存对象，风险在哪里？
+**核验资料**：[Go weak package](https://pkg.go.dev/weak)；[Go 1.24 release notes](https://go.dev/doc/go1.24)
 
 ---
 
@@ -1339,34 +1264,36 @@ func main() {
 - `bytes.Buffer` 适合需要**同时处理字符串**和**字节数据的场景**（除了拼接字符串，还**可以用于读写字节数据**）。
 - 性能对比 `strings.Builder` ≈ `strings.Join`  > `bytes.Buffer` > `append`> `"+"`  > `fmt.Sprintf`
 
-**推荐学习**
-
-<cite doc-id="wikcn6YdO2yvxsrCcTeYixrRanb" file-type="wiki" title="string" type="doc"></cite>
-
 **常见追问**：strings.Builder 为什么比 bytes.Buffer 快？它的零拷贝转换有什么使用限制？
 
 ---
 
-## 27. rand函数是线程安全的吗？
+## 27. Go 的 math/rand 在并发调用时安全吗？
 
 > 原题 ID：`q0262`
 
 **高频程度**：★★★
 
-**考察点**：考察 math/rand 的并发安全性：全局生成器非线程安全，以及正确的并发使用方式。
+**考察点**：区分包级函数、Rand/Source 实例与密码学随机数的并发和安全语义。
 
 **回答框架**：
 
-1.结论：math/rand 顶层函数共享全局生成器，默认非线程安全；2.风险：并发调用可能产生数据竞争、随机性异常；3.方案一：每 goroutine 用 rand.New(rand.NewSource(seed)) 建独立生成器；4.方案二：用互斥锁包住共享生成器；5.提示：Go 1.20 起顶层函数自动播种，但仍需注意并发。
+1) math/rand 的包级函数可被多个 goroutine 并发调用
+2) Rand 与 Source 通常不保证并发安全，共享时需外部同步
+3) 独立生成器要避免相同 seed 造成相同序列
+4) 安全令牌、密钥和验证码应使用 crypto/rand
 
 **参考回答**：
 
-`math/rand` **包**
+`math/rand` 的包级函数（如 `rand.Intn`、`rand.Float64`）可以被多个 goroutine 安全并发调用，因此不能笼统地说“全局 rand 不安全”。
 
-- **随机数生成器**：`rand.Intn`、`rand.Float64` 等函数依赖于全局的随机数生成器，默认不是线程安全的。
-- **解决方法**：使用`rand.New`为每个goroutine创建独立的生成器，或使用互斥锁保护共享的生成器。
+需要区分自行创建的实例：`rand.New(source)` 返回的 `*rand.Rand` 以及底层 `Source` 通常应由单个 goroutine 使用；若多个 goroutine 共享同一个实例，需要用互斥锁保护，或者为每个执行单元创建独立生成器。创建多个生成器时不要给它们相同 seed，否则会产生相同序列；还要设计不会碰撞、可复现时可记录的播种策略。
 
-**常见追问**：为什么用相同 seed 会导致多个 goroutine 生成同样的序列？什么场景你会用 crypto/rand？
+`math/rand` 只适合模拟、采样、负载均衡等非安全场景，其输出可能被预测。密码、重置令牌、会话标识和安全验证码应使用 `crypto/rand`。另外，Go 1.20 起包级生成器默认自动播种，Go 1.24 起调用包级 `rand.Seed` 默认不再改变其状态；这与并发安全是不同问题。
+
+**常见追问**：为什么包级函数并发安全，却不能据此认为 rand.New 返回的每个 Rand 都并发安全？
+
+**核验资料**：[Go math/rand package](https://pkg.go.dev/math/rand)
 
 ---
 
@@ -1579,10 +1506,6 @@ for range 循环遍历 slice 有什么问题?
   - 1、for range **实际在循环之前就获取到了切片的长度**，按照之前的长度来循环的
   - 2、一旦发生动态扩容，会创建一个新的底层数组，并拷贝旧的数组。所以 for range 里使用的数组，和发生动态扩容的数组不是一个。所以不会遍历追加元素
 
-**推荐学习**
-
-- <cite doc-id="QmA6wajErivdWok0Zzfcctkbndh" file-type="wiki" title="Golang ：Slice探秘" type="doc"></cite>
-
 **常见追问**：那如果要边遍历边追加并全部处理到，应该怎么写？Go 1.22 的改动有没有引入性能开销？
 
 ---
@@ -1738,12 +1661,6 @@ type imethod struct {
 
    - 方法表中的每个条目都是一个 `uintptr` 类型的函数指针，指向具体类型实现的方法。
 
-**推荐学习**
-
-<cite doc-id="wikcnmRCJ5j8EDbuko5tcDrcAvh" file-type="wiki" title="interface" type="doc"></cite>
-
-interface 掌握“泛型”和“接口”的底层
-
 **常见追问**：为什么接口调用比直接调用慢？空接口赋值会不会分配内存？
 
 ---
@@ -1778,10 +1695,6 @@ interface 掌握“泛型”和“接口”的底层
 
 扩展：可以提到如何使用类型断言或反射来安全地比较。
 
-**推荐学习**
-
-golang面试题：两个interface{} 能不能比较
-
 **常见追问**：什么时候接口比较会 panic 而不是返回 false？为什么接口能作为 map 的 key？
 
 ---
@@ -1813,10 +1726,6 @@ golang面试题：两个interface{} 能不能比较
 
   - 使用类型断言（`instance.(Interface)`）直接判断。
   - 使用反射（`reflect.Type.Implements`）动态检查。
-
-**推荐学习**
-
-大华Go面试题：如何判断一个结构是否实现了某个接口？
 
 **常见追问**：值接收者和指针接收者实现接口的方法集有什么区别？为什么要写 var _ I = (*T)(nil)？
 
@@ -1937,16 +1846,11 @@ func main() {
 //value from new context val222
 ```
 
-**推荐学习**
-
-- [golang学习与面试] 并发实战 <cite doc-id="wikcn3FaReZWNARQcpXU1QaOyJw" file-type="wiki" title="Context" type="doc"></cite>
-- [golang学习与面试] 数据结构<cite doc-id="wikcnZtmFdI2dwmXHtD2yXq4woe" file-type="wiki" title="context" type="doc"></cite>
-
 **常见追问**：context 的 Value 查找复杂度是多少？为什么推荐用自定义类型作为 key？
 
 ---
 
-## 39. context 使用场景和用途？（基本必问）
+## 39. Go context 适合哪些场景？使用时应遵循哪些原则？
 
 > 原题 ID：`q0274`
 
@@ -2011,11 +1915,6 @@ func main() {
 //协程一捕获到取消信号
 ```
 
-**推荐学习**
-
-- [golang学习与面试] 并发实战 <cite doc-id="wikcn3FaReZWNARQcpXU1QaOyJw" file-type="wiki" title="Context" type="doc"></cite>
-- [golang学习与面试] 数据结构<cite doc-id="wikcnZtmFdI2dwmXHtD2yXq4woe" file-type="wiki" title="context" type="doc"></cite>
-
 **常见追问**：取消信号是如何在多层 goroutine 间传播的？如果一个 goroutine 不监听 Done 会有什么后果？
 
 ---
@@ -2061,10 +1960,6 @@ type hchan struct {
 **回答**
 
 - 一般来说，我们对channel就只有读、写、关闭三种操作，这三种操作，channel底层数据结构都用同一把runtime.Mutex来进行保护
-
-**推荐学习**
-
-《golang学习与面试》<cite doc-id="wikcn8zirn3I2ePNHDrTGeuvA5f" file-type="wiki" title="channel源码分析" type="doc"></cite>
 
 **常见追问**：锁粒度是整条 channel 吗、会不会成为瓶颈？无缓冲 channel 也有这把锁吗？
 
@@ -2113,10 +2008,6 @@ type hchan struct {
 1. 对于包含缓冲的channel（不含缓冲的channel底层buf为nil），Go语言的channel底层是一个hchan的结构，里面包含一个指向循环数组的指针，这个循环数组就是用于存储数据的。当然还包含下次读取和下次发送的数据索引位置recvx和sendx
 2. 还包含两个goroutine等待队列，在一个goroutine对这个channel读写阻塞的时候会分情况放到这两个队列里，发送数据阻塞就放到sendq这个等待队列，接收数据阻塞就放到recvq这个等待队列
 3. 为了保证channel的线程安全，hchan结构还有一个互斥锁，用作数据读写时候加锁，当close channel时也会用到这个互斥锁
-
-**推荐学习**
-
-《golang学习与面试》<cite doc-id="wikcn8zirn3I2ePNHDrTGeuvA5f" file-type="wiki" title="channel源码分析" type="doc"></cite>
 
 **常见追问**：环形缓冲区为什么要用 sendx/recvx 而不是直接移动数据？sudog 为什么需要包装 goroutine？
 
@@ -2248,10 +2139,6 @@ func sendExample2() {
 
      - 通道里面无法存放数据 并且 读等待队列为空，则当前goroutine 加入写等待队列中，并挂起，等待唤醒
 
-**推荐学习**
-
-《golang学习与面试》<cite doc-id="wikcn8zirn3I2ePNHDrTGeuvA5f" file-type="wiki" title="channel源码分析" type="doc"></cite>
-
 **常见追问**：为什么写操作优先检查 recvq 而不是先写缓冲？无缓冲 channel 的数据是拷贝还是共享内存？
 
 ---
@@ -2300,10 +2187,6 @@ select中的部分case的channel已关闭会发生什么？
 
 - 如果所有case在当前时刻都无法运行（例如，通道没有准备好接收或发送数据），则会立即执行default分支，而不会将当前goroutine阻塞或加入到任何通道的等待队列中
 
-**推荐学习**
-
-golang社招面试题：select底层机制的4个关键点
-
 **常见追问**：为什么 select 要随机化顺序，能不能做到按优先级选择？被唤醒后为什么要从其他队列摘除？
 
 ---
@@ -2340,10 +2223,6 @@ default:
 ```
 
 在这个例子中，如果 channel ch 没有准备好接收新的值（即它被阻塞了），那么 default 分支会被执行，程序可以继续而不会等待 channel 变得可用。
-
-**推荐学习**
-
-深信服 Go面试题：先判断channel是否阻塞，再写入数据_哔哩哔哩_bilibili
 
 **常见追问**：为什么不可能原子地判断再写入？高并发下你会怎么处理发送失败？
 
@@ -2691,10 +2570,6 @@ Map的底层实现数据结构实际上是一个哈希表。在运行时表现�
 
 扩容过程并不是一次性进行的，而是采用的**渐进式扩容**。在**插入修改删除key的时候，都会尝试进行搬迁桶的工作**，每次都会检查oldbucket是否nil，如果不是nil则每次搬迁2个桶（一个桶是当前访问的桶，另一个是迁移进度指向的桶），蚂蚁搬家一样渐进式扩容。
 
-**推荐学习**
-
-《golang学习与面试》 <cite doc-id="wikcnHgsHy2cgYi04sa8p0L8SHe" file-type="wiki" title="map" type="doc"></cite>
-
 **常见追问**：为什么负载因子取 6.5 而不是 1？等量扩容解决的具体问题是什么？
 
 ---
@@ -2735,10 +2610,6 @@ Map的底层实现数据结构实际上是一个哈希表。在运行时表现�
 
 从上面的流程可以看出，**在判断 hash 冲突**，**即该位置是否已有其他 key 时，肯定是要进行比较的**，所以 key 必须得是可比较类型的。像 slice、map、function 就不能作为 key。
 
-**推荐学习**
-
-《golang学习与面试》 <cite doc-id="wikcnHgsHy2cgYi04sa8p0L8SHe" file-type="wiki" title="map" type="doc"></cite>
-
 **常见追问**：用 struct 作 key 要注意什么？为什么浮点数作 key 有风险？
 
 ---
@@ -2772,10 +2643,6 @@ sync.Map 的主要思想就是**读写分离**，**空间换时间**
 
   - nil态可以拦截删除操作在read map这一层
   - expunged态可以正确标识dirty map中有没有对应的逻辑删除的key-entry
-
-**推荐学习**
-
-深入理解Go语言(05)：sync.map原理分析 - 九卷 - 博客园
 
 **常见追问**：为什么软删除能让后续写操作不加锁？misses 达到什么条件才提升 dirty？
 
@@ -2844,8 +2711,9 @@ dirtyLocked这整个流程是加锁的，如果在sync.map数据量比较大情�
 - sync.Map**不适用于写多的场景**，因为写操作足够多的话，sync.Map就相当于一把Mutex+Map
 - 而且sync.Map中存在一个**将read map数据流转到 dirty map的过程**，这个过程是线性时间复杂度，当map中k-v数量较多的时候，容易导致程序性能抖动，比如要想 访问sync.Map拿操作的goroutine 一直等待这个线性时间复杂度的过程完成
 
-**推荐学习：**
-《golang学习与面试》 <cite doc-id="BbgbwlL9OiZWQQkIErmc1EhZnPZ" file-type="wiki" title="Sync.Map(图文并茂版)" type="doc"></cite>
+**补充说明**
+
+《golang学习与面试》 Sync.Map(图文并茂版)
 
 Godis 并发安全map实现——[https://github.com/hdt3213/godis/blob/master/datastruct/dict/concurrent.go](https://github.com/hdt3213/godis/blob/master/datastruct/dict/concurrent.go)
 
@@ -2853,7 +2721,7 @@ Godis 并发安全map实现——[https://github.com/hdt3213/godis/blob/master/d
 
 ---
 
-## 55. go func()"经历了什么过程？
+## 55. 执行 `go func()` 后，goroutine 如何创建、入队并被 GMP 调度？
 
 > 原题 ID：`q0297`
 
@@ -2875,10 +2743,6 @@ Godis 并发安全map实现——[https://github.com/hdt3213/godis/blob/master/d
 4. 一个M调度G执行的过程是一个循环机制；
 5. 当M执行某一个G时候如果发生了syscall或则其余阻塞操作，M会阻塞，如果当前有一些G在执行，runtime会把这个线程M从P中摘除(detach)，然后再创建一个新的操作系统线程(如果有空闲的线程可用就复用空闲线程)来服务于这个P；
 6. 当M系统调用结束时候，这个G会尝试获取一个空闲的P执行，并放入到这个P的本地队列。如果获取不到P，那么这个线程M变成休眠状态，加入到空闲线程中，然后这个G会被放入全局队列中。
-
-**推荐学习**
-
-第5讲-go指令的调度流程
 
 **常见追问**：为什么本地队列满时要搬一半到全局队列？阻塞系统调用结束后 G 为什么要先进全局队列？
 
@@ -2921,10 +2785,6 @@ G0
 - 在调度或系统调用时会使用M切换到G0来调度
 - M0的G0会放在全局空间
 
-**推荐学习**
-
-第6讲-Go的启动周期M0和G0
-
 **常见追问**：为什么调度要用 G0 的栈而不能直接用业务 G 的栈？M0 的 G0 为什么放全局？
 
 ---
@@ -2957,10 +2817,6 @@ G0
 1. 创建、销毁、调度G都需要每个M获取锁，这就形成了激烈的锁竞争。
 2. M转移G会造成**延迟**和**额外的系统负载**。调度器的由来和分析
 3. 系统调用(CPU在M之间的切换)导致频繁的线程阻塞和取消阻塞操作，增加了系统开销。
-
-**推荐学习**
-
-Golang深入理解GPM模型
 
 **常见追问**：如果说 P 的数量等于 CPU 核数，那 goroutine 再多也不会并行更多，这是为什么？
 
@@ -3155,10 +3011,6 @@ Go1.14 之后是**异步式抢占**，基于信号。sysmon 会检测到运行�
 
 基于信号的抢占可以防止类似死循环这种没有发生函数调用的goroutine一直占用cpu导致程序阻塞，提高了程序的合理性。
 
-**推荐学习**
-
-《golang学习与面试》 <cite doc-id="wikcnJnSidRVVmCmLLzoYHBRfzg" file-type="wiki" title="GMP调度原理" type="doc"></cite>
-
 **常见追问**：为什么用 SIGURG 这个信号？GC 的栈扫描和抢占有什么关系？
 
 ---
@@ -3212,9 +3064,9 @@ func main() {
 //sum is 100
 ```
 
-**推荐学习**
+**补充说明**
 
-《golang学习与面试》 <cite doc-id="wikcnFCOmm59zf58OttOLPmLZSe" file-type="wiki" title="Sync" type="doc"></cite>
+《golang学习与面试》 Sync
 [https://gfow.go101.org/article/concurrent-atomic-operation.html](https://gfow.go101.org/article/concurrent-atomic-operation.html)
 
 **常见追问**：CAS 循环在竞争激烈时会有什么问题？为什么没有 atomic.AddInt？
@@ -3327,8 +3179,6 @@ type Mutex struct {
 
 mutex底层是通过**原子操作+信号量**来实现的，通过atomic 包中的一些原子操作来实现锁的锁定，通过信号量来实现协程的阻塞与唤醒
 
-**推荐学习**
-
 **常见追问**：快速路径和慢路径分别在什么条件下切换？为什么把等待者计数和状态放进同一个字里？
 
 ---
@@ -3368,8 +3218,6 @@ goroutine自旋要满足一定的条件：
 goroutine自旋获取mutex 会让当前的 goroutine 去空转 CPU，在空转完后再次调用 CAS 方法去尝试性的占有锁资源，直到不满足自旋条件，则最终会加入到等待队列中，结束自旋
 
 </sheet>
-
-**推荐学习**
 
 **常见追问**：为什么要求本地队列为空才能自旋？自旋次数为什么选 4 次？
 
@@ -3445,7 +3293,7 @@ func (rw *RWMutex) Lock() {
 - 读锁需要阻塞写锁：一个协程拥有读锁时，其他协程写锁定需要阻塞；
 - 读锁不能阻塞读锁：一个协程拥有读锁时，其他协程也可以拥有读锁。
 
-**推荐学习**
+**补充说明**
 
 > 在 Go 的 `RWMutex` 实现中，`r := rw.readerCount.Add(-rwmutexMaxReaders) + rwmutexMaxReaders` 这一行代码的目的是为了正确处理读写锁的竞争，确保在写锁获取时能够正确等待所有活跃的读锁释放。下面详细解释为什么这样设计，而不是直接将 `readerCount` 赋值给 `readerWait` 并修改 `readerCount`。
 >
@@ -3575,7 +3423,7 @@ func (o *Once) doSlow(f func()) { // 还没执行函数
 
 sync.Once 的底层结构Once的内部维护了一个**标识位done**和一个**mutex锁**。当done == 0 时表示还没执行过函数，此时会加锁修改标识位，然后执行对应函数。后续再执行时发现标识位 != 0，则不会再执行后续动作了。
 
-**推荐学习**
+**补充说明**
 
 > 单例模式是一种设计模式，确保一个类仅有一个实例，并提供一个全局访问点。在多线程环境中实现单例模式时，为了防止多个线程同时创建实例，通常需要使用某种形式的同步机制来保证线程安全。然而，简单的同步机制可能会导致性能瓶颈，因为每次获取实例都需要进行加锁操作，而加锁和解锁是非常耗时的操作。
 >
@@ -3937,7 +3785,7 @@ Go1.23 新特性：花了近 10 年，time.After 终于不泄漏了！
 
 大量的内存逃逸会给gc带来压力
 
-**推荐学习**
+**补充说明**
 
 《golang学习与面试》‌‬‬⁠‍⁠⁠﻿‬‬⁠‌⁠﻿﻿﻿‍‌‍⁠⁠‌﻿⁠﻿‍⁠逃逸分析 - 飞书云文档
 
@@ -4036,7 +3884,7 @@ channel分配在堆上，Channel 是被设计用来**实现协程间通信的组
 
 ---
 
-## 78. 有了解过golang的堆内存是怎么管理的吗？（好未来二面）？
+## 78. Go 运行时如何管理堆内存？
 
 > 原题 ID：`q0341`
 
@@ -4191,10 +4039,6 @@ type node struct {
 
 - **gin 的每种方法 (POST, GET ...) 都有自己的一颗 路由树**。
 - 当 gin 收到客户端的请求时，会去 路由树 里根据 URL 找到相关的 处理函数（handler）
-
-**推荐学习**
-
-前缀树学习：实现 Trie (前缀树) - 力扣（LeetCode）
 
 **常见追问**：:param 和 *filepath 在匹配上有什么区别？中间件链是怎么组织执行的？
 
@@ -4587,12 +4431,6 @@ func main() {
 
 **总结：**时间轮通过环形数组和任务链表的方式，高效地管理定时任务，具有低延迟、低内存占用的特点，非常适合高并发的定时任务调度场景。
 
-**推荐学习**
-
-字节一面真题：什么是时间轮？
-
-定时任务——时间轮算法
-
 **常见追问**：多级时间轮怎么避免同一任务被重复推进？槽位数量和刻度大小怎么选？
 
 ---
@@ -4724,10 +4562,6 @@ Logrus 的默认 `Logger` 是线程安全的。它内部使用了 `sync.Mutex` �
 
 此结构体现了 Kratos 的微服务最佳实践，适合面试时快速展示对框架的理解。
 
-**推荐学习**
-
-Go语言技巧 - 9.【浅析微服务框架】Kratos概览_哔哩哔哩_bilibili
-
 **常见追问**：为什么要用 internal 目录？biz 和 service 的边界你是怎么划分的？
 
 ---
@@ -4746,7 +4580,7 @@ Go语言技巧 - 9.【浅析微服务框架】Kratos概览_哔哩哔哩_bilibili
 
 **参考回答**：
 
-推荐资料<cite doc-id="wikcn00HZW62D8XnOIrEqtH5Ynb" file-type="wiki" title="slice" type="doc"></cite>底层原理
+推荐资料slice底层原理
 
 ```go
 func main() {
@@ -4895,233 +4729,77 @@ go语言的整个gc看流程大致可以分为下面5个步骤
 
 ---
 
-## 94. Go中GC调优的参数有哪些？
+## 94. Go 中有哪些 GC 调优参数？应如何使用？
 
 > 原题 ID：`q0328`
 
 **高频程度**：★★★★
 
-**考察点**：考察 Go GC 的可调参数与调优手段。
+**考察点**：GOGC 与软内存上限的语义、相互作用，以及先观测后调参的原则。
 
 **回答框架**：
 
-1) GOGC 环境变量控制堆增长阈值，默认 100；2) debug.SetGCPercent 运行时动态调整；3) debug.SetMemoryLimit 设内存上限（1.19+）；4) GODEBUG=gctrace=1 打印 GC 日志；5) 优化手段：减分配、sync.Pool、对象复用、预分配切片。
+1) GOGC/debug.SetGCPercent 调整堆增长目标，值越大通常以内存换 CPU
+2) GOMEMLIMIT/debug.SetMemoryLimit 设置运行时管理内存的软上限
+3) 软上限并非进程 RSS 的硬限制，也不统计全部外部内存
+4) 用 gctrace、runtime/metrics、pprof 和业务延迟验证效果
 
 **参考回答**：
 
-**回答**
+Go GC 最主要的两个调节量是 `GOGC` 和 `GOMEMLIMIT`。`GOGC` 控制相对于上次 GC 后存活堆的增长目标，默认值为 100；也可以在运行时用 `runtime/debug.SetGCPercent` 调整。提高它通常减少 GC 频率、增加内存占用，降低它则相反；设为 `off` 或传负值可关闭基于该百分比的触发，但软内存上限仍可能触发 GC。
 
-1. `GOGC` **环境变量：**`GOGC` 表示堆内存增长的百分比阈值。当当前堆内存达到上一次 GC 后堆内存的 `(100 + GOGC)%` 时，触发 GC。（默认值100%）    例：`export GOGC=200  # 设置 GOGC 为 200`
-2. `runtime/debug.`**`SetGCPercent` 函数：**动态调整 `GOGC` 的值。
+`GOMEMLIMIT` 从 Go 1.19 起提供运行时管理内存的软限制，也可用 `runtime/debug.SetMemoryLimit` 修改。它近似约束 `runtime.MemStats.Sys - HeapReleased`，不等于容器或操作系统看到的 RSS，也不包含 C 分配、二进制映射等全部外部内存。设置得过低会使 GC 几乎持续运行，因此应给非 Go 内存、内核和突发流量留出余量。
 
-```Go
-import "runtime/debug"
-func main() {
-    debug.SetGCPercent(200) // 设置 GOGC 为 200
-}
-```
+标准库不存在 `runtime/debug.SetMaxHeap`。`debug.FreeOSMemory` 会强制 GC 并尝试把空闲内存归还操作系统，不应作为常规“堆上限”或周期性调优手段。
 
-1. `GODEBUG` **环境变量**：启用或禁用特定的调试选项，包括 GC 相关的调试信息。
+调优前应先用 `GODEBUG=gctrace=1`、`runtime/metrics`、heap/alloc pprof 和业务 P95/P99 确认问题来自分配率、存活堆还是容器限制。通常先减少不必要分配、合理预分配并修复对象滞留，再在接近生产的负载下联合调整 GOGC 与软内存上限。
 
-常用选项：`gctrace=1`：打印 GC 的详细日志，包括每次 GC 的时间、堆内存变化等。
+**常见追问**：为什么把 GOMEMLIMIT 设置得恰好等于容器内存上限，反而容易出现抖动或 OOM？
 
-```Bash
-export GODEBUG=gctrace=1  # 启用 GC 跟踪日志
-gc 1 @0.012s 0%: 0.015+0.50+0.015 ms clock, 0.12+0.50/0.50/0+0.12 ms cpu, 4->4->0 MB, 5 MB goal, 4 P
-
-gc 1：GC 的编号。
-@0.012s：程序启动后的时间。
-0%：GC 占用的 CPU 时间百分比。
-4->4->0 MB：GC 前后的堆内存大小。
-5 MB goal：GC 的目标堆内存大小。
-```
-
-1. `GOMEMLIMIT` **环境变量（Go 1.19+）：**当内存使用接近 `GOMEMLIMIT` 时，Go 运行时会更加积极地触发 GC**。**用于设置 Go 程序的总内存上限（包括栈内存和堆内存）。**默认值**：无限制。在高内存使用场景中，可以同时使用 `GOGC` 和 `GOMEMLIMIT` 来控制 GC 行为。**不包括 CGO 分配的内存**：通过 CGO 分配的内存不受 `GOMEMLIMIT` 限制。**与系统内存限制的关系**：`GOMEMLIMIT` 是软限制，实际内存使用还可能受系统资源限制的影响。
-
-总结来说，`GOMEMLIMIT` 确实控制 Go 程序的总内存使用上限，包括栈内存和堆内存。
-
-`export GOMEMLIMIT=1G  # 设置内存上限为 1GB`
-
-1.  `runtime/debug.``SetMaxHeap` **函数（Go 1.19+）：设置堆内存的最大值**。
-
-- **参数**：一个整数，表示堆内存的最大值（字节）。
-
-```Go
-import "runtime/debug"
-func main() {
-    debug.SetMaxHeap(1 << 30) // 设置堆内存最大为 1GB
-}
-```
-
-1. `runtime.ReadMemStats` **函数**
-
-- **作用**：读取内存统计信息，用于监控内存使用和 GC 行为。
-
-```Go
-func main() {
-    var memStats runtime.MemStats
-    runtime.ReadMemStats(&memStats)
-    fmt.Printf("HeapAlloc: %d MB\n", memStats.HeapAlloc / 1024 / 1024)
-    fmt.Printf("TotalAlloc: %d MB\n", memStats.TotalAlloc / 1024 / 1024)
-    fmt.Printf("NumGC: %d\n", memStats.NumGC)
-}
-//HeapAlloc: 5 MB
-//TotalAlloc: 10 MB
-//NumGC: 2
-```
-
-1. debug.FreeOSMemory()：有时候你可能希望手动触发将未使用的内存释放回操作系统，这时可以调用runtime/debug.FreeOSMemory()函数。
-
-**常见追问**：GOGC=off 和 SetMemoryLimit 一起用会怎样？
+**核验资料**：[Go runtime/debug package](https://pkg.go.dev/runtime/debug)
 
 ---
 
-## 95. 常见的分析golang的GC的方法或工具有哪些？
+## 95. 常见的 Go GC 分析方法和工具有哪些？
 
 > 原题 ID：`q0329`
 
 **高频程度**：★★★
 
-**考察点**：考察分析 Go GC 的常用工具链。
+**考察点**：从运行时日志、稳定指标、profile 和 trace 四个层次定位 GC 压力来源。
 
 **回答框架**：
 
-1) GODEBUG=gctrace=1 看每次 GC 的耗时、堆变化与 CPU 占用；2) pprof（heap/alloc）看分配热点与内存分布；3) runtime/metrics、expvar 做指标采集；4) trace/benchstat 结合压测观察 GC 对延迟的影响。
+1) gctrace 快速观察每轮 GC 的堆目标、耗时与 CPU 占比
+2) runtime/metrics 或监控系统持续采集堆、扫描量、暂停和 GC CPU
+3) heap 与 allocs profile 分别定位存活对象和累计分配热点
+4) execution trace 分析 GC、调度与业务延迟的时间关系
 
 **参考回答**：
 
-分析 Go 语言垃圾回收（GC）的常见方法和工具可以帮助开发者了解 GC 的行为、性能瓶颈以及优化内存使用。以下是常用的分析方法和工具：
+分析 Go GC 通常从低成本观测逐步深入：
 
-1. **Go 内置工具**
+**运行时日志**
 
-（1）**GODEBUG 环境变量：**通过设置 `GODEBUG` 环境变量，**可以启用GC跟踪日志**。
+设置 `GODEBUG=gctrace=1` 可看到每轮 GC 的编号、发生时间、GC CPU 比例、各阶段时间、堆大小变化和目标堆等。它适合快速判断 GC 是否过于频繁或堆目标是否受限，但单行日志不能直接指出具体分配代码。
 
-- **启用 GC 日志：`GODEBUG=gctrace=1`**` go run your_program.go`
+**指标监控**
 
-  ```Go
-  gc 1 @0.012s 2%: 0.005+0.5+0.003 ms clock, 0.02+0.5/0.8/0.1+0.01 ms cpu, 4->4->0 MB, 5 MB goal, 4 P
-  //GC 次数：gc 1 表示第 1 次 GC。
-  //触发时间：@0.012s 表示 GC 在程序启动后 0.012 秒触发。
-  //CPU 占用：2% 表示 GC 消耗了 2% 的 CPU 时间。
-  //时钟时间：0.005+0.5+0.003 ms clock 表示 GC 各阶段的时钟时间。
-  //CPU 时间：0.02+0.5/0.8/0.1+0.01 ms cpu 表示 GC 各阶段的 CPU 时间。
-  //堆内存变化：4->4->0 MB 表示堆内存的变化情况。
-  //目标堆大小：5 MB goal 表示 GC 的目标堆大小。
-  //CPU 核心数：4 P 表示使用了 4 个 CPU 核心。
-  ```
+生产环境优先持续采集 `runtime/metrics` 中的 GC 周期、堆目标、扫描字节、暂停分布和 GC CPU 等指标，并与请求量、P95/P99、容器 RSS 和 OOM 事件关联。`runtime.ReadMemStats` 也可读取快照，但高频采样和字段解释要谨慎。
 
-#### （2）**runtime.ReadMemStats：**
+**Profile**
 
-通过 **`runtime.ReadMemStats`** 函数，可以在代码中获取内存和 GC 的统计信息。
+用 `runtime/pprof` 或 `net/http/pprof` 获取 heap 和 allocs profile。heap 主要看当前仍存活或占用的对象，allocs 反映累计分配热点；结合 `go tool pprof` 的 top、list 和火焰图定位对象滞留、过度装箱、切片增长等来源。采样数据需要在代表性负载下采集，并与基线比较。
 
-```Go
-func main() {
-        var m runtime.MemStats
-        runtime.ReadMemStats(&m)
-        fmt.Printf("Alloc = %v MiB", m.Alloc/1024/1024)
-        fmt.Printf("\tTotalAlloc = %v MiB", m.TotalAlloc/1024/1024)
-        fmt.Printf("\tSys = %v MiB", m.Sys/1024/1024)
-        fmt.Printf("\tNumGC = %v\n", m.NumGC)
-        time.Sleep(time.Second)
-}
-//Alloc = 0 MiB   TotalAlloc = 0 MiB   Sys = 66 MiB   NumGC = 0
-```
+**执行追踪**
 
-2. **性能分析工具**
+`runtime/trace` 与 `go tool trace` 可把 GC 阶段、goroutine 调度、网络阻塞和应用任务放在同一时间线上，适合分析尾延迟尖峰是否与 STW、GC assist 或调度拥塞有关。
 
-（1）**pprof：**Go 自带的 `pprof` 工具可以分析**内存和 GC 的性能**。
+最后通过基准测试或灰度负载验证优化。不要仅凭一次 GC 暂停判断效果，也不要先调 GOGC 再寻找问题；分配率、存活堆、扫描量、CPU 与业务延迟需要一起观察。
 
-- **生成内存 profile**：访问 `http://localhost:6060/debug/pprof/heap` 下载 heap profile，然后使用 `go tool pprof` 分析：
+**常见追问**：heap profile 和 allocs profile 分别回答什么问题？为什么两者热点可能不同？
 
-  ```Go
-  import _ "net/http/pprof"
-
-  func main() {
-      go func() {
-          log.Println(http.ListenAndServe("localhost:6060", nil))
-      }()
-      // Your code here
-  }
-  ```
-
-  ```Bash
-  go tool pprof http://localhost:6060/debug/pprof/heap
-  ```
-- **生成 GC 相关的 trace**：使用 `runtime/trace` 包生成程序执行的 trace 文件：
-
-```Go
-func main() {
-    f, _ := os.Create("trace.out")
-    trace.Start(f)
-    defer trace.Stop()
-
-    // Your code here
-}
-```
-
-使用 `go tool trace` 分析：
-
-```Bash
-go tool trace trace.out
-```
-
-（2）**go tool trace：**通过 `go tool trace` 可以可视化程序的执行情况，包括 GC 的触发和耗时。
-
-- 生成 trace 文件（如上文所述）。
-- 运行 `go tool trace` 并查看 GC 事件：
-
-  ```Bash
-  go tool trace trace.out
-  ```
-
-3. **第三方工具**
-
-（1）**gctrace 可视化工具**
-
-- **gctrace 解析工具**：将 `GODEBUG=gctrace=1` 的输出解析为可视化图表。例如：gctrace-parser
-
-（2）**Prometheus + Grafana**
-
-- 使用 Prometheus 收集 Go 应用的 GC 和内存指标，并通过 Grafana 可视化。
-- 示例：使用 `client_golang` 库暴露 Go 应用的 GC 指标：
-
-  ```Go
-  import (
-      "github.com/prometheus/client_golang/prometheus"
-      "github.com/prometheus/client_golang/prometheus/promhttp"
-      "net/http"
-  )
-  func main() {
-      http.Handle("/metrics", promhttp.Handler())
-      go http.ListenAndServe(":9090", nil)
-      // Your code here
-  }
-  ```
-
-4. **GC 调优建议**
-
-（1）**调整 GOGC**
-
-- `GOGC` 环境变量控制 GC 的触发频率，默认值为 100（表示堆内存增长 100% 时触发 GC）。
-- 增大 `GOGC` 可以减少 GC 频率，但会增加内存占用；减小 `GOGC` 会增加 GC 频率，但会减少内存占用。
-
-`GOGC=200 go run your_program.go`
-
-（2）**减少内存分配**
-
-- 避免频繁的小对象分配，使用对象池（`sync.Pool`）复用对象。
-- 减少指针的使用，降低 GC 的扫描负担。指针越多 → GC 扫描路径越复杂 → 扫描时间越长
-
-（3）**控制堆大小：**通过 `runtime/debug.``SetMemoryLimit` 设置内存上限，避免堆内存无限增长。
-
-5. **总结**
-
-- **内置工具**：`GODEBUG=gctrace=1` 和 `runtime.ReadMemStats` 是最常用的 GC 分析方法。
-- **性能分析**：`pprof` 和 `go tool trace` 可以帮助深入分析 GC 的性能瓶颈。
-- **可视化**：通过 Prometheus + Grafana 或 gctrace 解析工具，可以更直观地观察 GC 行为。
-- **调优**：通过调整 `GOGC`、减少内存分配和控制堆大小，可以优化 GC 性能。
-
-**常见追问**：gctrace 里 clock 与 cpu 两段时间分别代表什么？
+**核验资料**：[Go runtime metrics](https://pkg.go.dev/runtime/metrics)；[Go runtime package](https://pkg.go.dev/runtime)
 
 ---
 
@@ -5335,8 +5013,6 @@ gc的标记是从根节点开始的，扫描的对象是在堆上的，所以要
 
 两种不变式的选择取决于GC的设计目标，比如是否更重视减少STW时间还是提高回收精度等。Go语言的GC采用了混合写屏障的方式，在不同阶段使用不同的屏障逻辑，以优化性能并确保GC的准确性。
 
-**推荐学习**
-
 **常见追问**：为什么 Go 选择弱三色不变式而不是强三色？
 
 ---
@@ -5379,10 +5055,6 @@ gc的标记是从根节点开始的，扫描的对象是在堆上的，所以要
 - 在清理阶段，使用删除写屏障来确保不再需要的对象可以被安全地回收。
 
 通过这种方式，混合写屏障能够在不同GC阶段提供最优的性能，同时保持GC的准确性。此外，混合写屏障还可以帮助减少STW（Stop-The-World）暂停的时间，因为减少了需要一次性处理的对象数量。它也使得GC过程更加平滑，对应用程序的影响更小，特别是在高并发环境下。
-
-**推荐学习**
-
-第9讲-混合写屏障操作流程
 
 **常见追问**：混合写屏障为什么可以不对栈开启写屏障？
 
@@ -5681,5 +5353,120 @@ db.Where("user_id = ?", user.ID).Find(&orders)
 - 对比其他池化库（如 `tunny` 或 `workerpool`）的差异。
 
 **常见追问**：ants 为什么不用全局任务队列，而让任务直接绑定 worker？
+
+---
+
+## 104. Go 中子 goroutine 发生未恢复的 panic 时会怎样？
+
+> 原题 ID：`q0261`
+
+**高频程度**：★★★★
+
+**考察点**：panic 的单 goroutine 栈展开、defer 执行、recover 位置与进程终止行为。
+
+**回答框架**：
+
+1) panic 沿发生它的 goroutine 调用栈向上展开
+2) 展开过程中执行该调用栈已注册的 defer
+3) recover 只能在同一 goroutine 的 deferred function 中截获
+4) 未恢复的 panic 到达栈顶后会终止整个程序
+
+**参考回答**：
+
+子 goroutine 中的 panic 若没有被恢复，会先沿该 goroutine 的调用栈展开，并按规则执行沿途已经注册的 defer；当 panic 到达该 goroutine 栈顶仍未恢复时，运行时报告错误和栈信息，并终止整个程序，而不只是结束这一条 goroutine。
+
+另一个 goroutine 无法替它 recover。要隔离可预期的任务级崩溃，需要在启动任务的 goroutine 入口处注册 defer，并在这个 deferred function 中直接调用 `recover()`，记录堆栈并把失败转换为任务错误。`recover` 不应被用来掩盖任意编程错误，公共库也通常不应让内部 panic 越过 API 边界。
+
+panic 与 `os.Exit` 也不同：panic 会执行当前栈上的 defer，`os.Exit` 则立即退出且不会执行 defer。
+
+**常见追问**：在 goroutine 池中恢复 panic 后，还应记录哪些信息并如何向调用方传播失败？
+
+**核验资料**：[Go language specification: handling panics](https://go.dev/ref/spec#Handling_panics)；[Go Wiki: PanicAndRecover](https://go.dev/wiki/PanicAndRecover)
+
+---
+
+## 105. 如何用两个 goroutine 和 channel 分别计算数组中奇数与偶数之和？
+
+> 原题 ID：`q0364`
+
+**高频程度**：★★★
+
+**考察点**：考察 for range channel 的消费模式与生产者按奇偶分发。
+
+**回答框架**：
+
+1) 主协程遍历数组，偶数发 evenCh、奇数发 oddCh；2) 两个协程 for num := range ch 累加，channel 关闭后打印；3) 用 WaitGroup 等两个协程结束。
+
+**参考回答**：
+
+```go
+func sumNumbers(name string, ch <-chan int, wg *sync.WaitGroup) {
+    defer wg.Done()
+    sum := 0
+    for num := range ch { // 使用 for channel 机制接收数据直到通道关闭
+       sum += num
+    }
+    fmt.Printf("%s Sum: %d\n", name, sum)
+}
+
+func main() {
+    numbers := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+    evenCh := make(chan int)
+    oddCh := make(chan int)
+    wg := sync.WaitGroup{}
+    wg.Add(2) // 我们将启动两个 goroutine
+
+    // 启动两个 goroutine 来分别计算偶数和奇数的和
+    go sumNumbers("Even", evenCh, &wg)
+    go sumNumbers("Odd", oddCh, &wg)
+
+    // 将数组中的数字根据奇偶性发送到不同的通道
+    for _, num := range numbers {
+       if num%2 == 0 {
+          evenCh <- num
+       } else {
+          oddCh <- num
+       }
+    }
+
+    // 关闭通道，表示没有更多的数字会发送，不能用defer关
+    close(evenCh)
+    close(oddCh)
+
+    // 等待两个 goroutine 完成计算
+    wg.Wait()
+}
+```
+
+**常见追问**：这里为什么必须 close channel？不 close 会怎样？
+
+---
+
+## 106. 如何设计一个可控并发、可取消并能安全关闭的 goroutine 池？
+
+> 原题 ID：`q0366`
+
+**高频程度**：★★★★
+
+**考察点**：有界队列、固定 worker、context 取消、关闭所有权、错误与 panic 隔离。
+
+**回答框架**：
+
+1) 用固定数量 worker 从有界 jobs channel 消费，形成并发上限和背压
+2) 任务提交和 worker 同时监听 context.Done
+3) 只允许生产者协调方关闭队列，并用 sync.Once 保证只关闭一次
+4) WaitGroup 等待 worker；任务错误、panic 和关闭竞态要显式处理
+
+**参考回答**：
+
+一个可靠的 goroutine 池至少要解决并发上限、背压、取消和生命周期，而不只是“当前 worker 不够就再启动一个”。常见设计是在创建池时固定启动 N 个 worker，它们从有界 `jobs` channel 读取任务；队列满时 `Submit` 阻塞、超时或明确返回 `ErrQueueFull`，不能无限堆积。
+
+worker 和提交端都应监听 `context.Context`。关闭通常分两种语义：优雅关闭停止接收新任务、关闭 jobs 并等待已入队任务完成；立即取消则触发 context，让 worker 停止或让支持 context 的任务尽快退出。channel 的关闭权必须唯一，通常由池的协调方通过 `sync.Once` 执行；发送方不能各自关闭，`Submit` 也要在池进入 closing 状态后返回错误，避免向已关闭 channel 发送而 panic。
+
+任务函数最好接受 context 并返回 error。池应决定错误是逐个返回、写入结果通道还是触发整体取消；worker 入口可按业务边界捕获 panic、记录堆栈并把它转成任务失败，但不能静默吞掉。最后用 `WaitGroup` 等待所有 worker 退出，并用竞态测试验证 Submit 与 Close 并发时不会死锁、重复关闭或丢失已确认任务。
+
+如果只是限制一批已有任务的并发数，`errgroup.Group` 配合 `SetLimit` 往往比自建长期 worker pool 更简单；只有需要持续队列、复用 worker 或定制背压时才值得维护池实现。
+
+**常见追问**：Submit、GracefulClose 和 Cancel 并发发生时，状态机应如何避免 send-on-closed-channel？
 
 ---

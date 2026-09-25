@@ -10,14 +10,24 @@ from __future__ import annotations
 
 import json
 import re
+from html import unescape
 from pathlib import Path
 
 from reviewed_full_v2 import FIELD_FIXES, MERGED_INTO, MOVE_TO, OVERRIDES
+from reviewed_followup_fixes import OVERRIDES as FOLLOWUP_OVERRIDES
 from reviewed_manual_fixes import (
     MANUAL_ANSWER_OVERRIDES,
     MANUAL_DROP_IDS,
     MANUAL_MOVE_TO,
     MANUAL_TITLE_REWRITES,
+)
+from reviewed_reclassification_v3 import (
+    DROP_IDS as RECLASSIFICATION_DROP_IDS,
+    FIELD_FIXES as RECLASSIFICATION_FIELD_FIXES,
+    MERGED_INTO as RECLASSIFICATION_MERGED_INTO,
+    MOVE_TO as RECLASSIFICATION_MOVE_TO,
+    OVERRIDES as RECLASSIFICATION_OVERRIDES,
+    TITLE_REWRITES as RECLASSIFICATION_TITLE_REWRITES,
 )
 from reviewed_extra_v2 import (
     EXTRA_DROP_IDS,
@@ -61,6 +71,7 @@ EXTRA_DOMAINS = {
     "go": "Go",
     "java": "Java",
     "mq": "消息队列",
+    "mongodb": "MongoDB",
     "mysql": "MySQL",
     "os-network": "操作系统与网络",
     "puzzle": "智力与开放题",
@@ -69,12 +80,12 @@ EXTRA_DOMAINS = {
 }
 
 DOMAINS = AI_DOMAINS | EXTRA_DOMAINS
-ALL_MERGED_INTO = MERGED_INTO | EXTRA_MERGED_INTO
+ALL_MERGED_INTO = MERGED_INTO | EXTRA_MERGED_INTO | RECLASSIFICATION_MERGED_INTO
 # Manual review (2026-09-20) wins: these moves and rewrites were applied in the
 # app database first and are replayed here so --replace cannot revert them.
-ALL_MOVE_TO = MOVE_TO | EXTRA_MOVE_TO | MANUAL_MOVE_TO
-ALL_OVERRIDES = OVERRIDES | EXTRA_OVERRIDES | MANUAL_ANSWER_OVERRIDES
-ALL_FIELD_FIXES = FIELD_FIXES | EXTRA_FIELD_FIXES
+ALL_MOVE_TO = MOVE_TO | EXTRA_MOVE_TO | MANUAL_MOVE_TO | RECLASSIFICATION_MOVE_TO
+ALL_OVERRIDES = OVERRIDES | EXTRA_OVERRIDES | MANUAL_ANSWER_OVERRIDES | RECLASSIFICATION_OVERRIDES | FOLLOWUP_OVERRIDES
+ALL_FIELD_FIXES = FIELD_FIXES | EXTRA_FIELD_FIXES | RECLASSIFICATION_FIELD_FIXES
 
 
 def write_crlf(path: Path, content: str) -> None:
@@ -288,7 +299,12 @@ TITLE_REWRITES = {
     "q3893": "DPO 的数学目标如何从带 KL 约束的 RLHF 目标推导出来？",
 }
 
-ALL_TITLE_REWRITES = TITLE_REWRITES | EXTRA_TITLE_REWRITES | MANUAL_TITLE_REWRITES
+ALL_TITLE_REWRITES = (
+    TITLE_REWRITES
+    | EXTRA_TITLE_REWRITES
+    | MANUAL_TITLE_REWRITES
+    | RECLASSIFICATION_TITLE_REWRITES
+)
 
 
 def load_feishu_answers() -> dict:
@@ -437,7 +453,12 @@ ANSWER_REWRITES = {
 def should_drop(item: dict, domain: str) -> bool:
     # MANUAL_DROP_IDS：人工复核确认「答案自述无法作答 / 与面试无关」的无效题，
     # 原记录仍会写入归档，可回查恢复。
-    if item["id"] in DROP_IDS or item["id"] in EXTRA_DROP_IDS or item["id"] in MANUAL_DROP_IDS:
+    if (
+        item["id"] in DROP_IDS
+        or item["id"] in EXTRA_DROP_IDS
+        or item["id"] in MANUAL_DROP_IDS
+        or item["id"] in RECLASSIFICATION_DROP_IDS
+    ):
         return True
     title = item.get("title", "")
     patterns = FRAGMENT_RE if domain in AI_DOMAINS else EXTRA_FRAGMENT_RE
@@ -511,6 +532,39 @@ def clean_editorial_fields(item: dict) -> dict:
     purported question. Reviewed replacements provide their own follow-ups.
     """
     answer = strip_boilerplate(item.get("answer", ""))
+    # Imported Cooper references are inert <cite> tags, not usable links in
+    # Markdown. Preserve the human-readable title without leaking raw HTML.
+    answer = re.sub(
+        r'<cite\b([^>]*)>\s*</cite>',
+        lambda match: unescape(re.search(r'title="([^"]*)"', match.group(1)).group(1))
+        if re.search(r'title="([^"]*)"', match.group(1)) else "",
+        answer,
+        flags=re.IGNORECASE,
+    )
+    answer = re.sub(r"(?m)^超卖推荐学习：【[^\n]+", "**超卖场景补充**", answer)
+    recommendation = re.search(r"(?m)^\s*(?:\*\*)?推荐学习(?:\*\*)?\s*[:：]?", answer)
+    if recommendation:
+        supplement = answer[recommendation.end():].strip().lstrip("*\n ")
+        if len(supplement) > 250 or re.search(r"(?m)^\s*(?:>|```|\*\*补充)|https?://", supplement):
+            answer = answer[:recommendation.start()].rstrip() + "\n\n**补充说明**\n\n" + supplement
+        else:
+            answer = answer[:recommendation.start()].rstrip()
+    # Keep every question as the only outline node.  Source material sometimes
+    # contains third- to sixth-level headings inside an answer; turn those
+    # section labels into standalone bold lines without touching code fences.
+    normalized_lines = []
+    in_fence = False
+    for line in answer.splitlines():
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+        heading = None if in_fence else re.fullmatch(r"\s*#{3,6}\s+(.+?)\s*", line)
+        if heading:
+            label = heading.group(1).strip()
+            if not (label.startswith("**") and label.endswith("**")):
+                label = f"**{label}**"
+            line = label
+        normalized_lines.append(line)
+    answer = "\n".join(normalized_lines)
     coaching = re.search(r"(?:【)?(?:加分点|常见雷区)(?:】|[:：]|是)", answer)
     if coaching:
         answer = answer[:coaching.start()].rstrip()
@@ -585,10 +639,18 @@ def destination_for(domain: str, item: dict) -> str:
 def curate_domains() -> dict[str, list[dict]]:
     # Read every domain before writing any: a moved record must not be lost or
     # loaded twice just because its destination sorts before its source.
-    original = {
-        name: [json.loads(line) for line in (AUTHORED / f"{name}.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
-        for name in DOMAINS
-    }
+    original = {}
+    for name in DOMAINS:
+        source_path = AUTHORED / f"{name}.jsonl"
+        original[name] = (
+            [
+                json.loads(line)
+                for line in source_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            if source_path.exists()
+            else []
+        )
     results = {name: [] for name in DOMAINS}
     moved = []
     archive_paths = {
@@ -614,8 +676,8 @@ def curate_domains() -> dict[str, list[dict]]:
             # an AI domain, whose fragment rules are stricter than the extra ones.
             # The archive keeps the untouched source record.
             item = dict(raw_item)
-            if item["id"] in MANUAL_TITLE_REWRITES:
-                item["title"] = MANUAL_TITLE_REWRITES[item["id"]]
+            if item["id"] in ALL_TITLE_REWRITES:
+                item["title"] = ALL_TITLE_REWRITES[item["id"]]
             qid = item["id"]
             archive_key = "extra" if qid in archived["extra"] or name not in AI_DOMAINS else "ai"
             removed = qid in ALL_MERGED_INTO or should_drop(item, name)

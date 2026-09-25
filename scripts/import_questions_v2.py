@@ -16,7 +16,7 @@ from typing import Iterable
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SOURCE = ROOT / "crawler" / "questions_v2" / "authored"
-CURATED_QUESTION_COUNT = 2689
+CURATED_QUESTION_COUNT = 2586
 
 DOMAIN_LABELS = {
     "agent": "Agent 架构与工程",
@@ -36,6 +36,7 @@ DOMAIN_LABELS = {
     "llm-pretraining": "大模型预训练",
     "mq": "消息队列",
     "multimodal": "多模态",
+    "mongodb": "MongoDB",
     "mysql": "MySQL",
     "os-network": "操作系统与网络",
     "prompt": "提示工程",
@@ -48,14 +49,22 @@ DOMAIN_LABELS = {
 
 
 def load_questions(source: Path) -> Iterable[dict]:
-    """读取并校验所有题目；保留 JSONL 文件名作为最终分类依据。"""
+    """读取完整的审核题库；保留 JSONL 文件名作为最终分类依据。"""
     if not source.is_dir():
         raise FileNotFoundError(f"题库目录不存在: {source}")
     # 下划线前缀是 authored/ 里的临时批次（如 _b.jsonl），不参与 curate_full_v2.py 渲染，
     # 不属于 full_v2 正式题库，导入时必须排除，否则会多出未审核的题目。
     files = sorted(p for p in source.glob("*.jsonl") if not p.name.startswith("_"))
-    if not files:
-        raise ValueError(f"题库目录中没有 JSONL 文件: {source}")
+    expected_files = {f"{domain}.jsonl" for domain in DOMAIN_LABELS}
+    actual_files = {file.name for file in files}
+    if actual_files != expected_files:
+        raise ValueError(
+            f"题库分类文件不完整或含未知分类: 缺少 {sorted(expected_files - actual_files)}，"
+            f"多出 {sorted(actual_files - expected_files)}"
+        )
+    questions = []
+    seen_ids = set()
+    seen_titles = set()
     for file in files:
         domain = file.stem
         category = DOMAIN_LABELS.get(domain, domain)
@@ -70,11 +79,18 @@ def load_questions(source: Path) -> Iterable[dict]:
             answer = str(item.get("answer") or "").strip()
             if not title or not answer:
                 raise ValueError(f"题目或答案为空：{file}:{number}")
+            qid = str(item.get("id") or "").strip()
+            if not qid or qid in seen_ids:
+                raise ValueError(f"题目 ID 为空或重复：{file}:{number} ({qid})")
+            if title in seen_titles:
+                raise ValueError(f"题面重复：{file}:{number} ({title})")
+            seen_ids.add(qid)
+            seen_titles.add(title)
             freq = item.get("freq")
             tags = [category]
             if isinstance(freq, int) and freq >= 4:
                 tags.append("高频")
-            yield {
+            questions.append({
                 "platform": "questions_v2",
                 "category": category,
                 "tags": ",".join(tags),
@@ -83,7 +99,13 @@ def load_questions(source: Path) -> Iterable[dict]:
                 "question_text": title,
                 "reference_answer": answer,
                 "keywords": str(item.get("kaodian") or "").strip(),
-            }
+            })
+    if len(questions) != CURATED_QUESTION_COUNT:
+        raise ValueError(
+            f"题库数量不符：实际 {len(questions)}，预期 {CURATED_QUESTION_COUNT}；"
+            "请核对审核题库后再更新预期数量"
+        )
+    yield from questions
 
 
 def import_questions(

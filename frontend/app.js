@@ -93,9 +93,12 @@ function curatedTagsHtml(category, platform, tags, max) {
 }
 
 // 依赖无关的轻量 Markdown 渲染：图片 / 链接 / 行内代码 / 加粗 / 换行。
-// 先整体转义，再还原受信任的 markdown 片段；URL 仅放行 http(s)/data:image，防 XSS。
+// 先整体转义，再还原受信任的 markdown 片段；同源路径只允许图片上传目录。
 function _safeUrl(u) {
-  return /^(https?:|data:image\/)/i.test(u.trim()) ? u.trim() : "#";
+  const url = u.trim();
+  return /^(https?:|data:image\/)/i.test(url) ||
+    /^\/data\/images\/[a-f0-9]{32}\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(url)
+    ? url : "#";
 }
 function _safeUrlAttr(u) {
   // 此时 Markdown 文本已整体 escapeHtml；再转义会把查询参数中的 &amp; 变成 &amp;amp;。
