@@ -623,6 +623,7 @@ _CATEGORY_DESCRIPTIONS = {
     "python": "Python 语言特性与工程实践面试题",
     "go": "Go 语言并发与工程实践面试题",
     "golang": "Go 语言并发与工程实践面试题",
+    "mongodb": "文档数据库、BSON 与数据建模面试题",
     "c++": "C++ 语言与系统开发面试题",
     "mysql": "关系型数据库与 SQL 优化面试题",
     "redis": "高性能缓存与分布式锁面试题",

@@ -485,7 +485,7 @@ function renderMarkdown(text, keywords) {
 
 const TITLES = {
   bank:     ["题库", "浏览全部面试题，按难度、分类、标签筛选"],
-  memorize: ["背题", "大页面逐题展示问题与参考答案，← / → 翻页"],
+  memorize: ["背题", "大页面逐题展示问题与参考答案，← / → 逐题翻阅"],
   practice: ["练习", "作答后由判题引擎评分"],
   wrong:    ["错题本", "答错的题自动归集，按错误原因聚类"],
   review:   ["复习", "艾宾浩斯遗忘曲线调度"],
@@ -687,7 +687,7 @@ function renderPager() {
 }
 
 // ---------------- 背题模式 ----------------
-const mem = { category: "", level: 0, items: [], idx: 0, total: 0, offset: 0, limit: 5, pageSize: 5, loading: false };
+const mem = { category: "", level: 0, items: [], idx: 0, total: 0, offset: 0, limit: 5, loading: false };
 const memCategoryPicker = { items: [] };
 
 function selectedMemCategory() {
@@ -899,15 +899,13 @@ async function memLoadPage() {
 async function memStart() {
   mem.category = document.getElementById("memCat").value;
   mem.level = parseInt(document.getElementById("memDiff").value, 10) || 0;
-  mem.pageSize = parseInt(document.getElementById("memSize").value, 10) || 5;
-  mem.limit = mem.pageSize;
   mem.items = []; mem.offset = 0; mem.idx = 0; mem.total = 0; mem.loading = false;
   await memLoadPage();
   memRender();
 }
 
 async function memRender() {
-  // 单题文章式：mem.idx 是题索引（不再是页索引），mem.pageSize 仅用于后端一次拉多少
+  // 单题文章式：mem.idx 是题索引，mem.limit 仅用于后端批量预取。
   const endIdx = mem.idx + 1;
   while (endIdx > mem.items.length && mem.items.length < mem.total && !mem.loading) {
     mem.loading = true;
@@ -2269,7 +2267,6 @@ document.getElementById("diffFilter").addEventListener("change", () => {
 setupMemCategoryPicker();
 document.getElementById("memCat").addEventListener("change", memStart);
 document.getElementById("memDiff").addEventListener("change", memStart);
-document.getElementById("memSize").addEventListener("change", memStart);
 document.getElementById("memPrev").onclick = memPrev;
 document.getElementById("memNext").onclick = memNext;
 document.addEventListener("keydown", (e) => {
