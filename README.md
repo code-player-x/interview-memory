@@ -81,19 +81,24 @@ uvicorn backend.app:app --host 127.0.0.1 --port 8000 --reload
 
 ## 导入已审核题库
 
-系统启动后，执行一次命令即可把仓库内已审核的 **2,586 道** `questions_v2` 题目写入数据库；脚本会先校验分类文件、题目数量与唯一性，再按题面去重，可安全重复运行：
+系统启动后，执行一次命令即可把仓库内已审核的 **2,582 道** `questions_v2` 题目写入数据库；脚本会先校验分类文件、题目数量与唯一性，再按题面去重，可重复运行。此命令只新增，不更新已有答案：
 
 ```bash
 python scripts/import_questions_v2.py
 ```
 
-如果本地已经导入过旧版 `questions_v2`，且这些题没有关联答题、错题、复习或笔记记录，可使用安全同步模式更新为当前审核版：
+本地 SQLite 已导入旧版题库时，使用原位同步，先预览再写入。普通同步保留已有题目 ID、学习记录、图片和手工题；首次按明确标题匹配，之后通过源题 ID 映射处理改名：
 
 ```bash
-python scripts/import_questions_v2.py --replace
+python scripts/sync_questions_v2.py --database data/interview_memory.db
+python scripts/sync_questions_v2.py --database data/interview_memory.db --write
 ```
 
-存在关联学习记录时，该命令会拒绝替换，避免破坏学习进度。
+确认需要清理已从源题库移除的旧题时，在上述命令后增加 `--prune`，同样先预览、再 `--write --prune`。只处理 `platform=questions_v2`；待删除题目有任何学习记录关联或匹配有歧义时会拒绝执行，不能静默丢失笔记/进度。
+
+每次有实际写入都会先创建 `data/backups/before-corpus-sync-*.db` 完整备份；失败时事务整体回滚。需要回退已完成的同步时，先停止应用，保留当前数据库及 WAL 文件，再用备份恢复到新的数据库文件并通过 `DATABASE_URL` 指向它；确认后再启动，勿直接覆盖运行中的数据库。同步后再次预览应为零更新、零新增、零待清理。
+
+`import_questions_v2.py --replace` 仍保留为旧版整批替换入口，会重建题目 ID，有关联学习记录时拒绝执行；日常 SQLite 更新优先使用上述原位同步脚本。其他数据库尚未支持该同步脚本。
 
 Docker 容器内也已内置导入脚本和已审核题库，启动后可执行：
 
@@ -168,6 +173,11 @@ pip install -r requirements-dev.txt
 pytest tests/ -q            # 单元测试
 python verify_flows.py      # 全流程回归验证
 ```
+
+开发依赖还包含 `numpy`，用于 `crawler/scripts/test_embed_discriminative.py` 的短中文题面嵌入实验。
+真实模型实验需要本机已启动 Ollama（`http://localhost:11434`）且已安装相应嵌入模型，
+然后运行 `python crawler/scripts/test_embed_discriminative.py bge-m3`。
+单元测试用合成向量验证判定逻辑，不调用模型；单元测试通过不代表真实模型的区分度已经验证。
 
 ## 艾宾浩斯间隔序列（默认）
 

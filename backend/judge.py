@@ -44,6 +44,18 @@ def _extract_keywords(text: str) -> set:
     return {w for w in words if w not in _STOPWORDS}
 
 
+def _parse_result(data, source: str):
+    """Validate untrusted service output before it reaches response/DB models."""
+    if not isinstance(data, dict):
+        raise ValueError("judge result must be an object")
+    value = _parse_is_correct(data.get("is_correct"))
+    explanation = data.get("explanation", "")
+    error_reason = data.get("error_reason", "")
+    if not isinstance(explanation, str) or not isinstance(error_reason, str):
+        raise ValueError("judge explanation and error_reason must be strings")
+    return value, explanation, error_reason, source
+
+
 def _heuristic_judge(reference_answer: str, user_answer: str) -> Tuple[Optional[bool], str, str, str]:
     """启发式：参考答案关键词在用户答案中的覆盖率决定正误。"""
     ref_kw = _extract_keywords(reference_answer)
@@ -92,9 +104,9 @@ async def _llm_judge(question_text: str, reference_answer: str, user_answer: str
             resp.raise_for_status()
             content = resp.json()["choices"][0]["message"]["content"]
         import json
-        data = json.loads(content.strip().strip("`").replace("json", "", 1).strip("`"))
-        is_correct = _parse_is_correct(data.get("is_correct"))
-        return (is_correct, data.get("explanation", ""), data.get("error_reason", ""), "llm")
+        # Strip only a wrapping fence, not the word "json" inside the answer.
+        content = re.sub(r"\A```(?:json)?\s*([\s\S]*?)\s*```\Z", r"\1", content.strip(), flags=re.I)
+        return _parse_result(json.loads(content), "llm")
     except Exception:
         return None, "判题服务暂不可用", "judge_error", "pending"
 
@@ -126,8 +138,7 @@ async def _agent_judge(question_text: str, reference_answer: str, user_answer: s
             )
             response.raise_for_status()
             data = response.json()
-        value = _parse_is_correct(data.get("is_correct"))
-        return value, data.get("explanation", ""), data.get("error_reason", ""), "agent"
+        return _parse_result(data, "agent")
     except Exception:
         return None, "判题服务暂不可用", "judge_error", "pending"
 

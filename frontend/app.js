@@ -129,16 +129,66 @@ function _paragraphizeMarkdownHtml(html, blockToken) {
   return html.split(blockToken).map(part => {
     if (!part) return "";
     if (blockToken.test(part)) return part;
-    return part.split(/\n{2,}/).map(paragraph => {
-      if (!paragraph.trim()) return "";
-      return "<p class='md-p'>" + paragraph.replace(/\n/g, "<br>") + "</p>";
-    }).join("");
+    return _renderTextBlocks(part);
   }).join("");
+}
+
+// Input is already escaped and inline-rendered. Only generate our own block
+// tags; never interpret arbitrary source HTML. Lists work with 1, 2 or 5 items
+// and stop at the next paragraph instead of swallowing the rest of the answer.
+function _renderTextBlocks(html) {
+  const lines = html.replace(/\r\n/g, "\n").split("\n");
+  const listItem = line => /^(\s*)(?:(\d+)[.)]|([-*+]))\s+(.+)$/.exec(line);
+  const output = [];
+  let i = 0;
+  while (i < lines.length) {
+    if (!lines[i].trim()) { i++; continue; }
+    const first = listItem(lines[i]);
+    if (first) {
+      const ordered = Boolean(first[2]), indent = first[1].length;
+      const tag = ordered ? "ol" : "ul", items = [];
+      while (i < lines.length) {
+        const match = listItem(lines[i]);
+        if (!match || match[1].length !== indent || Boolean(match[2]) !== ordered) break;
+        const body = [match[4]];
+        i++;
+        while (i < lines.length) {
+          if (!lines[i].trim()) {
+            let next = i + 1;
+            while (next < lines.length && !lines[next].trim()) next++;
+            const following = next < lines.length ? listItem(lines[next]) : null;
+            if (following && following[1].length === indent && Boolean(following[2]) === ordered) {
+              i = next;
+              break;
+            }
+            if (next < lines.length && lines[next].search(/\S/) > indent) {
+              body.push(""); i++; continue;
+            }
+            break;
+          }
+          if (lines[i].search(/\S/) <= indent) break;
+          body.push(lines[i].slice(Math.min(indent + 2, lines[i].search(/\S/))));
+          i++;
+        }
+        items.push("<li>" + _renderTextBlocks(body.join("\n")) + "</li>");
+      }
+      output.push("<" + tag + " class='md-list'" + (ordered ? " start='" + Number(first[2]) + "'" : "") + ">" + items.join("") + "</" + tag + ">");
+      continue;
+    }
+    const paragraph = [];
+    while (i < lines.length && lines[i].trim() && !listItem(lines[i])) paragraph.push(lines[i++]);
+    const content = paragraph.join("<br>");
+    const section = /^<strong>[^<>]+<\/strong>$/.test(content);
+    output.push("<p class='" + (section ? "md-section" : "md-p") + "'>" + content + "</p>");
+  }
+  return output.join("");
 }
 // 启发式：把「连续 2+ 行、每行以 ≥4 空格/Tab 缩进、且含代码特征、无中文标点」的段落
 // 包成 ``` 围栏，便于统一渲染为高亮代码块（飞书导入的纯文本代码题也能识别）。
 function _wrapIndentedCode(text) {
-  return text.replace(/((?:^[ \t]{4,}.*(?:\r?\n|$)){2,})/gm, (block) => {
+  // Existing fences are already complete code blocks: never wrap their bodies.
+  return text.replace(/(```[^\n]*\r?\n[\s\S]*?```)|((?:^[ \t]{4,}.*(?:\r?\n|$)){2,})/gm, (match, fence, block) => {
+    if (fence) return fence;
     const looksLikeCode = /(func\s|package\s|import\s|class\s|def\s|return\s|=>|var\s|let\s|const\s|if\s|for\s|while\s|#include|public\s|private\s|protected\s|<\?php|print\(|console\.|system\.|SELECT\s|INSERT\s|UPDATE\s|DELETE\s|CREATE\s|FROM\s|echo\s)/i.test(block)
       && !/[，。；：！？、（）《》「」]/u.test(block);
     if (!looksLikeCode) return block;
@@ -211,8 +261,9 @@ function _wrapUnindentedCode(text) {
   let codeCount = 0; // 强信号行计数（决定是否真包成围栏）
   let inFence = false; // 是否在已有 ``` 围栏内
   const flush = () => {
-    // 去掉首尾空行
-    while (buf.length && !buf[0].trim()) buf.shift();
+    // Keep paragraph boundaries even when the buffered lines are not code.
+    // Dropping these blanks used to join section labels to the previous answer.
+    while (buf.length && !buf[0].trim()) out.push(buf.shift());
     let end = buf.length;
     while (end > 0 && !buf[end - 1].trim()) end--;
     if (codeCount >= 2) {
@@ -269,6 +320,11 @@ const _FENCE = /```([^\n]*)\r?\n([\s\S]*?)```/g;
 const _P0 = "", _P1 = "";
 
 function _beautifyAnswer(text) {
+  // Legacy one-paragraph numbering only. Structured Markdown must go through
+  // the block renderer; otherwise the old regex absorbs later section labels.
+  if (text.includes("\n") || /^\s*(?:[-*+] |\d+[.)] )/.test(text)) {
+    return { out: text, valid: [], count: 0 };
+  }
   // 抽离围栏 + 行内代码（占位符隔离，避免被正则误识）
   const fences = [];
   text = text.replace(/```[\s\S]*?```/g, (m) => { fences.push(m); return _P0 + "K" + (fences.length - 1) + _P1; });
@@ -926,15 +982,12 @@ async function memRender() {
   const kwHtml = kws.length
     ? "<div class='mem-kws'>" + kws.map(k => "<span class='kw-pill'>" + escapeHtml(k) + "</span>").join("") + "</div>"
     : "";
-  const statsHtml =
-    "<div class='mem-stats'>" +
-      "<button class='mem-share' type='button' title='复制链接' data-qid='" + q.id + "' onclick='copyShareLink(this)'>🔗 分享题目</button>" +
-    "</div>";
   const tagsHtml =
     "<div class='mem-tags'>" +
       "<span class='badge " + dm.cls + "'>" + dm.label + "</span>" +
       "<span class='pill'>" + escapeHtml(q.category || "") + "</span>" +
       curatedTagsHtml(q.category, q.platform, q.tags, 4) +
+      "<button class='mem-share' type='button' title='复制链接' data-qid='" + q.id + "' onclick='copyShareLink(this)'>🔗 分享题目</button>" +
     "</div>";
   box.innerHTML =
     "<article class='mem-article'>" +
@@ -943,7 +996,6 @@ async function memRender() {
         "<span class='md-inline'>" + renderInlineMarkdown(q.question_text || "") + "</span>" +
       "</h1>" +
       tagsHtml +
-      statsHtml +
       "<div class='mem-tabs'>" +
         "<div class='mem-tab active'>📖 推荐答案</div>" +
         "<div class='mem-tab muted'>🎙️ 开始面试（自测模式）</div>" +

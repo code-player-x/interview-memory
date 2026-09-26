@@ -13,8 +13,16 @@ import re
 from html import unescape
 from pathlib import Path
 
+from answer_structure import AGENT_ANSWER, structure_answer
+
 from reviewed_full_v2 import FIELD_FIXES, MERGED_INTO, MOVE_TO, OVERRIDES
 from reviewed_followup_fixes import OVERRIDES as FOLLOWUP_OVERRIDES
+from reviewed_audit_fixes import (
+    HEADING_REPAIRS,
+    MERGED_INTO as AUDIT_MERGED_INTO,
+    OVERRIDES as AUDIT_OVERRIDES,
+    TITLE_REWRITES as AUDIT_TITLE_REWRITES,
+)
 from reviewed_manual_fixes import (
     MANUAL_ANSWER_OVERRIDES,
     MANUAL_DROP_IDS,
@@ -80,11 +88,11 @@ EXTRA_DOMAINS = {
 }
 
 DOMAINS = AI_DOMAINS | EXTRA_DOMAINS
-ALL_MERGED_INTO = MERGED_INTO | EXTRA_MERGED_INTO | RECLASSIFICATION_MERGED_INTO
+ALL_MERGED_INTO = MERGED_INTO | EXTRA_MERGED_INTO | RECLASSIFICATION_MERGED_INTO | AUDIT_MERGED_INTO
 # Manual review (2026-09-20) wins: these moves and rewrites were applied in the
 # app database first and are replayed here so --replace cannot revert them.
 ALL_MOVE_TO = MOVE_TO | EXTRA_MOVE_TO | MANUAL_MOVE_TO | RECLASSIFICATION_MOVE_TO
-ALL_OVERRIDES = OVERRIDES | EXTRA_OVERRIDES | MANUAL_ANSWER_OVERRIDES | RECLASSIFICATION_OVERRIDES | FOLLOWUP_OVERRIDES
+ALL_OVERRIDES = OVERRIDES | EXTRA_OVERRIDES | MANUAL_ANSWER_OVERRIDES | RECLASSIFICATION_OVERRIDES | FOLLOWUP_OVERRIDES | AUDIT_OVERRIDES
 ALL_FIELD_FIXES = FIELD_FIXES | EXTRA_FIELD_FIXES | RECLASSIFICATION_FIELD_FIXES
 
 
@@ -304,6 +312,7 @@ ALL_TITLE_REWRITES = (
     | EXTRA_TITLE_REWRITES
     | MANUAL_TITLE_REWRITES
     | RECLASSIFICATION_TITLE_REWRITES
+    | AUDIT_TITLE_REWRITES
 )
 
 
@@ -569,7 +578,9 @@ def clean_editorial_fields(item: dict) -> dict:
     if coaching:
         answer = answer[:coaching.start()].rstrip()
     answer = collapse_accidental_leading_repeat(answer)
-    item["answer"] = answer
+    item["answer"] = structure_answer(AGENT_ANSWER if item.get("id") == "q0001" else answer)
+    for old, new in HEADING_REPAIRS.get(item.get("id"), ()):
+        item["answer"] = item["answer"].replace(old, new)
     focus = item.get("kaodian", "")
     generic = re.fullmatch(
         r"考察[^：。]{1,30}：能否讲清「(.+?)」的原理、取舍与落地细节。.*",

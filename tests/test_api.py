@@ -351,3 +351,93 @@ def test_articles_status_reports_available_test_resource(client):
     status = client.get("/api/articles/status")
     assert status.status_code == 200
     assert status.json() == {"available": True, "message": ""}
+
+
+def test_blank_quiz_retains_question_and_does_not_write_activity(client):
+    q = client.post("/api/questions/import", json={"question_text": "未答题回归", "reference_answer": "有效参考"}).json()
+    activity = client.get("/api/activity").json()
+    rows = client.post("/api/quiz/submit", json={"items": [
+        {"question_id": q["id"], "user_answer": " "},
+        {"question_id": 999999999, "user_answer": ""},
+    ]}).json()["results"]
+    assert rows[0]["explanation"] == "未作答"
+    assert rows[0]["reference_answer"] == "有效参考"
+    assert rows[1]["error_reason"] == "question_missing"
+    assert client.get("/api/activity").json() == activity
+
+
+def test_new_random_round_excludes_last_seen_not_highest_id(client):
+    ids = [client.post("/api/questions/import", json={"category": "轮次回归", "question_text": f"轮次题{i}", "reference_answer": "答案"}).json()["id"] for i in range(2)]
+    result = client.get("/api/practice/next", params={"category": "轮次回归", "seen_ids": f"invalid,{ids[1]},999999999,{ids[0]}"}).json()
+    assert result["id"] == ids[1]
+    assert result["round_complete"] is True
+    assert result["remaining"] == 1
+    # Single-question scopes must still cycle.
+    only = client.get("/api/practice/next", params={"category": "轮次回归", "seen_ids": str(ids[0])}).json()
+    assert only["id"] == ids[1] and not only["round_complete"]
+
+
+@pytest.mark.parametrize("endpoint", ["import-json", "import-batch"])
+def test_batch_import_deduplicates_within_and_across_batches(client, tmp_path, endpoint):
+    import json
+    title = "同批去重-" + endpoint
+    if endpoint == "import-json":
+        payload = {"items": [{"question_text": title, "reference_answer": "答案"}] * 2}
+    else:
+        source = tmp_path / "bank.json"
+        source.write_text(json.dumps({"questions": [{"question": title, "reference_answer": "答案"}] * 2}))
+        payload = {"path": str(source)}
+    first = client.post("/api/questions/" + endpoint, json=payload).json()
+    second = client.post("/api/questions/" + endpoint, json=payload).json()
+    assert (first["imported"], first["skipped"]) == (1, 1)
+    assert (second["imported"], second["skipped"]) == (0, 2)
+
+
+def test_forgotten_mastered_question_reopens_both_states(client):
+    q = client.post("/api/questions/import", json={"question_text": "遗忘状态回归", "reference_answer": "参考标准答案"}).json()["id"]
+    client.post("/api/answer", json={"question_id": q, "user_answer": "zzzz"})
+    assert client.post(f"/api/wrong-book/{q}/master").status_code == 200
+    result = client.post(f"/api/review/{q}", json={"remembered": False}).json()
+    assert result["stage"] == 1 and result["status"] == "pending"
+    db = SessionLocal()
+    try:
+        assert db.query(models.WrongBook).filter_by(question_id=q).one().mastery == "reviewing"
+    finally:
+        db.close()
+
+
+@pytest.mark.parametrize("invalid", [{"title": " "}, {"priority": -10}, {"priority": 5}, {"due_date": "2026-99-99"}, {"due_date": "2026-2-3"}])
+def test_todo_rejects_invalid_create_and_update(client, invalid):
+    assert client.post("/api/todos", json={"title": "合法待办", **invalid}).status_code == 422
+    row = client.post("/api/todos", json={"title": " 保留低优先级 ", "priority": 4, "due_date": "2026-09-26"}).json()
+    assert row["title"] == "保留低优先级"
+    assert client.put(f'/api/todos/{row["id"]}', json=invalid).status_code == 422
+    for minutes in (-25, 0, 1441):
+        assert client.post(f'/api/todos/{row["id"]}/focus/start', params={"minutes": minutes}).status_code == 422
+    assert client.post(f'/api/todos/{row["id"]}/focus/start', params={"minutes": 25}).status_code == 200
+
+
+def test_malformed_agent_result_is_pending_in_answer_and_quiz(client, monkeypatch):
+    import httpx
+
+    class Response:
+        def raise_for_status(self): pass
+        def json(self): return {"is_correct": True, "explanation": {"invalid": "object"}, "error_reason": ""}
+
+    class Client:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def post(self, *args, **kwargs): return Response()
+
+    monkeypatch.setenv("AGENT_JUDGE_URL", "http://agent.example")
+    monkeypatch.setattr(httpx, "AsyncClient", Client)
+    q = client.post("/api/questions/import", json={"question_text": "坏响应回归", "reference_answer": "标准答案"}).json()["id"]
+    data = {"question_id": q, "user_answer": "回答内容"}
+    single = client.post("/api/answer", json=data)
+    assert single.status_code == 200
+    assert single.json()["is_correct"] is None and single.json()["source"] == "pending"
+    batch = client.post("/api/quiz/submit", json={"items": [data]})
+    assert batch.status_code == 200
+    result = batch.json()["results"][0]
+    assert result["is_correct"] is None and result["judge_by"] == "pending"

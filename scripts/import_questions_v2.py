@@ -16,7 +16,7 @@ from typing import Iterable
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SOURCE = ROOT / "crawler" / "questions_v2" / "authored"
-CURATED_QUESTION_COUNT = 2586
+CURATED_QUESTION_COUNT = 2582
 
 DOMAIN_LABELS = {
     "agent": "Agent 架构与工程",
@@ -48,7 +48,7 @@ DOMAIN_LABELS = {
 }
 
 
-def load_questions(source: Path) -> Iterable[dict]:
+def load_questions(source: Path, *, with_source_id: bool = False) -> Iterable[dict]:
     """读取完整的审核题库；保留 JSONL 文件名作为最终分类依据。"""
     if not source.is_dir():
         raise FileNotFoundError(f"题库目录不存在: {source}")
@@ -90,7 +90,7 @@ def load_questions(source: Path) -> Iterable[dict]:
             tags = [category]
             if isinstance(freq, int) and freq >= 4:
                 tags.append("高频")
-            questions.append({
+            question = {
                 "platform": "questions_v2",
                 "category": category,
                 "tags": ",".join(tags),
@@ -99,7 +99,10 @@ def load_questions(source: Path) -> Iterable[dict]:
                 "question_text": title,
                 "reference_answer": answer,
                 "keywords": str(item.get("kaodian") or "").strip(),
-            })
+            }
+            if with_source_id:
+                question["source_id"] = qid
+            questions.append(question)
     if len(questions) != CURATED_QUESTION_COUNT:
         raise ValueError(
             f"题库数量不符：实际 {len(questions)}，预期 {CURATED_QUESTION_COUNT}；"
@@ -180,6 +183,8 @@ def main() -> int:
         print(f"校验通过：{total} 道题")
     else:
         print(f"导入完成：总计 {total}，新增 {imported}，已存在跳过 {skipped}")
+        if skipped and not args.replace:
+            print("注意：增量导入不会更新已有答案。同步本地 SQLite 请使用 scripts/sync_questions_v2.py，先预览再 --write。")
     return 0
 
 

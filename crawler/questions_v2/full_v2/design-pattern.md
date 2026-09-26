@@ -46,7 +46,17 @@
 
 **参考回答**：
 
-工厂方法模式把对象的创建从客户端彻底分离出去：定义一个工厂接口，声明创建产品的方法，每一种产品对应一个具体工厂类，由它负责创建对应的产品。以 Go 为例，先定义 Fruit 接口声明 Show 方法，再定义 Factory 接口声明 CreateFruit 方法返回 Fruit；Apple、Banana、Pear 实现 Fruit，AppleFactory、BananaFactory、PearFactory 分别实现 Factory 并在 CreateFruit 里返回各自的产品实例；客户端只持有 Factory 接口，需要什么产品就传入对应的工厂，完全不知道也不关心具体的产品类型。它和简单工厂最大的区别是：简单工厂用一个工厂类加参数分支创建所有产品，新增产品必须改这个工厂，违反开闭原则；工厂方法把创建职责下放到每个具体工厂，新增产品只需增加一个产品类和一个工厂类，完全不用修改已有代码，符合开闭原则。两者还有一个差别是使用方式：简单工厂客户端传的是类型标识，工厂方法客户端注入的是工厂对象，后者更灵活，可以配合配置或依赖注入在运行时决定用哪个工厂。适用场景：当对象的创建逻辑比较复杂，不只是 new 一下，而是要组合其他对象、做各种初始化操作时，就应该用工厂方法，把复杂的创建逻辑拆分到多个工厂类中，让每个工厂类都不至于过于复杂；也适合框架需要把创建产品的职责交给使用者扩展的场景（比如各种框架的抽象工厂方法）。缺点是类数量会翻倍，所以产品种类少且稳定时没必要引入。
+工厂方法模式把对象的创建从客户端彻底分离出去：定义一个工厂接口，声明创建产品的方法，每一种产品对应一个具体工厂类，由它负责创建对应的产品。
+
+- 以 Go 为例，先定义 Fruit 接口声明 Show 方法，再定义 Factory 接口声明 CreateFruit 方法返回 Fruit；
+- Apple、Banana、Pear 实现 Fruit，AppleFactory、BananaFactory、PearFactory 分别实现 Factory 并在 CreateFruit 里返回各自的产品实例；
+- 客户端只持有 Factory 接口，需要什么产品就传入对应的工厂，完全不知道也不关心具体的产品类型。
+
+它和简单工厂最大的区别是：简单工厂用一个工厂类加参数分支创建所有产品，新增产品必须改这个工厂，违反开闭原则；工厂方法把创建职责下放到每个具体工厂，新增产品只需增加一个产品类和一个工厂类，完全不用修改已有代码，符合开闭原则。
+
+两者还有一个差别是使用方式：简单工厂客户端传的是类型标识，工厂方法客户端注入的是工厂对象，后者更灵活，可以配合配置或依赖注入在运行时决定用哪个工厂。
+
+适用场景：当对象的创建逻辑比较复杂，不只是 new 一下，而是要组合其他对象、做各种初始化操作时，就应该用工厂方法，把复杂的创建逻辑拆分到多个工厂类中，让每个工厂类都不至于过于复杂；也适合框架需要把创建产品的职责交给使用者扩展的场景（比如各种框架的抽象工厂方法）。缺点是类数量会翻倍，所以产品种类少且稳定时没必要引入。
 
 **常见追问**：那如果产品是一族而不是一个，工厂方法就不够用了，怎么办？
 
@@ -66,7 +76,19 @@
 
 **参考回答**：
 
-设计模式是解决特定上下文的可复用方案模板，重点不是背 23 种，而是讲清在真实项目里如何用模式解耦变化点。本质是针对变化点的封装：把易变部分抽象成接口，让稳定部分依赖抽象而非实现。后端和 Agent 常用的有几类：策略模式把可互换算法抽成接口，例如 LLM Agent 里定义 Planner.plan(state) 返回 Action，运行时按配置切换 ReAct 或 Plan-and-Execute；工厂或抽象工厂集中创建复杂对象，例如 VectorStoreFactory.create(type) 屏蔽 Milvus、Pinecone、pgvector 的 SDK 差异；责任链把请求沿链传递、每环可处理或放行，例如 RAG 的查询预处理链（敏感词过滤、查询改写、意图识别、路由到不同检索器），也常用于 Agent 的鉴权限流日志审计中间件；观察者或发布订阅处理一对多通知，例如 Agent 执行事件 on_token、on_tool_call、on_error 广播给 SSE 推送、计费、Trace 上报；模板方法父类定义骨架、子类实现步骤，例如 BaseIngestPipeline.run() 固定解析、分块、embedding、入库，子类只实现 parse 和 chunk；装饰器动态叠加职责，例如 LLM Client 外套 Retry、Cache、RateLimit、Tracing；单例管理全局唯一资源如配置和连接池，但要注意并发与可测试性，现代更推荐依赖注入容器管生命周期。取舍上，模式会增加抽象层和类数量，过度设计是反模式，判断标准是变化点是否真实存在且频繁变化；如果只有一个实现且短期不会扩展，直接写 if-else 更清晰。
+设计模式是解决特定上下文的可复用方案模板，重点不是背 23 种，而是讲清在真实项目里如何用模式解耦变化点。本质是针对变化点的封装：把易变部分抽象成接口，让稳定部分依赖抽象而非实现。
+
+后端和 Agent 常用的有几类：
+
+- 策略模式把可互换算法抽成接口，例如 LLM Agent 里定义 Planner.plan(state) 返回 Action，运行时按配置切换 ReAct 或 Plan-and-Execute；
+- 工厂或抽象工厂集中创建复杂对象，例如 VectorStoreFactory.create(type) 屏蔽 Milvus、Pinecone、pgvector 的 SDK 差异；
+- 责任链把请求沿链传递、每环可处理或放行，例如 RAG 的查询预处理链（敏感词过滤、查询改写、意图识别、路由到不同检索器），也常用于 Agent 的鉴权限流日志审计中间件；
+- 观察者或发布订阅处理一对多通知，例如 Agent 执行事件 on_token、on_tool_call、on_error 广播给 SSE 推送、计费、Trace 上报；
+- 模板方法父类定义骨架、子类实现步骤，例如 BaseIngestPipeline.run() 固定解析、分块、embedding、入库，子类只实现 parse 和 chunk；
+- 装饰器动态叠加职责，例如 LLM Client 外套 Retry、Cache、RateLimit、Tracing；
+- 单例管理全局唯一资源如配置和连接池，但要注意并发与可测试性，现代更推荐依赖注入容器管生命周期。
+
+取舍上，模式会增加抽象层和类数量，过度设计是反模式，判断标准是变化点是否真实存在且频繁变化；如果只有一个实现且短期不会扩展，直接写 if-else 更清晰。
 
 **常见追问**：在你的项目里策略模式具体解决的是什么变化点？为什么说单例滥用会导致并发和测试问题？
 
@@ -88,7 +110,17 @@
 
 面向接口编程的核心是让调用方依赖抽象而非具体实现，新增实现类即可扩展，无需修改框架代码或硬编码列表，这正是开闭原则（OCP）的体现。
 
-这句话描述的是典型的『面向接口编程 + 策略/插件式扩展』场景。原理是：框架在编译期只依赖接口（或抽象类），运行时通过某种机制（Spring 的依赖注入、SPI、工厂+反射、注册中心等）把具体实现类注入进来。调用方只调用接口方法，完全不知道背后是哪个实现。 通俗类比：插座和电器。插座（接口）规定了电压、插孔形状，电器（实现类）只要符合这个标准就能插上用。你新买一个吹风机，不需要改造家里的电路，也不需要把插座拆了重装，插上就行。 为什么能『加个实现类就完事』： 1. 框架代码里没有 `if (type == A) ... else if (type == B)` 这种硬编码分支，而是通过接口多态调用。 2. 实现类的发现通常靠：Spring 的 `@Component` 扫描 + `List<Interface>` 自动注入、Java SPI（`META-INF/services`）、或自定义注册表在启动时收集所有实现。 3. 新增实现类只影响扩展点，不触碰原有代码，符合开闭原则：对扩展开放，对修改关闭。 适用场景：支付渠道、消息通知渠道、风控规则、数据源路由、序列化协议、插件系统等。 例子：定义 `PayChannel` 接口，`AliPay`、`WeChatPay` 各实现它。订单服务注入 `Map<String, PayChannel>`（key 为 bean 名），根据渠道名取对应实现。新增 `ApplePay` 只需加一个类，订单服务一行不改。
+这句话描述的是典型的『面向接口编程 + 策略/插件式扩展』场景。原理是：框架在编译期只依赖接口（或抽象类），运行时通过某种机制（Spring 的依赖注入、SPI、工厂+反射、注册中心等）把具体实现类注入进来。调用方只调用接口方法，完全不知道背后是哪个实现。
+
+通俗类比：插座和电器。插座（接口）规定了电压、插孔形状，电器（实现类）只要符合这个标准就能插上用。你新买一个吹风机，不需要改造家里的电路，也不需要把插座拆了重装，插上就行。 为什么能『加个实现类就完事』：
+
+1. 框架代码里没有 `if (type == A) ... else if (type == B)` 这种硬编码分支，而是通过接口多态调用。
+2. 实现类的发现通常靠：Spring 的 `@Component` 扫描 + `List<Interface>` 自动注入、Java SPI（`META-INF/services`）、或自定义注册表在启动时收集所有实现。
+3. 新增实现类只影响扩展点，不触碰原有代码，符合开闭原则：对扩展开放，对修改关闭。
+
+适用场景：支付渠道、消息通知渠道、风控规则、数据源路由、序列化协议、插件系统等。
+
+例子：定义 `PayChannel` 接口，`AliPay`、`WeChatPay` 各实现它。订单服务注入 `Map<String, PayChannel>`（key 为 bean 名），根据渠道名取对应实现。新增 `ApplePay` 只需加一个类，订单服务一行不改。
 
 **常见追问**：如何避免「误以为『面向接口编程』就是每个类都抽个接口，导致接口泛滥、过度设计，反而增加维护成本。」？ 「把『加实现类就完事』理解成完全不用改任何东西，忽略了注册/配置/依赖注入容器仍需识别新类（如未加 `@Component` 就注入不进去）。」在真实项目中应如何规避？
 
@@ -110,7 +142,22 @@ Model（模型）：封装数据、状态和业务规则，例如 User 对象、
 
 MVC 是把应用拆成模型（数据与业务）、视图（展示）、控制器（接收输入并协调）三层，通过职责分离实现解耦，核心是模型与视图不直接通信、由控制器居中调度。
 
-MVC（Model-View-Controller）是一种架构模式，最早由 Trygve Reenskaug 在 1979 年提出于 Smalltalk-80 的 Xerox PARC 项目中，用于把用户界面与业务逻辑分离。 三层职责： 1. Model（模型）：封装数据、状态和业务规则，例如 User 对象、数据库访问、校验逻辑。它不关心界面如何渲染。 2. View（视图）：负责把模型数据渲染成用户可见的界面，例如 HTML 模板、JSON 响应、桌面窗口。它通常只读模型，不修改业务状态。 3. Controller（控制器）：接收用户输入（HTTP 请求、按钮点击），调用模型完成业务处理，再选择并驱动视图展示结果。 通俗类比：餐厅。Model 是后厨（食材、菜谱、做菜规则），View 是摆盘上桌的菜，Controller 是服务员：顾客点单（输入）→ 服务员通知后厨（调用 Model）→ 后厨做好后服务员端菜上桌（选择 View 渲染）。顾客不会直接进后厨炒菜，后厨也不直接面对顾客。 为什么需要 MVC： - 关注点分离：改界面不影响业务逻辑，改业务逻辑不影响界面。 - 可复用：同一 Model 可被 Web、移动端、命令行多个 View 复用。 - 可测试：Model 和 Controller 可以脱离 UI 做单元测试。 - 团队协作：前端、后端、设计可并行开发。 如何实现（以 Web 为例）： 1. 路由把 URL 映射到 Controller 的方法，例如 /users/1 → UserController.show(1)。 2. Controller 调用 Model：user = UserModel.findById(1)。 3. Controller 把 user 传给 View：render('user_detail', {user})。 4. View 用模板引擎（Jinja2、Thymeleaf、ERB）渲染 HTML 返回。 代码示意（伪代码）： class UserController: def show(self, id): user = UserModel.find(id) # Model return View.render('user.html', user=user) # View 变体与演进： - 经典 MVC：View 可直接观察 Model（Observer 模式），Model 变化通知 View 刷新。 - Web MVC：因 HTTP 无状态，通常由 Controller 主动把 Model 交给 View 渲染，View 不长期观察 Model。 - MVP：View 与 Model 完全隔离，Presenter 承担更多协调，View 通过接口与 Presenter 交互。 - MVVM：View 与 ViewModel 双向绑定，适合前端框架（Vue、Angular）。 适用场景：有交互界面、业务逻辑较复杂、需要多端展示或长期维护的系统。简单脚本或纯 API 服务可简化，不必强行套三层。
+MVC（Model-View-Controller）是一种架构模式，最早由 Trygve Reenskaug 在 1979 年提出于 Smalltalk-80 的 Xerox PARC 项目中，用于把用户界面与业务逻辑分离。 三层职责：
+
+1. Model（模型）：封装数据、状态和业务规则，例如 User 对象、数据库访问、校验逻辑。它不关心界面如何渲染。
+2. View（视图）：负责把模型数据渲染成用户可见的界面，例如 HTML 模板、JSON 响应、桌面窗口。它通常只读模型，不修改业务状态。
+3. Controller（控制器）：接收用户输入（HTTP 请求、按钮点击），调用模型完成业务处理，再选择并驱动视图展示结果。
+
+通俗类比：餐厅。Model 是后厨（食材、菜谱、做菜规则），View 是摆盘上桌的菜，Controller 是服务员：顾客点单（输入）→ 服务员通知后厨（调用 Model）→ 后厨做好后服务员端菜上桌（选择 View 渲染）。顾客不会直接进后厨炒菜，后厨也不直接面对顾客。 为什么需要 MVC：
+
+- 关注点分离：改界面不影响业务逻辑，改业务逻辑不影响界面。
+- 可复用：同一 Model 可被 Web、移动端、命令行多个 View 复用。
+- 可测试：Model 和 Controller 可以脱离 UI 做单元测试。
+- 团队协作：前端、后端、设计可并行开发。 如何实现（以 Web 为例）： 1. 路由把 URL 映射到 Controller 的方法，例如 /users/1 → UserController.show(1)。 2. Controller 调用 Model：user = UserModel.findById(1)。 3. Controller 把 user 传给 View：render('user_detail', {user})。 4. View 用模板引擎（Jinja2、Thymeleaf、ERB）渲染 HTML 返回。 代码示意（伪代码）： class UserController: def show(self, id): user = UserModel.find(id) # Model return View.render('user.html', user=user) # View 变体与演进：
+- 经典 MVC：View 可直接观察 Model（Observer 模式），Model 变化通知 View 刷新。
+- Web MVC：因 HTTP 无状态，通常由 Controller 主动把 Model 交给 View 渲染，View 不长期观察 Model。
+- MVP：View 与 Model 完全隔离，Presenter 承担更多协调，View 通过接口与 Presenter 交互。
+- MVVM：View 与 ViewModel 双向绑定，适合前端框架（Vue、Angular）。 适用场景：有交互界面、业务逻辑较复杂、需要多端展示或长期维护的系统。简单脚本或纯 API 服务可简化，不必强行套三层。
 
 **常见追问**：如何避免「误以为 MVC 是设计模式：它其实是架构模式，粒度比 GoF 设计模式大。」？ 「认为 Model 就是数据库表：Model 包含业务规则和状态，不只是 ORM 实体。」在真实项目中应如何规避？
 

@@ -1,2 +1,4 @@
 -r requirements.txt
 pytest
+# Short-text embedding discrimination experiment (crawler/scripts/).
+numpy

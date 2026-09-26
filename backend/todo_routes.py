@@ -7,8 +7,8 @@
 from datetime import datetime, date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from .db import get_db
@@ -17,19 +17,41 @@ from . import models
 router = APIRouter(prefix="/api/todos", tags=["todos"])
 
 
-class TodoIn(BaseModel):
+class _TodoValidation(BaseModel):
+    @field_validator("title", check_fields=False)
+    @classmethod
+    def validate_title(cls, value):
+        if value is None:
+            return value
+        value = value.strip()
+        if not value:
+            raise ValueError("待办标题不能为空")
+        return value
+
+    @field_validator("due_date", check_fields=False)
+    @classmethod
+    def validate_due_date(cls, value):
+        if value in (None, ""):
+            return value
+        # date.fromisoformat validates calendar dates; enforce the API format.
+        if len(value) != 10 or date.fromisoformat(value).isoformat() != value:
+            raise ValueError("日期必须为有效的 YYYY-MM-DD")
+        return value
+
+
+class TodoIn(_TodoValidation):
     title: str
     note: str = ""
     category: str = ""
-    priority: int = 1
+    priority: int = Field(default=1, ge=1, le=4)
     due_date: Optional[str] = None  # YYYY-MM-DD
 
 
-class TodoUpdate(BaseModel):
+class TodoUpdate(_TodoValidation):
     title: Optional[str] = None
     note: Optional[str] = None
     category: Optional[str] = None
-    priority: Optional[int] = None
+    priority: Optional[int] = Field(default=None, ge=1, le=4)
     due_date: Optional[str] = None
     done: Optional[bool] = None
 
@@ -37,10 +59,7 @@ class TodoUpdate(BaseModel):
 def _parse_date(s: Optional[str]) -> Optional[date]:
     if not s:
         return None
-    try:
-        return datetime.strptime(s, "%Y-%m-%d").date()
-    except ValueError:
-        return None
+    return date.fromisoformat(s)
 
 
 def _todo_out(t: models.Todo) -> dict:
@@ -130,7 +149,7 @@ def delete_todo(tid: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{tid}/focus/start")
-def focus_start(tid: int, minutes: int = 25, db: Session = Depends(get_db)):
+def focus_start(tid: int, minutes: int = Query(default=25, ge=1, le=1440), db: Session = Depends(get_db)):
     t = db.query(models.Todo).filter(models.Todo.id == tid, models.Todo.deleted == False).first()
     if not t:
         raise HTTPException(status_code=404, detail="待办不存在")

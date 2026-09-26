@@ -777,15 +777,17 @@ def import_question_batch(payload: QuestionImportBatch, db: Session = Depends(ge
     questions = bank.get("questions", [])
     imported = 0
     skipped = 0
+    seen_titles = set()
     for item in questions:
         text = item.get("question", "").strip()
         if not text:
             continue
         # 去重：相同题面跳过
         exists = db.query(models.Question).filter(models.Question.question_text == text).first()
-        if exists:
+        if exists or text in seen_titles:
             skipped += 1
             continue
+        seen_titles.add(text)
         # 标签：category + key_points 共同作为标签
         tag_parts = [item.get("category", "")]
         tag_parts.extend(item.get("key_points", []))
@@ -1023,11 +1025,12 @@ def practice_next(
         return _practice_out(question, total, total - (idx + 1), offset >= total)
 
     # random 模式
-    seen = set()
+    seen_order = []
     for s in seen_ids.split(","):
         s = s.strip()
         if s.isdigit():
-            seen.add(int(s))
+            seen_order.append(int(s))
+    seen = set(seen_order)
     filter_ids = [x.id for x in ordered.with_entities(models.Question.id).all()]
     seen_in_filter = seen & set(filter_ids)
     unseen_ids = [i for i in filter_ids if i not in seen_in_filter]
@@ -1040,11 +1043,12 @@ def practice_next(
     # 全部刷完 -> 重置新一轮（范围>1 时尽量不重复刚刷到的那一道）
     pool = set(filter_ids)
     if len(pool) > 1 and seen_in_filter:
-        pool = pool - {max(seen_in_filter)}
+        last_seen = next(qid for qid in reversed(seen_order) if qid in seen_in_filter)
+        pool.discard(last_seen)
     pick = (db.query(models.Question)
             .filter(models.Question.id.in_(list(pool)))
             .order_by(func.random()).first())
-    return _practice_out(pick, total, 0, True)
+    return _practice_out(pick, total, total - 1, True)
 
 
 # ----------------------------- 提交作答（触发判题） -----------------------------
@@ -1099,8 +1103,10 @@ async def quiz_submit(payload: QuizSubmitIn, db: Session = Depends(get_db)):
 
     async def _one(it):
         q = qmap.get(it.question_id)
-        if not q or not (it.user_answer or "").strip():
+        if not q:
             return (it, None, None, None, None)
+        if not (it.user_answer or "").strip():
+            return (it, q, None, None, None)
         async with judge_semaphore:
             is_correct, explanation, error_reason, source = await judge(
                 q.question_text, q.reference_answer, it.user_answer
@@ -1483,7 +1489,7 @@ def review_feedback(question_id: int, payload: ReviewFeedback, db: Session = Dep
         rs.status = "pending"
         rs.next_review_at = next_review_for_stage(rs.stage, steps, base=datetime.utcnow())
         wb = db.query(models.WrongBook).filter(models.WrongBook.question_id == question_id).first()
-        if wb and wb.mastery != "mastered":
+        if wb:
             wb.mastery = "reviewing"
     db.commit()
     return {"stage": rs.stage, "status": rs.status,
@@ -1675,6 +1681,7 @@ def import_questions_json(payload: QuestionImportList, db: Session = Depends(get
     按题面去重后批量入库。"""
     imported = 0
     skipped = 0
+    seen_titles = set()
     for item in payload.items:
         text = (item.question_text or "").strip()
         if not text:
@@ -1682,9 +1689,10 @@ def import_questions_json(payload: QuestionImportList, db: Session = Depends(get
             continue
         exists = db.query(models.Question).filter(
             models.Question.question_text == text).first()
-        if exists:
+        if exists or text in seen_titles:
             skipped += 1
             continue
+        seen_titles.add(text)
         db.add(models.Question(
             platform=item.platform, category=item.category, tags=item.tags,
             question_text=text, reference_answer=item.reference_answer,

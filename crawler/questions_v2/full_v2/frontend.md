@@ -1,6 +1,6 @@
 # 前端工程
 
-> 题目数量：**422** ｜ 渲染时间：自动 ｜ 源：authored/frontend.jsonl
+> 题目数量：**421** ｜ 渲染时间：自动 ｜ 源：authored/frontend.jsonl
 
 ---
 
@@ -64,7 +64,14 @@
 
 **参考回答**：
 
-这题表面问做过什么，实质是看你能不能把模糊需求抽象成稳定接口，以及是否处理过复杂组件特有的难题。我用 STAR 结构，重点放在复杂点和取舍上。例子：我们做低代码平台的动态表单设计器，要支持 30 多种字段类型、联动规则、校验、撤销重做、跨端渲染，并被 5 条业务线复用。复杂点拆四块：一是状态复杂，字段值、校验态、联动依赖、历史栈互相影响，直接堆 useState 会失控，最终用 reducer 加归一化 state 管理，把联动关系建成依赖图做增量重算；二是边界复杂，异步校验有竞态，用请求序号或 AbortController 保证最后一次生效，动态增删字段用稳定 id 而不是下标；三是性能复杂，大表单每次输入全量重渲染，改成字段级订阅加 memo 加虚拟滚动，把输入卡顿从 100ms 以上降到 16ms 内；四是复用复杂，通过 schema 驱动加插槽和自定义组件扩展点，让业务方不改组件源码就能接入，最终 5 条业务线复用，人均表单开发工时下降约 60%。
+这题表面问做过什么，实质是看你能不能把模糊需求抽象成稳定接口，以及是否处理过复杂组件特有的难题。我用 STAR 结构，重点放在复杂点和取舍上。
+
+例子：我们做低代码平台的动态表单设计器，要支持 30 多种字段类型、联动规则、校验、撤销重做、跨端渲染，并被 5 条业务线复用。复杂点拆四块：
+
+- 一是状态复杂，字段值、校验态、联动依赖、历史栈互相影响，直接堆 useState 会失控，最终用 reducer 加归一化 state 管理，把联动关系建成依赖图做增量重算；
+- 二是边界复杂，异步校验有竞态，用请求序号或 AbortController 保证最后一次生效，动态增删字段用稳定 id 而不是下标；
+- 三是性能复杂，大表单每次输入全量重渲染，改成字段级订阅加 memo 加虚拟滚动，把输入卡顿从 100ms 以上降到 16ms 内；
+- 四是复用复杂，通过 schema 驱动加插槽和自定义组件扩展点，让业务方不改组件源码就能接入，最终 5 条业务线复用，人均表单开发工时下降约 60%。
 
 **常见追问**：那联动关系出现环（A 依赖 B、B 又依赖 A）你怎么处理？会不会死循环？
 
@@ -84,7 +91,9 @@
 
 **参考回答**：
 
-保存格式和回显格式可以不一致，关键是前端画布数据与后端流程定义之间有一个适配层做双向转换。因为两者关注点不同：画布数据包含布局信息（x/y 坐标、缩放、颜色、分组），流程定义只关心流程逻辑（节点类型、顺序流、条件、监听器）。做法是保存时前端把画布模型转成后端引擎可执行的格式，比如 BPMN 2.0 XML，把坐标这类前端专有信息塞进 extensionElements 或自定义属性；回显时反向解析，把 BPMN 的 task、gateway、sequenceFlow 映射回画布节点和连线，若定义里没有坐标，就用 dagre 或 elk 这类自动布局算法算一份出来。工程上要收敛到一个统一的内部模型（Node/Edge/Graph），导入导出各写一个 adapter，避免后端引擎升级把前端画布结构冲垮。校验两边都要有：前端做即时可视化校验（孤立节点、分支不全），后端保存时做流程合法性校验（是否有环、网关出口是否完整）。
+保存格式和回显格式可以不一致，关键是前端画布数据与后端流程定义之间有一个适配层做双向转换。因为两者关注点不同：画布数据包含布局信息（x/y 坐标、缩放、颜色、分组），流程定义只关心流程逻辑（节点类型、顺序流、条件、监听器）。做法是保存时前端把画布模型转成后端引擎可执行的格式，比如 BPMN 2.0 XML，把坐标这类前端专有信息塞进 extensionElements 或自定义属性；回显时反向解析，把 BPMN 的 task、gateway、sequenceFlow 映射回画布节点和连线，若定义里没有坐标，就用 dagre 或 elk 这类自动布局算法算一份出来。
+
+工程上要收敛到一个统一的内部模型（Node/Edge/Graph），导入导出各写一个 adapter，避免后端引擎升级把前端画布结构冲垮。校验两边都要有：前端做即时可视化校验（孤立节点、分支不全），后端保存时做流程合法性校验（是否有环、网关出口是否完整）。
 
 **常见追问**：如果后端引擎的 BPMN 版本升级新增了节点类型，前端画布不认识怎么办？
 
@@ -104,7 +113,19 @@
 
 **参考回答**：
 
-我们做低代码不是因为时髦，而是业务和研发的供需关系失衡了。软件交付可以拆三层：稳定层是表单、列表、增删改查、权限、审批流、报表，模式高度重复，占业务系统六到八成工作量；变化层是各业务不同的规则、算法和第三方集成；探索层是还没想清楚、要快速试错的新业务。低代码的定位就是把稳定层用可视化建模加元数据驱动加运行时解释固化下来，让产品甚至业务方能拖拽出页面和流程；变化层通过插件、脚本、自定义组件和 API 扩展点留给专业开发；探索层用低代码快速搭 MVP。类比就是乐高：标准砖块工厂做好按图纸拼，遇到异形结构再用 3D 打印补。它不替代工程师，而是把工程师从拧螺丝变成设计图纸和造特殊零件。适用场景是标准化程度高、变化可枚举的中后台系统，不适合交互高度定制、强实时或极致性能的 C 端页面。
+我们做低代码不是因为时髦，而是业务和研发的供需关系失衡了。
+
+- 软件交付可以拆三层：稳定层是表单、列表、增删改查、权限、审批流、报表，模式高度重复，占业务系统六到八成工作量；
+- 变化层是各业务不同的规则、算法和第三方集成；
+- 探索层是还没想清楚、要快速试错的新业务。
+
+- 低代码的定位就是把稳定层用可视化建模加元数据驱动加运行时解释固化下来，让产品甚至业务方能拖拽出页面和流程；
+- 变化层通过插件、脚本、自定义组件和 API 扩展点留给专业开发；
+- 探索层用低代码快速搭 MVP。
+
+类比就是乐高：标准砖块工厂做好按图纸拼，遇到异形结构再用 3D 打印补。它不替代工程师，而是把工程师从拧螺丝变成设计图纸和造特殊零件。
+
+适用场景是标准化程度高、变化可枚举的中后台系统，不适合交互高度定制、强实时或极致性能的 C 端页面。
 
 **常见追问**：低代码最容易被吐槽「复杂需求还是要写代码」，你怎么保证它不会做成四不像？
 
@@ -124,7 +145,15 @@
 
 **参考回答**：
 
-Vuex 是 Vue 的集中式状态管理库，核心是一个全局单例 store，由五部分组成：state 是唯一数据源；getters 是从 state 派生的计算属性并带缓存；mutations 是同步修改 state 的唯一方式；actions 处理异步逻辑、完成后 commit mutation；modules 把 store 拆成模块解决单一 store 膨胀问题。使用上组件里用 this.$store 访问，或者用 mapState、mapGetters、mapMutations、mapActions 减少样板代码：读数据用 computed 加 mapState 或 mapGetters，改数据用 commit，异步用 dispatch。原理上 Vuex 把 state 放进一个 Vue 实例的 data 里，借助 Vue 的响应式系统让依赖 state 的组件自动更新；强制用 mutation 改 state 是为了让每次变更可追踪，DevTools 能记录 mutation 日志并支持时间旅行调试。大型项目里我会按业务域拆 modules 并开启 namespaced 避免命名冲突；Vue 3 新项目现在更推荐 Pinia。
+- Vuex 是 Vue 的集中式状态管理库，核心是一个全局单例 store，由五部分组成：state 是唯一数据源；
+- getters 是从 state 派生的计算属性并带缓存；
+- mutations 是同步修改 state 的唯一方式；
+- actions 处理异步逻辑、完成后 commit mutation；
+- modules 把 store 拆成模块解决单一 store 膨胀问题。
+
+使用上组件里用 this.$store 访问，或者用 mapState、mapGetters、mapMutations、mapActions 减少样板代码：读数据用 computed 加 mapState 或 mapGetters，改数据用 commit，异步用 dispatch。
+
+原理上 Vuex 把 state 放进一个 Vue 实例的 data 里，借助 Vue 的响应式系统让依赖 state 的组件自动更新；强制用 mutation 改 state 是为了让每次变更可追踪，DevTools 能记录 mutation 日志并支持时间旅行调试。大型项目里我会按业务域拆 modules 并开启 namespaced 避免命名冲突；Vue 3 新项目现在更推荐 Pinia。
 
 **常见追问**：Vuex 的 mutation 为什么必须同步？如果我在 mutation 里写异步会出什么问题？
 
@@ -144,7 +173,13 @@ Vuex 是 Vue 的集中式状态管理库，核心是一个全局单例 store，�
 
 **参考回答**：
 
-Nuxt 是基于 Vue 的元框架，把 SSR 的复杂流程封装成开箱即用能力。原理分三步：一是服务端渲染，请求到 Node 服务后 Nuxt 按路由匹配页面组件，先执行页面里的数据获取逻辑（Nuxt 2 是 asyncData/fetch，Nuxt 3 是 useAsyncData/useFetch），拿到数据后调用 renderToString 生成完整 HTML 返回，用户和爬虫第一时间就能看到内容；二是客户端激活 hydration，浏览器先展示静态 HTML，同时加载 JS bundle，Vue 在客户端重建组件树并与已有 DOM 对比绑定事件，页面变成可交互的 SPA；三是后续导航不再请求完整 HTML，走客户端路由按需取数、局部更新。工程上靠约定式目录：pages 自动生成路由、layouts 管布局、middleware 管路由中间件、server/api 写接口、plugins 管插件。优点是首屏快、SEO 好、可做统一鉴权和数据预取；代价是服务端要有 Node 资源和并发容量，且只能跑同构代码，浏览器 API 只能在 onMounted 后用，数据要避免跨请求污染（Nuxt 3 用 useState 而不是全局变量）。
+Nuxt 是基于 Vue 的元框架，把 SSR 的复杂流程封装成开箱即用能力。原理分三步：
+
+- 一是服务端渲染，请求到 Node 服务后 Nuxt 按路由匹配页面组件，先执行页面里的数据获取逻辑（Nuxt 2 是 asyncData/fetch，Nuxt 3 是 useAsyncData/useFetch），拿到数据后调用 renderToString 生成完整 HTML 返回，用户和爬虫第一时间就能看到内容；
+- 二是客户端激活 hydration，浏览器先展示静态 HTML，同时加载 JS bundle，Vue 在客户端重建组件树并与已有 DOM 对比绑定事件，页面变成可交互的 SPA；
+- 三是后续导航不再请求完整 HTML，走客户端路由按需取数、局部更新。
+
+工程上靠约定式目录：pages 自动生成路由、layouts 管布局、middleware 管路由中间件、server/api 写接口、plugins 管插件。优点是首屏快、SEO 好、可做统一鉴权和数据预取；代价是服务端要有 Node 资源和并发容量，且只能跑同构代码，浏览器 API 只能在 onMounted 后用，数据要避免跨请求污染（Nuxt 3 用 useState 而不是全局变量）。
 
 **常见追问**：SSR 页面怎么做缓存和降级？如果 Node 服务挂了怎么办？
 
@@ -164,7 +199,11 @@ Nuxt 是基于 Vue 的元框架，把 SSR 的复杂流程封装成开箱即用�
 
 **参考回答**：
 
-Vue 3 的 reactive 基于 Proxy：读 obj.foo 触发 get 拦截并收集依赖，改 obj.foo 触发 set 拦截并通知依赖更新。而 const { foo } = obj 等价于 const foo = obj.foo，这一步只发生了一次 get，把当前值取出来赋给一个普通变量。之后 foo 和原 Proxy 对象再无关联：读它不经过 get，改它不经过 set，依赖收集与触发都断了，所以视图不再更新。分两种情况：解构出来是原始值时彻底丢失，改它完全没反应；解构出来是嵌套对象引用时，这个引用本身仍是被代理过的对象，改它的内部属性还能触发更新，但把这个变量重新赋值不行。解决办法是用 toRefs(obj) 或 toRef(obj, 'foo')，把每个属性转成带 get/set 的 ref，保持对原对象的访问链路；模板里会自动解包，用起来和普通值一样。Pinia 的 storeToRefs 就是做同样的事。
+Vue 3 的 reactive 基于 Proxy：读 obj.foo 触发 get 拦截并收集依赖，改 obj.foo 触发 set 拦截并通知依赖更新。而 const { foo } = obj 等价于 const foo = obj.foo，这一步只发生了一次 get，把当前值取出来赋给一个普通变量。
+
+之后 foo 和原 Proxy 对象再无关联：读它不经过 get，改它不经过 set，依赖收集与触发都断了，所以视图不再更新。分两种情况：解构出来是原始值时彻底丢失，改它完全没反应；解构出来是嵌套对象引用时，这个引用本身仍是被代理过的对象，改它的内部属性还能触发更新，但把这个变量重新赋值不行。
+
+解决办法是用 toRefs(obj) 或 toRef(obj, 'foo')，把每个属性转成带 get/set 的 ref，保持对原对象的访问链路；模板里会自动解包，用起来和普通值一样。Pinia 的 storeToRefs 就是做同样的事。
 
 **常见追问**：那 toRefs 和 toRef 有什么区别？如果解构的是 ref 本身会不会丢？
 
@@ -184,7 +223,9 @@ Vue 3 的 reactive 基于 Proxy：读 obj.foo 触发 get 拦截并收集依赖�
 
 **参考回答**：
 
-AI 流式输出时后端按 token 返回 Markdown，前端如果每收到一个 chunk 就直接渲染，会踩三类坑：半截代码块（已收到 ```js 开头但结尾 ``` 还没到）会把后面所有内容吞进代码块或高亮报错；半截表格（分隔行还没写完）会让表格塌缩成普通文本；半截链接（[官网](https://exa 括号未闭合）会生成错误链接或整段变纯文本。处理思路分三层：第一层缓冲与边界检测，维护一个未完成缓冲区，每次新 chunk 到达后用轻量扫描器检查未闭合的代码围栏数、未闭合的方括号圆括号、表格分隔行是否完整，只有结构闭合才交给渲染器；第二层降级与预补全，未闭合的代码块先当纯文本展示，或者临时补上结尾符号渲染完再把补的字符裁掉，保证视觉稳定不闪烁；第三层渲染优化，按 requestAnimationFrame 或 30 到 60ms 节流批量 flush，长文本用 shallowRef 和虚拟滚动，避免每次都全量 parse 造成卡顿。
+- AI 流式输出时后端按 token 返回 Markdown，前端如果每收到一个 chunk 就直接渲染，会踩三类坑：半截代码块（已收到 ```js 开头但结尾 ``` 还没到）会把后面所有内容吞进代码块或高亮报错；
+- 半截表格（分隔行还没写完）会让表格塌缩成普通文本；
+- 半截链接（[官网](https://exa 括号未闭合）会生成错误链接或整段变纯文本。处理思路分三层：第一层缓冲与边界检测，维护一个未完成缓冲区，每次新 chunk 到达后用轻量扫描器检查未闭合的代码围栏数、未闭合的方括号圆括号、表格分隔行是否完整，只有结构闭合才交给渲染器；第二层降级与预补全，未闭合的代码块先当纯文本展示，或者临时补上结尾符号渲染完再把补的字符裁掉，保证视觉稳定不闪烁；第三层渲染优化，按 requestAnimationFrame 或 30 到 60ms 节流批量 flush，长文本用 shallowRef 和虚拟滚动，避免每次都全量 parse 造成卡顿。
 
 **常见追问**：如果用户中途点停止生成，缓冲区里那段未闭合的内容你怎么收尾？
 
@@ -204,7 +245,11 @@ AI 流式输出时后端按 token 返回 Markdown，前端如果每收到一个 
 
 **参考回答**：
 
-在 Vuex/Pinia 和组件 state 里，这三者对应不同层级的复制策略。浅拷贝用 Object.assign、展开运算符、arr.slice()，只复制第一层，嵌套对象和数组仍是同一引用。坑是：改 state.user.name 会直接改到原 state，绕过 mutation/action 导致变更不可追踪、时间旅行失效；多个组件共享同一嵌套引用会互相污染。深拷贝用 JSON 序列化或 structuredClone，坑是 JSON 方式会丢 undefined、函数、Symbol，Date 变字符串，RegExp/Map/Set 直接丢；structuredClone 不能克隆函数和 DOM，遇到循环引用会抛错或需要自己用 WeakMap 做去重。结构化更新才是推荐做法：只复制需要变更路径上的节点，例如把 state 展开后只替换 user 这一层，用 Immer 可以自动做，好处是引用变化精准、依赖触发准确、也不污染原状态。结论：内部共享读用浅拷贝，需要快照、持久化或存历史才用深拷贝，改状态一律用结构化更新。
+在 Vuex/Pinia 和组件 state 里，这三者对应不同层级的复制策略。浅拷贝用 Object.assign、展开运算符、arr.slice()，只复制第一层，嵌套对象和数组仍是同一引用。坑是：改 state.user.name 会直接改到原 state，绕过 mutation/action 导致变更不可追踪、时间旅行失效；多个组件共享同一嵌套引用会互相污染。
+
+深拷贝用 JSON 序列化或 structuredClone，坑是 JSON 方式会丢 undefined、函数、Symbol，Date 变字符串，RegExp/Map/Set 直接丢；structuredClone 不能克隆函数和 DOM，遇到循环引用会抛错或需要自己用 WeakMap 做去重。
+
+结构化更新才是推荐做法：只复制需要变更路径上的节点，例如把 state 展开后只替换 user 这一层，用 Immer 可以自动做，好处是引用变化精准、依赖触发准确、也不污染原状态。结论：内部共享读用浅拷贝，需要快照、持久化或存历史才用深拷贝，改状态一律用结构化更新。
 
 **常见追问**：那大对象频繁做结构化更新会不会有性能问题？你会怎么优化？
 
@@ -224,7 +269,13 @@ AI 流式输出时后端按 token 返回 Markdown，前端如果每收到一个 
 
 **参考回答**：
 
-判断标准可以类比公司公告栏和个人便签：公告栏放所有人都要看、会改、要留痕的信息，便签放只跟自己有关、用完即弃的信息。适合放 Pinia 的有：一是跨组件跨层级共享，比如登录用户、权限、购物车、全局主题、多步表单的跨步骤数据；二是跨路由存活，比如从列表页进详情页再返回要保留的筛选条件、分页；三是需要多组件读写同步，比如全局 loading、通知队列；四是需要持久化或与后端同步，比如 token、用户偏好，配合 pinia-plugin-persistedstate；五是需要在 DevTools 集中调试和追踪的全局业务状态。适合留在组件内部的有：纯 UI 局部状态（弹窗开关、输入框临时值、当前 tab）、只被当前组件和直接子组件用到的状态（用 props 和 emit 更清晰）、随组件挂载卸载生灭的状态、以及高频变化且只有局部依赖、放全局反而导致大范围重渲染的状态。反模式是把所有状态都塞进 store，导致 store 变成上帝对象、组件复用性下降、状态来源难追踪。
+判断标准可以类比公司公告栏和个人便签：公告栏放所有人都要看、会改、要留痕的信息，便签放只跟自己有关、用完即弃的信息。适合放 Pinia 的有：
+
+- 一是跨组件跨层级共享，比如登录用户、权限、购物车、全局主题、多步表单的跨步骤数据；
+- 二是跨路由存活，比如从列表页进详情页再返回要保留的筛选条件、分页；
+- 三是需要多组件读写同步，比如全局 loading、通知队列；
+- 四是需要持久化或与后端同步，比如 token、用户偏好，配合 pinia-plugin-persistedstate；
+- 五是需要在 DevTools 集中调试和追踪的全局业务状态。适合留在组件内部的有：纯 UI 局部状态（弹窗开关、输入框临时值、当前 tab）、只被当前组件和直接子组件用到的状态（用 props 和 emit 更清晰）、随组件挂载卸载生灭的状态、以及高频变化且只有局部依赖、放全局反而导致大范围重渲染的状态。反模式是把所有状态都塞进 store，导致 store 变成上帝对象、组件复用性下降、状态来源难追踪。
 
 **常见追问**：如果两个页面都要用同一份数据，但生命周期完全不同，你会放 store 还是各存各的？
 
@@ -244,7 +295,11 @@ AI 流式输出时后端按 token 返回 Markdown，前端如果每收到一个 
 
 **参考回答**：
 
-条件分支常见三类表达：一是嵌套结构，形如 if 条件 A 则分支 1 否则分支 2，可递归形成决策树；二是扁平规则列表，按顺序或优先级匹配；三是表达式 DSL，condition 字段直接存 age 大于 18 且 vip 为 true 这类字符串，由后端解析执行。冲突指两个分支条件可能同时为真，比如规则 1 要求金额大于 100，规则 2 要求金额大于 100 且用户等级是 VIP；如果是扁平列表又没定义优先级，同一请求会命中多条，结果不确定。前端要不要校验？要，但定位是提前发现、提升体验，不是最终裁决。前端可以在编辑时做静态检查：条件区间是否重叠、是否互斥、是否缺少兜底分支、是否存在永远不可达的分支，并在保存前提示。同时必须用优先级或 first-match 语义把冲突定义清楚，并把最终判定交给后端执行引擎，因为前端拿不到完整上下文（用户实时等级、风控状态），也可能被绕过。
+条件分支常见三类表达：
+
+- 一是嵌套结构，形如 if 条件 A 则分支 1 否则分支 2，可递归形成决策树；
+- 二是扁平规则列表，按顺序或优先级匹配；
+- 三是表达式 DSL，condition 字段直接存 age 大于 18 且 vip 为 true 这类字符串，由后端解析执行。冲突指两个分支条件可能同时为真，比如规则 1 要求金额大于 100，规则 2 要求金额大于 100 且用户等级是 VIP；如果是扁平列表又没定义优先级，同一请求会命中多条，结果不确定。前端要不要校验？要，但定位是提前发现、提升体验，不是最终裁决。前端可以在编辑时做静态检查：条件区间是否重叠、是否互斥、是否缺少兜底分支、是否存在永远不可达的分支，并在保存前提示。同时必须用优先级或 first-match 语义把冲突定义清楚，并把最终判定交给后端执行引擎，因为前端拿不到完整上下文（用户实时等级、风控状态），也可能被绕过。
 
 **常见追问**：如果规则数上千条，前端每次编辑都全量做冲突检测会不会很卡？你怎么优化？
 
@@ -264,7 +319,9 @@ AI 流式输出时后端按 token 返回 Markdown，前端如果每收到一个 
 
 **参考回答**：
 
-配合的核心是：用响应式变量承载流式数据，按帧或按块批量更新触发视图，同时用节流和虚拟滚动控制渲染频率。分三层做。数据层：把流式内容放在 ref 里，收到 chunk 后累加到 content.value。更新层：不要每收到一个字就赋值，Vue 的响应式更新是微任务批处理的，高频赋值会引发大量重渲染，出现卡顿和光标抖动；正确做法是维护一个非响应式缓冲区，按时间窗口（16 到 50ms）或块大小（每 20 个 token）批量 flush 到响应式变量，可以用 requestAnimationFrame 或 setTimeout 合并。渲染层：长文本用 shallowRef 避免深层代理开销，Markdown 解析结果做缓存，只对变化的尾部重新解析，消息列表用虚拟滚动，自动滚到底部要在 nextTick 之后操作并判断用户是否手动上滑。生命周期：请求用 fetch 加 ReadableStream 或 EventSource，组件卸载时用 AbortController 中断，防止流回来后写已销毁组件导致报错和内存泄漏。
+配合的核心是：用响应式变量承载流式数据，按帧或按块批量更新触发视图，同时用节流和虚拟滚动控制渲染频率。分三层做。数据层：把流式内容放在 ref 里，收到 chunk 后累加到 content.value。更新层：不要每收到一个字就赋值，Vue 的响应式更新是微任务批处理的，高频赋值会引发大量重渲染，出现卡顿和光标抖动；正确做法是维护一个非响应式缓冲区，按时间窗口（16 到 50ms）或块大小（每 20 个 token）批量 flush 到响应式变量，可以用 requestAnimationFrame 或 setTimeout 合并。
+
+渲染层：长文本用 shallowRef 避免深层代理开销，Markdown 解析结果做缓存，只对变化的尾部重新解析，消息列表用虚拟滚动，自动滚到底部要在 nextTick 之后操作并判断用户是否手动上滑。生命周期：请求用 fetch 加 ReadableStream 或 EventSource，组件卸载时用 AbortController 中断，防止流回来后写已销毁组件导致报错和内存泄漏。
 
 **常见追问**：如果用户快速切换会话，上一个会话的流还在返回，你怎么保证不会串到新会话里？
 
@@ -284,7 +341,9 @@ AI 流式输出时后端按 token 返回 Markdown，前端如果每收到一个 
 
 **参考回答**：
 
-不要在组件里直接 new WebSocket，否则会出现组件销毁后连接还在、多个组件重复建连、断线无法自动重连、回调访问已卸载组件等问题。优雅方案是服务层加组合式函数两层。第一层写一个独立的 WebSocket 服务类，通常做成单例：负责建立连接、心跳保活（定时发 ping，超时未收到 pong 就主动重连）、断线重连（指数退避加最大重试次数，重连后重放未确认消息）、消息队列（未连接时先缓存待发消息）、按消息类型分发的订阅表。第二层写 useWebSocket 组合式函数：内部订阅服务层事件，把数据写入组件自己的 ref，并在 onUnmounted 自动退订，组件不关心底层连接。这样多个组件共享一条连接，连接生命周期与组件生命周期解耦，页面切换不会频繁建连。补充两点：单例要支持引用计数或按 URL 分实例，避免多租户串消息；生产环境要注意 token 怎么带（一般连接建立后首帧发 auth 或走 cookie）、浏览器标签页休眠会断开需要监听 visibilitychange 主动探活。
+不要在组件里直接 new WebSocket，否则会出现组件销毁后连接还在、多个组件重复建连、断线无法自动重连、回调访问已卸载组件等问题。优雅方案是服务层加组合式函数两层。第一层写一个独立的 WebSocket 服务类，通常做成单例：负责建立连接、心跳保活（定时发 ping，超时未收到 pong 就主动重连）、断线重连（指数退避加最大重试次数，重连后重放未确认消息）、消息队列（未连接时先缓存待发消息）、按消息类型分发的订阅表。
+
+第二层写 useWebSocket 组合式函数：内部订阅服务层事件，把数据写入组件自己的 ref，并在 onUnmounted 自动退订，组件不关心底层连接。这样多个组件共享一条连接，连接生命周期与组件生命周期解耦，页面切换不会频繁建连。补充两点：单例要支持引用计数或按 URL 分实例，避免多租户串消息；生产环境要注意 token 怎么带（一般连接建立后首帧发 auth 或走 cookie）、浏览器标签页休眠会断开需要监听 visibilitychange 主动探活。
 
 **常见追问**：多标签页打开同一个应用，会不会建立多条连接？你怎么做跨标签页共享？
 
@@ -304,7 +363,11 @@ AI 流式输出时后端按 token 返回 Markdown，前端如果每收到一个 
 
 **参考回答**：
 
-选 Vue3 不是因为版本新，而是它解决了 Vue2 在大型项目里的三个结构性痛点。第一是逻辑复用与组织：Vue2 的 Options API 把同一功能的 data、methods、computed 拆到不同选项里，逻辑一多就要来回跳；mixin 又有命名冲突、来源不清、隐式依赖的问题。Vue3 的 Composition API 允许按功能而不是按选项类型组织代码，一个 useXxx 就是可复用、可测试的逻辑单元。第二是响应式原理升级：Vue2 用 Object.defineProperty 递归劫持每个属性，无法监听新增删除属性、无法直接监听数组下标和 length，初始化全量递归还有开销；Vue3 用 Proxy 代理整个对象，天然支持属性增删和数组索引，且惰性递归、按需代理。第三是编译期优化：静态提升、Patch Flag、Block Tree、事件缓存，让 diff 只处理动态节点，运行时更小也更容易 tree-shaking。此外 Vue3 用 TS 重写，类型推导更好，官方生态（Pinia、Vite、Vue Router 4）已完全围绕 Vue3 构建，Vue2 也已停止维护，所以新项目默认选 Vue3。
+选 Vue3 不是因为版本新，而是它解决了 Vue2 在大型项目里的三个结构性痛点。
+
+- 第一是逻辑复用与组织：Vue2 的 Options API 把同一功能的 data、methods、computed 拆到不同选项里，逻辑一多就要来回跳；mixin 又有命名冲突、来源不清、隐式依赖的问题。Vue3 的 Composition API 允许按功能而不是按选项类型组织代码，一个 useXxx 就是可复用、可测试的逻辑单元。
+- 第二是响应式原理升级：Vue2 用 Object.defineProperty 递归劫持每个属性，无法监听新增删除属性、无法直接监听数组下标和 length，初始化全量递归还有开销；Vue3 用 Proxy 代理整个对象，天然支持属性增删和数组索引，且惰性递归、按需代理。
+- 第三是编译期优化：静态提升、Patch Flag、Block Tree、事件缓存，让 diff 只处理动态节点，运行时更小也更容易 tree-shaking。此外 Vue3 用 TS 重写，类型推导更好，官方生态（Pinia、Vite、Vue Router 4）已完全围绕 Vue3 构建，Vue2 也已停止维护，所以新项目默认选 Vue3。
 
 **常见追问**：从 Vue2 迁到 Vue3 你会怎么做？最大的坑是什么？
 
@@ -324,7 +387,11 @@ AI 流式输出时后端按 token 返回 Markdown，前端如果每收到一个 
 
 **参考回答**：
 
-传统 Web 前端的本质是确定性状态机：用户点击、发请求、后端返回结构化 JSON、前端按固定 schema 渲染，输入输出可枚举可预测，UI 是静态布局加事件驱动。AI 产品前端本质是不确定性生成界面，差异有四层。交互范式：从点击和表单变成自然语言加多轮对话，用户意图模糊，需要 prompt 输入框、上下文管理和会话历史。数据流：从请求响应一次性返回变成 SSE 或 WebSocket 逐 token 返回，前端要处理 chunk 拼接、增量渲染、停止生成、重试与中断，还要维护打字机效果和滚动跟随。渲染内容：从结构化 JSON 映射固定组件，变成非结构化的 Markdown、代码块、表格和工具调用结果，需要 Markdown 解析、代码高亮、流式容错（半截代码块、半截表格）和引用标注。状态与体验：同样的输入可能得到不同输出，还可能报错、超时、被限流，所以要有 loading 与骨架、错误边界、重试与降级、Token 成本与延迟的可观测。一句话总结：传统前端是确定性状态机，AI 前端是不确定性的流式会话界面，工程难点从渲染转到了异步状态与容错。
+传统 Web 前端的本质是确定性状态机：用户点击、发请求、后端返回结构化 JSON、前端按固定 schema 渲染，输入输出可枚举可预测，UI 是静态布局加事件驱动。AI 产品前端本质是不确定性生成界面，差异有四层。交互范式：从点击和表单变成自然语言加多轮对话，用户意图模糊，需要 prompt 输入框、上下文管理和会话历史。
+
+数据流：从请求响应一次性返回变成 SSE 或 WebSocket 逐 token 返回，前端要处理 chunk 拼接、增量渲染、停止生成、重试与中断，还要维护打字机效果和滚动跟随。渲染内容：从结构化 JSON 映射固定组件，变成非结构化的 Markdown、代码块、表格和工具调用结果，需要 Markdown 解析、代码高亮、流式容错（半截代码块、半截表格）和引用标注。
+
+状态与体验：同样的输入可能得到不同输出，还可能报错、超时、被限流，所以要有 loading 与骨架、错误边界、重试与降级、Token 成本与延迟的可观测。一句话总结：传统前端是确定性状态机，AI 前端是不确定性的流式会话界面，工程难点从渲染转到了异步状态与容错。
 
 **常见追问**：那你怎么做 AI 前端的性能优化和成本控制？比如长会话场景。
 
@@ -344,7 +411,12 @@ AI 流式输出时后端按 token 返回 Markdown，前端如果每收到一个 
 
 **参考回答**：
 
-Vue 熟练只解决了界面怎么渲染，而 AI 功能引入的是一类全新的数据源，特性和传统 REST 接口完全不同。第一，异步且长耗时：一次 LLM 调用可能几秒到几十秒，不能阻塞 UI，必须有 loading、骨架屏和取消能力（AbortController）。第二，流式返回：token 是一个个吐出来的，不是一次性 JSON，前端要边收边渲染，常见做法是 fetch 加 ReadableStream 手动解析 SSE，或用 EventSource（但 EventSource 只支持 GET，带鉴权和复杂 body 时通常改用 fetch 流）。第三，不确定性：同样输入可能得到不同输出，还可能中途报错、超时、被限流，所以要有重试、降级、错误边界和超时兜底。第四，有状态：多轮对话要维护 messages 历史，还要控制上下文长度（截断、摘要、只保留最近 N 轮），并把会话状态和 UI 状态分开管理。踩过这些坑之后会发现，真正的难点是异步状态机设计和流式渲染性能，而不是 Vue 本身。
+Vue 熟练只解决了界面怎么渲染，而 AI 功能引入的是一类全新的数据源，特性和传统 REST 接口完全不同。
+
+- 第一，异步且长耗时：一次 LLM 调用可能几秒到几十秒，不能阻塞 UI，必须有 loading、骨架屏和取消能力（AbortController）。
+- 第二，流式返回：token 是一个个吐出来的，不是一次性 JSON，前端要边收边渲染，常见做法是 fetch 加 ReadableStream 手动解析 SSE，或用 EventSource（但 EventSource 只支持 GET，带鉴权和复杂 body 时通常改用 fetch 流）。
+- 第三，不确定性：同样输入可能得到不同输出，还可能中途报错、超时、被限流，所以要有重试、降级、错误边界和超时兜底。
+- 第四，有状态：多轮对话要维护 messages 历史，还要控制上下文长度（截断、摘要、只保留最近 N 轮），并把会话状态和 UI 状态分开管理。踩过这些坑之后会发现，真正的难点是异步状态机设计和流式渲染性能，而不是 Vue 本身。
 
 **常见追问**：那你最后用什么方式管理会话状态和流式数据的？为什么不直接用 Pinia 存所有 messages？
 
@@ -364,7 +436,17 @@ Vue 熟练只解决了界面怎么渲染，而 AI 功能引入的是一类全新
 
 **参考回答**：
 
-我遇到过的主要是四类。第一类流式输出与渲染：每收到一个 chunk 就改响应式数据，会导致大量重渲染，出现卡顿、光标跳动、滚动抖动；解决办法是缓冲区加 rAF 或 30 到 60ms 节流批量 flush，长文本用 shallowRef，Markdown 只重新解析尾部，自动滚动放到 nextTick 后并判断用户是否手动上滑。第二类响应式与异步状态：并发请求竞态导致旧响应覆盖新响应，用请求序号或 AbortController 保证最后一次生效；组件卸载后流还在返回会写已销毁组件，必须在 onUnmounted 中断；多个会话共享全局状态容易串消息，要把请求与会话 id 绑定校验。第三类性能与内存：长会话消息列表不回收会内存暴涨，用虚拟滚动加消息分页加载；大字符串深层响应式代理开销大，改用 shallowRef 或 markRaw。第四类协议与安全：SSE 分帧边界处理不当会丢半个 JSON，要做按事件分隔符的粘包处理；EventSource 不支持自定义 header，需要换 fetch 流或把 token 放 cookie；还有渲染 Markdown 必须做 XSS 过滤，防止模型输出注入脚本。
+我遇到过的主要是四类。第一类流式输出与渲染：每收到一个 chunk 就改响应式数据，会导致大量重渲染，出现卡顿、光标跳动、滚动抖动；解决办法是缓冲区加 rAF 或 30 到 60ms 节流批量 flush，长文本用 shallowRef，Markdown 只重新解析尾部，自动滚动放到 nextTick 后并判断用户是否手动上滑。
+
+- 第二类响应式与异步状态：并发请求竞态导致旧响应覆盖新响应，用请求序号或 AbortController 保证最后一次生效；
+- 组件卸载后流还在返回会写已销毁组件，必须在 onUnmounted 中断；
+- 多个会话共享全局状态容易串消息，要把请求与会话 id 绑定校验。
+
+第三类性能与内存：长会话消息列表不回收会内存暴涨，用虚拟滚动加消息分页加载；大字符串深层响应式代理开销大，改用 shallowRef 或 markRaw。
+
+- 第四类协议与安全：SSE 分帧边界处理不当会丢半个 JSON，要做按事件分隔符的粘包处理；
+- EventSource 不支持自定义 header，需要换 fetch 流或把 token 放 cookie；
+- 还有渲染 Markdown 必须做 XSS 过滤，防止模型输出注入脚本。
 
 **常见追问**：那你怎么做流式内容的错误重试？重试时前面已经渲染的内容怎么处理？
 
@@ -384,7 +466,15 @@ Vue 熟练只解决了界面怎么渲染，而 AI 功能引入的是一类全新
 
 **参考回答**：
 
-两者都是同层比较、不跨层 diff，核心区别在如何决定节点复用与移动。Vue2 用双端比较：对新旧 children 各设首尾两个指针，每次比较四种组合（旧首对新首、旧尾对新尾、旧首对新尾、旧尾对新首），命中就复用并移动指针；都不命中就用旧节点的 key 建 map，拿新首节点去查，找到就移动，找不到就新建；循环结束后处理多余和缺失节点。问题是列表乱序时它是局部贪心匹配，可能产生较多次 DOM 移动。Vue3 的 patchKeyedChildren 分五步：从头部同步相同前缀、从尾部同步相同后缀、旧节点遍历完就挂载新的、新节点遍历完就卸载旧的、剩下的中间乱序部分用 key 建索引映射，求出旧节点下标序列的最长递增子序列，LIS 上的节点保持不动，其余节点按需移动或新建。LIS 的收益就是让需要移动的节点数量最少，官方 benchmark 里乱序列表的 DOM 操作次数明显下降。另外 Vue3 还有编译期的 Patch Flag 和 Block Tree，diff 时能直接跳过静态节点，只遍历动态节点，这也是整体更快的原因。
+两者都是同层比较、不跨层 diff，核心区别在如何决定节点复用与移动。
+
+- Vue2 用双端比较：对新旧 children 各设首尾两个指针，每次比较四种组合（旧首对新首、旧尾对新尾、旧首对新尾、旧尾对新首），命中就复用并移动指针；
+- 都不命中就用旧节点的 key 建 map，拿新首节点去查，找到就移动，找不到就新建；
+- 循环结束后处理多余和缺失节点。
+
+问题是列表乱序时它是局部贪心匹配，可能产生较多次 DOM 移动。Vue3 的 patchKeyedChildren 分五步：从头部同步相同前缀、从尾部同步相同后缀、旧节点遍历完就挂载新的、新节点遍历完就卸载旧的、剩下的中间乱序部分用 key 建索引映射，求出旧节点下标序列的最长递增子序列，LIS 上的节点保持不动，其余节点按需移动或新建。
+
+LIS 的收益就是让需要移动的节点数量最少，官方 benchmark 里乱序列表的 DOM 操作次数明显下降。另外 Vue3 还有编译期的 Patch Flag 和 Block Tree，diff 时能直接跳过静态节点，只遍历动态节点，这也是整体更快的原因。
 
 **常见追问**：如果没有 key 会怎样？key 用数组索引有什么问题？
 
@@ -404,7 +494,20 @@ Vue 熟练只解决了界面怎么渲染，而 AI 功能引入的是一类全新
 
 **参考回答**：
 
-可以从三个层面讲。第一层是编译期优化，收益最大：静态提升把纯静态节点和属性提到 render 函数外只创建一次，后续复用；Patch Flag 在编译时给动态节点打标记（文本、class、props），diff 时只比对被标记的动态部分；Block Tree 按 v-if、v-for 把模板切块，每个 block 只收集带标记的动态子节点，diff 时跳过大量静态节点；事件缓存让内联事件函数被复用，避免每次渲染生成新函数导致子组件无谓更新。第二层是响应式系统升级：Vue2 用 Object.defineProperty 递归遍历对象劫持每个属性，初始化有开销，且无法监听属性增删和数组下标；Vue3 用 Proxy 代理整个对象，支持属性增删和索引访问，而且是惰性递归，访问到才代理，初始化更快。第三层是运行时优化：Vue3 用 TS 重写、模块化拆分，配合 tree-shaking 让运行时体积更小；diff 用最长递增子序列减少节点移动；Fragment 支持多根节点、Teleport、Suspense 等新能力也减少了额外的包装开销。综合起来，Vue3 首屏渲染和更新性能都有提升，内存占用也更低。
+可以从三个层面讲。
+
+- 第一层是编译期优化，收益最大：静态提升把纯静态节点和属性提到 render 函数外只创建一次，后续复用；
+- Patch Flag 在编译时给动态节点打标记（文本、class、props），diff 时只比对被标记的动态部分；
+- Block Tree 按 v-if、v-for 把模板切块，每个 block 只收集带标记的动态子节点，diff 时跳过大量静态节点；
+- 事件缓存让内联事件函数被复用，避免每次渲染生成新函数导致子组件无谓更新。
+
+第二层是响应式系统升级：Vue2 用 Object.defineProperty 递归遍历对象劫持每个属性，初始化有开销，且无法监听属性增删和数组下标；Vue3 用 Proxy 代理整个对象，支持属性增删和索引访问，而且是惰性递归，访问到才代理，初始化更快。
+
+- 第三层是运行时优化：Vue3 用 TS 重写、模块化拆分，配合 tree-shaking 让运行时体积更小；
+- diff 用最长递增子序列减少节点移动；
+- Fragment 支持多根节点、Teleport、Suspense 等新能力也减少了额外的包装开销。
+
+综合起来，Vue3 首屏渲染和更新性能都有提升，内存占用也更低。
 
 **常见追问**：这些优化里哪一个在你项目里体感最明显？你怎么量化验证？
 
@@ -424,7 +527,12 @@ Vue 熟练只解决了界面怎么渲染，而 AI 功能引入的是一类全新
 
 **参考回答**：
 
-Vue3 的 setup 执行时机在组件实例创建之前（beforeCreate 之前），所以 setup 里没有 this，也不能像 Options API 那样通过 this 访问组件实例。如果确实要访问实例，可以用 getCurrentInstance()，它返回内部组件实例，里面有 ctx、proxy、appContext 等，其中 instance.proxy 才近似 Options API 的 this，还能拿到 appContext 用于挂载全局属性和调用全局方法。但要注意：getCurrentInstance 只能在 setup 或组合式函数内部调用，不能在异步回调里调用，它属于内部 API，官方明确不推荐在业务代码里依赖，因为实例结构可能随版本变化。更推荐的两种方式：一是需要 DOM 或子组件实例时用模板 ref，声明 const el = ref(null)，模板里绑定 ref，在 onMounted 之后访问；二是需要父组件调用子组件方法时，子组件用 defineExpose 显式暴露，父组件通过 ref 取到后再调用，这样接口清晰、也符合 Vue3 的封装理念。
+Vue3 的 setup 执行时机在组件实例创建之前（beforeCreate 之前），所以 setup 里没有 this，也不能像 Options API 那样通过 this 访问组件实例。如果确实要访问实例，可以用 getCurrentInstance()，它返回内部组件实例，里面有 ctx、proxy、appContext 等，其中 instance.proxy 才近似 Options API 的 this，还能拿到 appContext 用于挂载全局属性和调用全局方法。
+
+但要注意：getCurrentInstance 只能在 setup 或组合式函数内部调用，不能在异步回调里调用，它属于内部 API，官方明确不推荐在业务代码里依赖，因为实例结构可能随版本变化。更推荐的两种方式：
+
+- 一是需要 DOM 或子组件实例时用模板 ref，声明 const el = ref(null)，模板里绑定 ref，在 onMounted 之后访问；
+- 二是需要父组件调用子组件方法时，子组件用 defineExpose 显式暴露，父组件通过 ref 取到后再调用，这样接口清晰、也符合 Vue3 的封装理念。
 
 **常见追问**：那如果我想在子组件里调用父组件的方法，你会怎么做？
 
@@ -444,7 +552,14 @@ Vue3 的 setup 执行时机在组件实例创建之前（beforeCreate 之前）�
 
 **参考回答**：
 
-Proxy 是 ES6 新增的构造函数，用来创建对象的代理，从而拦截并自定义对目标对象的基本操作，比如属性读取、赋值、删除、in 判断等。响应式系统的做法是 new Proxy(target, handler) 包装原始数据，在 handler 里定义 get 和 set 陷阱。读取属性时 get 触发，把当前正在执行的副作用函数（例如组件渲染函数）收集为该属性的依赖；修改属性时 set 触发，取出依赖集合并依次执行，从而更新视图。类比就是给数据请了一个私人秘书：读取时记下谁读过，修改时通知所有读过的人。与 Vue2 的 Object.defineProperty 相比有四点优势：一是能监听属性新增和删除（不需要 Vue.set）；二是能监听数组下标赋值和 length 变化；三是不需要初始化时递归遍历所有属性，而是访问到哪一层才代理哪一层（惰性递归），初始化更快；四是 Proxy 操作的是整个对象，能拦截更多语义操作。代价是 Proxy 兼容性要求较高（无法 polyfill），这也是 Vue3 不支持 IE11 的原因之一。
+Proxy 是 ES6 新增的构造函数，用来创建对象的代理，从而拦截并自定义对目标对象的基本操作，比如属性读取、赋值、删除、in 判断等。响应式系统的做法是 new Proxy(target, handler) 包装原始数据，在 handler 里定义 get 和 set 陷阱。
+
+读取属性时 get 触发，把当前正在执行的副作用函数（例如组件渲染函数）收集为该属性的依赖；修改属性时 set 触发，取出依赖集合并依次执行，从而更新视图。类比就是给数据请了一个私人秘书：读取时记下谁读过，修改时通知所有读过的人。与 Vue2 的 Object.defineProperty 相比有四点优势：
+
+- 一是能监听属性新增和删除（不需要 Vue.set）；
+- 二是能监听数组下标赋值和 length 变化；
+- 三是不需要初始化时递归遍历所有属性，而是访问到哪一层才代理哪一层（惰性递归），初始化更快；
+- 四是 Proxy 操作的是整个对象，能拦截更多语义操作。代价是 Proxy 兼容性要求较高（无法 polyfill），这也是 Vue3 不支持 IE11 的原因之一。
 
 **常见追问**：那 Proxy 会不会有性能问题？深层大对象怎么处理？
 
@@ -464,7 +579,13 @@ Proxy 是 ES6 新增的构造函数，用来创建对象的代理，从而拦截
 
 **参考回答**：
 
-HTML 语义化就是编写页面时优先选择能表达内容语义的标签，而不是清一色用 div 和 span 加 class 堆砌。比如页面顶部用 header、导航用 nav、主体用 main、独立文章用 article、相关区块用 section、侧边栏用 aside、底部用 footer；标题用 h1 到 h6、段落用 p、列表用 ul/ol/li、表格用 table/thead/tbody/th/td、按钮用 button、表单控件用 label 关联 input。为什么重要？可以类比写文章：如果所有字都同样大小、没有段落和标题，读者也能读，但抓不住重点；语义化标签就像标题、段落、目录，让结构清晰。对机器而言价值更具体：一是可访问性，屏幕阅读器靠标签和 ARIA 角色识别内容，button 天然可聚焦可回车触发、a 天然可跳转，用 div 模拟就要自己补一堆键盘和焦点逻辑；二是 SEO，搜索引擎靠标签结构判断内容主次和权重；三是可维护性，结构一眼可读，样式与语义解耦，换肤改版更容易。落地原则是语义优先、样式其次，确实没有合适语义标签时才用 div，并配合 ARIA 补充角色与状态。
+HTML 语义化就是编写页面时优先选择能表达内容语义的标签，而不是清一色用 div 和 span 加 class 堆砌。比如页面顶部用 header、导航用 nav、主体用 main、独立文章用 article、相关区块用 section、侧边栏用 aside、底部用 footer；标题用 h1 到 h6、段落用 p、列表用 ul/ol/li、表格用 table/thead/tbody/th/td、按钮用 button、表单控件用 label 关联 input。
+
+为什么重要？可以类比写文章：如果所有字都同样大小、没有段落和标题，读者也能读，但抓不住重点；语义化标签就像标题、段落、目录，让结构清晰。对机器而言价值更具体：
+
+- 一是可访问性，屏幕阅读器靠标签和 ARIA 角色识别内容，button 天然可聚焦可回车触发、a 天然可跳转，用 div 模拟就要自己补一堆键盘和焦点逻辑；
+- 二是 SEO，搜索引擎靠标签结构判断内容主次和权重；
+- 三是可维护性，结构一眼可读，样式与语义解耦，换肤改版更容易。落地原则是语义优先、样式其次，确实没有合适语义标签时才用 div，并配合 ARIA 补充角色与状态。
 
 **常见追问**：那什么时候该用 div？用了 div 模拟按钮需要补哪些可访问性属性？
 
@@ -484,7 +605,14 @@ HTML 语义化就是编写页面时优先选择能表达内容语义的标签，
 
 **参考回答**：
 
-JavaScript 的 Number 统一采用 IEEE 754 binary64 双精度标准，把数字拆成三部分：1 位符号位、11 位指数位、52 位尾数位（加上隐含的 1 位，有效位共 53 位）。而十进制小数转二进制时，整数部分除 2 取余，小数部分乘 2 取整，像 0.1、0.2 这样的数乘 2 会进入无限循环，二进制是无限循环小数（0.1 = 0.0001100110011...）。52 位尾数装不下无限位，于是按就近舍入、偶数优先的规则截断，产生舍入误差。类比就是只有 10 个格子的纸记 1/3 只能写 0.3333333333，后面丢了。两个近似值相加误差累积，就得到 0.30000000000000004 而不是 0.3。同理还有最大安全整数 Number.MAX_SAFE_INTEGER 是 2 的 53 次方减 1，超过这个范围整数运算会丢精度。工程上的处理：比较浮点数用误差容忍 Math.abs(a - b) 小于 Number.EPSILON，或者放大成整数运算；金额场景用「分」为单位的整数或字符串；高精度计算用 decimal.js、big.js 这类库；超大整数用 BigInt。
+JavaScript 的 Number 统一采用 IEEE 754 binary64 双精度标准，把数字拆成三部分：1 位符号位、11 位指数位、52 位尾数位（加上隐含的 1 位，有效位共 53 位）。而十进制小数转二进制时，整数部分除 2 取余，小数部分乘 2 取整，像 0.1、0.2 这样的数乘 2 会进入无限循环，二进制是无限循环小数（0.1 = 0.0001100110011...）。
+
+52 位尾数装不下无限位，于是按就近舍入、偶数优先的规则截断，产生舍入误差。类比就是只有 10 个格子的纸记 1/3 只能写 0.3333333333，后面丢了。两个近似值相加误差累积，就得到 0.30000000000000004 而不是 0.3。同理还有最大安全整数 Number.MAX_SAFE_INTEGER 是 2 的 53 次方减 1，超过这个范围整数运算会丢精度。
+
+- 工程上的处理：比较浮点数用误差容忍 Math.abs(a - b) 小于 Number.EPSILON，或者放大成整数运算；
+- 金额场景用「分」为单位的整数或字符串；
+- 高精度计算用 decimal.js、big.js 这类库；
+- 超大整数用 BigInt。
 
 **常见追问**：那 Number.EPSILON 够用吗？如果做电商价格计算你会怎么设计？
 
@@ -528,7 +656,14 @@ JavaScript 的 Number 统一采用 IEEE 754 binary64 双精度标准，把数字
 
 **参考回答**：
 
-两者都是引入外部 CSS 的方式，但本质不同。第一，归属与解析者不同：link 是 HTML 元素，写在 head 里由 HTML 解析器遇到就处理；@import 是 CSS 规则，只能写在 CSS 文件或 style 标签里，由 CSS 解析器处理。第二，加载时机不同，这是核心区别：link 的 CSS 请求在 HTML 解析到该标签时发起，浏览器通常并行下载多个 CSS，不阻塞 HTML 解析但会阻塞渲染（CSSOM 未就绪不渲染）；@import 必须先下载并解析外层 CSS，遇到 @import 才去请求被导入的 CSS，形成串行瀑布流，多层嵌套会明显拖慢首屏。第三，控制力与兼容性不同：link 可以通过 JS 动态插入、切换 disabled、配合 preload 预加载、加媒体查询 media 属性；@import 只能在 CSS 里用，动态控制困难，且媒体查询语法和部分旧浏览器支持较弱。第四，常见误区是 @import 不阻塞渲染，实际上它最终仍会阻塞渲染，只是发起得晚。所以生产环境优先用 link，把关键 CSS 内联到 head 提升首屏，或用 preload 加 onload 做非阻塞加载。@import 主要用于把 CSS 按模块拆分，然后由构建工具合并，而不是运行时多层导入。
+两者都是引入外部 CSS 的方式，但本质不同。
+
+- 第一，归属与解析者不同：link 是 HTML 元素，写在 head 里由 HTML 解析器遇到就处理；@import 是 CSS 规则，只能写在 CSS 文件或 style 标签里，由 CSS 解析器处理。
+- 第二，加载时机不同，这是核心区别：link 的 CSS 请求在 HTML 解析到该标签时发起，浏览器通常并行下载多个 CSS，不阻塞 HTML 解析但会阻塞渲染（CSSOM 未就绪不渲染）；@import 必须先下载并解析外层 CSS，遇到 @import 才去请求被导入的 CSS，形成串行瀑布流，多层嵌套会明显拖慢首屏。
+- 第三，控制力与兼容性不同：link 可以通过 JS 动态插入、切换 disabled、配合 preload 预加载、加媒体查询 media 属性；@import 只能在 CSS 里用，动态控制困难，且媒体查询语法和部分旧浏览器支持较弱。
+- 第四，常见误区是 @import 不阻塞渲染，实际上它最终仍会阻塞渲染，只是发起得晚。
+
+所以生产环境优先用 link，把关键 CSS 内联到 head 提升首屏，或用 preload 加 onload 做非阻塞加载。@import 主要用于把 CSS 按模块拆分，然后由构建工具合并，而不是运行时多层导入。
 
 **常见追问**：那首屏关键 CSS 你一般怎么提取和优化？
 
@@ -548,29 +683,49 @@ JavaScript 的 Number 统一采用 IEEE 754 binary64 双精度标准，把数字
 
 **参考回答**：
 
-typeof 是一元运算符，返回操作数的基本类型字符串：undefined、boolean、number、string、bigint、symbol、function、object。它适合判断基本类型，但有两个坑：typeof null 返回 object（历史遗留 bug，早期用类型标签低位表示对象）；数组、日期、正则等所有非函数引用类型都返回 object，无法细分。另外 typeof 对未声明变量不会抛错，这是它的特殊安全行为，可用来做存在性判断。instanceof 是二元运算符，检查构造函数的 prototype 是否出现在对象的原型链上，返回布尔值，比如 [] instanceof Array 是 true，[] instanceof Object 也是 true，因为 Array.prototype 继承自 Object.prototype。它的局限是只能用于引用类型，对原始类型如 1 instanceof Number 是 false；而且跨 iframe 或跨 Realm 时，两个窗口的 Array 不是同一个构造函数，判断会失效。所以更通用的方案是 Object.prototype.toString.call(x)，返回形如 [object Array]、[object Date]、[object Null] 的标签，能精确区分内置类型。实际工程里判断数组用 Array.isArray，判断具体引用类型也可以用 constructor 或 Symbol.toStringTag。
+typeof 是一元运算符，返回操作数的基本类型字符串：undefined、boolean、number、string、bigint、symbol、function、object。它适合判断基本类型，但有两个坑：typeof null 返回 object（历史遗留 bug，早期用类型标签低位表示对象）；数组、日期、正则等所有非函数引用类型都返回 object，无法细分。
+
+另外 typeof 对未声明变量不会抛错，这是它的特殊安全行为，可用来做存在性判断。instanceof 是二元运算符，检查构造函数的 prototype 是否出现在对象的原型链上，返回布尔值，比如 [] instanceof Array 是 true，[] instanceof Object 也是 true，因为 Array.prototype 继承自 Object.prototype。
+
+它的局限是只能用于引用类型，对原始类型如 1 instanceof Number 是 false；而且跨 iframe 或跨 Realm 时，两个窗口的 Array 不是同一个构造函数，判断会失效。
+
+所以更通用的方案是 Object.prototype.toString.call(x)，返回形如 [object Array]、[object Date]、[object Null] 的标签，能精确区分内置类型。
+
+实际工程里判断数组用 Array.isArray，判断具体引用类型也可以用 constructor 或 Symbol.toStringTag。
 
 **常见追问**：那判断一个变量是不是纯对象，你会怎么写最稳妥？
 
 ---
 
-## 27. 前端代码为什么要进行构建和打包？
+## 27. 前端代码为什么常需要构建和打包？哪些情况下可以不打包？
 
 > 原题 ID：`q2409`
 
 **高频程度**：★★★★
 
-**考察点**：考察对构建打包价值的整体理解：兼容性、模块化、性能与工程化。
+**考察点**：转换、依赖组织与性能优化的实际目的，避免把构建说成浏览器运行的必要条件。
 
 **回答框架**：
 
-1) 语言与语法兼容（TS/JSX/SCSS/ES2020+）；2) 模块化与依赖图、tree-shaking；3) 性能优化（压缩、分包、hash 缓存）；4) 工程化与研发体验。
+1) 原生代码可以直接运行
+2) 非原生语法需要转换
+3) 构建支持依赖和资源优化
+4) 按项目规模选择工具
 
 **参考回答**：
 
-前端源码不能直接跑在浏览器上，需要构建打包主要解决四层问题。第一是语言与语法兼容：现代开发常用 TypeScript、JSX、Vue SFC、SCSS/Less、ES2020+ 语法，浏览器不认识，需要 Babel、SWC、PostCSS 编译成目标浏览器支持的 JS 和 CSS，并按 browserslist 决定降级程度。第二是模块化：开发时用 import/export 拆成几百个文件，浏览器原生 ESM 虽支持但会产生大量 HTTP 请求，而且无法直接处理 node_modules 里的 CommonJS，打包器根据依赖图合并成少量 chunk，并做 tree-shaking 删除未使用代码、做 scope hoisting 优化。第三是性能优化：压缩混淆（Terser/SWC）、代码分割按路由懒加载、提取公共依赖、给文件名加 content hash 做长期缓存、图片字体资源处理、CSS 提取与压缩、按需 polyfill，这些都直接决定首屏和缓存命中率。第四是工程化与研发体验：提供 dev server 和 HMR 热更新，支持别名、环境变量、代理跨域、Source Map 调试、多环境构建、产物分析与体积门禁。所以构建打包不是多余步骤，而是把开发态代码翻译并优化成生产态产物，同时统一团队的研发流程。
+浏览器支持的 HTML、CSS、JavaScript 和原生 ES modules 可以直接运行；构建、打包并不是所有前端项目的必需步骤。
 
-**常见追问**：那 Vite 为什么比 Webpack 快？开发态和生产态分别是怎么做的？
+1. **代码转换**：TypeScript、JSX、Vue 单文件组件、SCSS 等开发格式通常需要转换。某种 JavaScript 语法是否要降级，取决于目标浏览器支持范围，而非只看语言年份。
+2. **依赖与资源组织**：工具解析依赖、处理资源路径和环境配置，并可把浏览器不能直接消费的模块形式转换为可用产物。原生 ESM 本身不要求把所有模块合成一个文件。
+3. **性能优化**：压缩、消除未使用代码、按需拆包、资源哈希等有助于减少传输和利用缓存；打包策略也可能带来过大的首屏包，需要实测。
+4. **开发流程**：开发服务器、热更新和 Source Map 改善调试与协作，但这些收益不同于“浏览器不能执行源代码”。
+
+简单静态页面或使用原生模块的小项目可以不打包；需要语法转换、复杂依赖和产物优化时再引入相应构建步骤。
+
+**常见追问**：构建与打包是否是同一件事？能否只转换语法而不合并模块？
+
+**核验资料**：[MDN JavaScript modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules)
 
 ---
 
@@ -588,7 +743,13 @@ typeof 是一元运算符，返回操作数的基本类型字符串：undefined�
 
 **参考回答**：
 
-Babel 的核心是编译转译：读取源码、解析成 AST、经插件和预设（如 preset-env、preset-typescript、preset-react）转换，再生成目标环境能运行的代码，比如把箭头函数、可选链、JSX 转成 ES5，并注入按需的 polyfill（现在推荐 core-js 加 useBuiltIns: usage）。它不处理模块依赖图，也不负责打包文件。webpack 的核心是打包：从入口出发递归分析 import/require 构建依赖图，通过 loader 把非 JS 资源（CSS、图片、TS、Vue 文件）转成模块，通过 plugin 做优化、分包、压缩、注入等，最终输出 bundle 和运行时。类比一下：Babel 像翻译官，把新语言翻译成老语言；webpack 像物流中心，把分散包裹按依赖关系打成几个大箱子。两者是协作而非替代：webpack 通过 babel-loader 调用 Babel，所以项目里经常同时出现。要注意职责划分里有个容易混的点：模块解析和打包归 webpack，语法转换和 polyfill 归 Babel；现在也有 SWC、esbuild 这类工具把两者合一以提升速度，Vite 生产态用 Rollup、开发态用 esbuild。
+Babel 的核心是编译转译：读取源码、解析成 AST、经插件和预设（如 preset-env、preset-typescript、preset-react）转换，再生成目标环境能运行的代码，比如把箭头函数、可选链、JSX 转成 ES5，并注入按需的 polyfill（现在推荐 core-js 加 useBuiltIns: usage）。
+
+它不处理模块依赖图，也不负责打包文件。webpack 的核心是打包：从入口出发递归分析 import/require 构建依赖图，通过 loader 把非 JS 资源（CSS、图片、TS、Vue 文件）转成模块，通过 plugin 做优化、分包、压缩、注入等，最终输出 bundle 和运行时。
+
+类比一下：Babel 像翻译官，把新语言翻译成老语言；webpack 像物流中心，把分散包裹按依赖关系打成几个大箱子。
+
+两者是协作而非替代：webpack 通过 babel-loader 调用 Babel，所以项目里经常同时出现。要注意职责划分里有个容易混的点：模块解析和打包归 webpack，语法转换和 polyfill 归 Babel；现在也有 SWC、esbuild 这类工具把两者合一以提升速度，Vite 生产态用 Rollup、开发态用 esbuild。
 
 **常见追问**：那 polyfill 和语法转换有什么区别？optional chaining 需要 polyfill 吗？
 
@@ -608,7 +769,12 @@ Babel 的核心是编译转译：读取源码、解析成 AST、经插件和预�
 
 **参考回答**：
 
-懒加载的核心是代码分割加运行时按需加载。第一步语法层：使用动态 import()，比如 import('./module').then(...)。webpack 编译时遇到 import() 不会像静态 import 那样把模块打进当前 bundle，而是把它当作分割点。第二步编译期：为动态导入的模块生成独立 chunk 文件（如 1.js），记录 chunk 之间的依赖关系，并把 import() 调用转换成运行时的 ensure chunk 函数，形如 __webpack_require__.e(chunkId)。第三步运行时：ensure chunk 先检查该 chunk 是否已加载，未加载则动态创建 script 标签、设置 src 为 chunk 的 URL、插入文档，监听 onload 回调后执行 chunk 内的模块注册；如果加载失败会触发 onerror，配合 webpack 配置的 chunkLoadTimeout 做超时处理（生产环境常见问题是发版后旧页面请求不到旧 chunk，需要监听并提示刷新）。第四步优化：通过 webpackPrefetch 注释做空闲预取、webpackPreload 做并行预加载；Vue Router 和 React Router 的路由懒加载本质上就是动态 import，配合 Suspense 或 loading 状态。打包侧还要注意 splitChunks 提取公共依赖，避免每个懒加载 chunk 重复打包同一份库。
+懒加载的核心是代码分割加运行时按需加载。
+
+- 第一步语法层：使用动态 import()，比如 import('./module').then(...)。webpack 编译时遇到 import() 不会像静态 import 那样把模块打进当前 bundle，而是把它当作分割点。
+- 第二步编译期：为动态导入的模块生成独立 chunk 文件（如 1.js），记录 chunk 之间的依赖关系，并把 import() 调用转换成运行时的 ensure chunk 函数，形如 __webpack_require__.e(chunkId)。
+- 第三步运行时：ensure chunk 先检查该 chunk 是否已加载，未加载则动态创建 script 标签、设置 src 为 chunk 的 URL、插入文档，监听 onload 回调后执行 chunk 内的模块注册；如果加载失败会触发 onerror，配合 webpack 配置的 chunkLoadTimeout 做超时处理（生产环境常见问题是发版后旧页面请求不到旧 chunk，需要监听并提示刷新）。
+- 第四步优化：通过 webpackPrefetch 注释做空闲预取、webpackPreload 做并行预加载；Vue Router 和 React Router 的路由懒加载本质上就是动态 import，配合 Suspense 或 loading 状态。打包侧还要注意 splitChunks 提取公共依赖，避免每个懒加载 chunk 重复打包同一份库。
 
 **常见追问**：发版后用户停在旧页面点击新路由，chunk 404 了怎么办？
 
@@ -628,7 +794,15 @@ Babel 的核心是编译转译：读取源码、解析成 AST、经插件和预�
 
 **参考回答**：
 
-HTML5 不是单一标签升级，而是 HTML、CSS3 和一系列 JavaScript API 组成的 Web 平台标准，目标是不依赖插件就能做富交互。可以归为几类。一是语义化标签：header、nav、main、article、section、aside、footer、figure 等，让结构清晰，利于 SEO、无障碍和维护。二是多媒体原生支持：audio、video 标签不再依赖 Flash，配合 source、track 支持多格式和字幕。三是图形与动画：canvas 做像素级 2D 绘图，适合图表、游戏、图像处理；SVG 是矢量图形，适合图标和可缩放图形；WebGL 基于 canvas 做 3D。四是本地存储与离线：localStorage、sessionStorage 做键值存储，IndexedDB 存结构化大数据，Service Worker 加 Cache API 实现离线缓存和 PWA。五是通信能力：WebSocket 全双工、Server-Sent Events 服务端推送、WebRTC 音视频与点对点、postMessage 跨文档通信。六是表单增强：email、date、range、number 等新 input 类型，placeholder、required、pattern 等校验属性，配合原生校验 API。七是其他 API：history.pushState 支持前端路由、拖拽 API、地理定位、File API、Web Worker 多线程、requestAnimationFrame 动画。
+HTML5 不是单一标签升级，而是 HTML、CSS3 和一系列 JavaScript API 组成的 Web 平台标准，目标是不依赖插件就能做富交互。可以归为几类。
+
+- 一是语义化标签：header、nav、main、article、section、aside、footer、figure 等，让结构清晰，利于 SEO、无障碍和维护。
+- 二是多媒体原生支持：audio、video 标签不再依赖 Flash，配合 source、track 支持多格式和字幕。
+- 三是图形与动画：canvas 做像素级 2D 绘图，适合图表、游戏、图像处理；SVG 是矢量图形，适合图标和可缩放图形；WebGL 基于 canvas 做 3D。
+- 四是本地存储与离线：localStorage、sessionStorage 做键值存储，IndexedDB 存结构化大数据，Service Worker 加 Cache API 实现离线缓存和 PWA。
+- 五是通信能力：WebSocket 全双工、Server-Sent Events 服务端推送、WebRTC 音视频与点对点、postMessage 跨文档通信。
+- 六是表单增强：email、date、range、number 等新 input 类型，placeholder、required、pattern 等校验属性，配合原生校验 API。
+- 七是其他 API：history.pushState 支持前端路由、拖拽 API、地理定位、File API、Web Worker 多线程、requestAnimationFrame 动画。
 
 **常见追问**：Service Worker 的缓存策略你会怎么设计？怎么避免更新不生效？
 
@@ -648,7 +822,13 @@ HTML5 不是单一标签升级，而是 HTML、CSS3 和一系列 JavaScript API 
 
 **参考回答**：
 
-CSS3 的最大变化是把 CSS 拆成多个独立模块（Selectors、Backgrounds、Borders、Transitions、Animations、Transforms、Flexbox、Grid、Media Queries、Fonts、Color 等），各模块可独立演进，所以它更像一套分册更新的工具箱，而不是一次版本升级。主要新特性分几类。选择器增强：属性选择器、伪类和伪元素，如 nth-child、not、checked、disabled、before/after，能少写很多 class 和 JS。盒模型与边框背景：box-sizing 让宽度包含 padding 和 border，border-radius 圆角，box-shadow 阴影，linear-gradient 和 radial-gradient 渐变，背景多图与 background-size、background-clip，能替代大量切图。变换与动画：transform 做 2D/3D 位移、旋转、缩放，且不触发重排所以性能好；transition 做过渡，animation 配合 keyframes 做关键帧动画。布局：Flexbox 一维布局解决垂直居中和自适应，Grid 二维布局做复杂栅格，比浮动和 table 布局清晰得多。响应式：媒体查询 media、容器查询、视口单位 vw/vh、rem 相对单位。还有字体与颜色：@font-face 自定义字体、CSS 变量、颜色的 rgba/hsl 表示，以及后来的 clamp、aspect-ratio、:has 等。
+CSS3 的最大变化是把 CSS 拆成多个独立模块（Selectors、Backgrounds、Borders、Transitions、Animations、Transforms、Flexbox、Grid、Media Queries、Fonts、Color 等），各模块可独立演进，所以它更像一套分册更新的工具箱，而不是一次版本升级。
+
+主要新特性分几类。选择器增强：属性选择器、伪类和伪元素，如 nth-child、not、checked、disabled、before/after，能少写很多 class 和 JS。盒模型与边框背景：box-sizing 让宽度包含 padding 和 border，border-radius 圆角，box-shadow 阴影，linear-gradient 和 radial-gradient 渐变，背景多图与 background-size、background-clip，能替代大量切图。
+
+变换与动画：transform 做 2D/3D 位移、旋转、缩放，且不触发重排所以性能好；transition 做过渡，animation 配合 keyframes 做关键帧动画。布局：Flexbox 一维布局解决垂直居中和自适应，Grid 二维布局做复杂栅格，比浮动和 table 布局清晰得多。
+
+响应式：媒体查询 media、容器查询、视口单位 vw/vh、rem 相对单位。还有字体与颜色：@font-face 自定义字体、CSS 变量、颜色的 rgba/hsl 表示，以及后来的 clamp、aspect-ratio、:has 等。
 
 **常见追问**：那 transform 为什么不触发重排？它和修改 top/left 有什么区别？
 
@@ -668,7 +848,12 @@ CSS3 的最大变化是把 CSS 拆成多个独立模块（Selectors、Background
 
 **参考回答**：
 
-CSS 继承是层叠机制的一部分：当元素没有为某个可继承属性指定值时，会使用父元素的计算值。可以类比家族遗传，有些特征自然传给后代，有些不会，因为每个元素默认是独立的盒子。常见可继承属性分四类：一是字体与文本，font-family、font-size、font-weight、font-style、line-height、letter-spacing、word-spacing、text-align、text-indent、text-transform、white-space、direction、color、visibility、cursor；二是列表，list-style、list-style-type、list-style-position、list-style-image；三是表格，border-collapse、border-spacing、caption-side、empty-cells；四是其他，如 quotes、orphans、widows。不可继承的包括盒模型相关（width、height、margin、padding、border）、定位与层叠（position、top、float、z-index）、背景（background-*）、以及 display、overflow 等。为什么这样设计？因为字体会影响整段文本，继承能少写很多样式；而边框和内边距如果继承，每个子元素都长一圈边，显然不合理。需要显式控制时可以用 inherit 强制继承父值、initial 恢复初始值、unset 回到继承或初始值，还有 revert 回到浏览器默认。另外注意 line-height 继承的是计算后的值（无单位数值除外，无单位会被子元素按自身 font-size 重算），这是常见的面试加分点。
+CSS 继承是层叠机制的一部分：当元素没有为某个可继承属性指定值时，会使用父元素的计算值。可以类比家族遗传，有些特征自然传给后代，有些不会，因为每个元素默认是独立的盒子。常见可继承属性分四类：
+
+- 一是字体与文本，font-family、font-size、font-weight、font-style、line-height、letter-spacing、word-spacing、text-align、text-indent、text-transform、white-space、direction、color、visibility、cursor；
+- 二是列表，list-style、list-style-type、list-style-position、list-style-image；
+- 三是表格，border-collapse、border-spacing、caption-side、empty-cells；
+- 四是其他，如 quotes、orphans、widows。不可继承的包括盒模型相关（width、height、margin、padding、border）、定位与层叠（position、top、float、z-index）、背景（background-*）、以及 display、overflow 等。为什么这样设计？因为字体会影响整段文本，继承能少写很多样式；而边框和内边距如果继承，每个子元素都长一圈边，显然不合理。需要显式控制时可以用 inherit 强制继承父值、initial 恢复初始值、unset 回到继承或初始值，还有 revert 回到浏览器默认。另外注意 line-height 继承的是计算后的值（无单位数值除外，无单位会被子元素按自身 font-size 重算），这是常见的面试加分点。
 
 **常见追问**：line-height 用无单位和用具体像素继承时有什么区别？
 
@@ -688,7 +873,12 @@ CSS 继承是层叠机制的一部分：当元素没有为某个可继承属性�
 
 **参考回答**：
 
-arguments 是每个非箭头函数在被调用时自动创建的局部变量，是一个类数组对象，不是真正的 Array。特点：一是有 length 属性和下标访问，可以拿到调用时传入的所有实参，包括比形参多的部分；二是没有 push、map、forEach、slice 等数组方法，要转成真数组需要用 Array.from(arguments)、展开运算符或 Array.prototype.slice.call；三是在非严格模式下与形参存在双向映射，改 arguments[0] 会同步改第一个形参，反之亦然；严格模式下这种映射被取消，改动互不影响；四是它是实参快照式的动态对象，配合形参数量变化时行为容易踩坑。另外箭头函数没有自己的 arguments，它捕获的是外层函数的，所以用箭头函数写不定参数会出错。现代代码统一推荐用剩余参数 ...rest，它得到的是真正的数组，语义清晰、支持解构和类型标注，而且能配合函数 length 和默认值规则。arguments 现在主要用于需要兼容老代码或需要读取 callee 的场景（严格模式下 callee 被禁用）。
+arguments 是每个非箭头函数在被调用时自动创建的局部变量，是一个类数组对象，不是真正的 Array。特点：
+
+- 一是有 length 属性和下标访问，可以拿到调用时传入的所有实参，包括比形参多的部分；
+- 二是没有 push、map、forEach、slice 等数组方法，要转成真数组需要用 Array.from(arguments)、展开运算符或 Array.prototype.slice.call；
+- 三是在非严格模式下与形参存在双向映射，改 arguments[0] 会同步改第一个形参，反之亦然；严格模式下这种映射被取消，改动互不影响；
+- 四是它是实参快照式的动态对象，配合形参数量变化时行为容易踩坑。另外箭头函数没有自己的 arguments，它捕获的是外层函数的，所以用箭头函数写不定参数会出错。现代代码统一推荐用剩余参数 ...rest，它得到的是真正的数组，语义清晰、支持解构和类型标注，而且能配合函数 length 和默认值规则。arguments 现在主要用于需要兼容老代码或需要读取 callee 的场景（严格模式下 callee 被禁用）。
 
 **常见追问**：那 arguments 是数组吗？怎么准确判断它？
 
@@ -708,7 +898,11 @@ arguments 是每个非箭头函数在被调用时自动创建的局部变量，�
 
 **参考回答**：
 
-typeof 是 JavaScript 的一元运算符，返回表示操作数类型的字符串，共八种返回值：undefined（未定义或未声明变量）、boolean、number（包括 NaN 和 Infinity，所以 typeof NaN 是 number）、string、symbol、bigint、function（包括 class、箭头函数、生成器函数，class 也返回 function）、object（对象、数组、null、正则、日期等除函数外的引用类型）。两个关键陷阱：typeof null 返回 object，这是早期用类型标签低三位表示 object 导致的历史遗留问题，无法修复；数组、日期、正则都返回 object，无法细分，判断数组要用 Array.isArray 或 Object.prototype.toString.call。一个特殊且有用的行为是对未声明的变量使用 typeof 不会抛 ReferenceError，会返回 undefined，所以可以用它做存在性判断，比如 typeof window !== 'undefined' 做 SSR 侧环境判断。要精确判断类型，通用方案是 Object.prototype.toString.call(x)，也可以结合 constructor、instanceof 或 Array.isArray、Number.isNaN、Number.isInteger 等专用方法。
+typeof 是 JavaScript 的一元运算符，返回表示操作数类型的字符串，共八种返回值：undefined（未定义或未声明变量）、boolean、number（包括 NaN 和 Infinity，所以 typeof NaN 是 number）、string、symbol、bigint、function（包括 class、箭头函数、生成器函数，class 也返回 function）、object（对象、数组、null、正则、日期等除函数外的引用类型）。
+
+两个关键陷阱：typeof null 返回 object，这是早期用类型标签低三位表示 object 导致的历史遗留问题，无法修复；数组、日期、正则都返回 object，无法细分，判断数组要用 Array.isArray 或 Object.prototype.toString.call。
+
+一个特殊且有用的行为是对未声明的变量使用 typeof 不会抛 ReferenceError，会返回 undefined，所以可以用它做存在性判断，比如 typeof window !== 'undefined' 做 SSR 侧环境判断。要精确判断类型，通用方案是 Object.prototype.toString.call(x)，也可以结合 constructor、instanceof 或 Array.isArray、Number.isNaN、Number.isInteger 等专用方法。
 
 **常见追问**：那怎么判断 NaN？isNaN 和 Number.isNaN 有什么区别？
 
@@ -728,7 +922,13 @@ typeof 是 JavaScript 的一元运算符，返回表示操作数类型的字符�
 
 **参考回答**：
 
-const 保证的是变量绑定不可变，也就是不能把标识符重新指向另一个值，而不是值本身不可变。对原始值来说二者等同：const a = 1 之后 a = 2 会抛 TypeError。但对对象和数组，const 只锁住引用：const obj = { x: 1 } 之后 obj.x = 2 完全合法，obj = {} 才会报错；const arr 也可以用 push、pop、splice 改内容，只是不能 arr = []。原理上 const 在词法环境中创建了一个不可变的绑定，变量无法被重新赋值，但它指向的对象本身没有任何限制。如果确实需要值层面不可变，用 Object.freeze(obj) 冻结对象，冻结后属性不可增删改（非严格模式静默失败，严格模式抛错），但要注意 freeze 是浅冻结，嵌套对象不受影响，要深冻结得递归处理；也可以用 structuredClone 复制快照，或者用 Immer、Immutable.js 做不可变数据。另外别忘了 const 还有块级作用域、暂时性死区、不提升到初始化这些特性，和 var 有本质区别。工程上，函数式风格和 React/Vue 状态管理都依赖不可变更新的约定来保证依赖触发和渲染正确。
+const 保证的是变量绑定不可变，也就是不能把标识符重新指向另一个值，而不是值本身不可变。对原始值来说二者等同：const a = 1 之后 a = 2 会抛 TypeError。但对对象和数组，const 只锁住引用：const obj = { x: 1 } 之后 obj.x = 2 完全合法，obj = {} 才会报错；const arr 也可以用 push、pop、splice 改内容，只是不能 arr = []。
+
+原理上 const 在词法环境中创建了一个不可变的绑定，变量无法被重新赋值，但它指向的对象本身没有任何限制。如果确实需要值层面不可变，用 Object.freeze(obj) 冻结对象，冻结后属性不可增删改（非严格模式静默失败，严格模式抛错），但要注意 freeze 是浅冻结，嵌套对象不受影响，要深冻结得递归处理；也可以用 structuredClone 复制快照，或者用 Immer、Immutable.js 做不可变数据。
+
+另外别忘了 const 还有块级作用域、暂时性死区、不提升到初始化这些特性，和 var 有本质区别。
+
+工程上，函数式风格和 React/Vue 状态管理都依赖不可变更新的约定来保证依赖触发和渲染正确。
 
 **常见追问**：那 Object.freeze 之后还能改嵌套对象吗？怎么实现深冻结？
 
@@ -748,7 +948,13 @@ const 保证的是变量绑定不可变，也就是不能把标识符重新指�
 
 **参考回答**：
 
-JavaScript 是单线程的，事件循环负责调度任务，任务分宏任务和微任务两类。宏任务常见来源：整体 script 代码（第一个宏任务）、setTimeout、setInterval、setImmediate（Node，浏览器非标准）、I/O 回调、UI 事件回调（click、scroll）、MessageChannel、以及 Node 里的 setImmediate 和 I/O。微任务常见来源：Promise 的 then/catch/finally、queueMicrotask、MutationObserver、Node 的 process.nextTick（优先级比 Promise 更高）、以及 async/await 里 await 之后的部分（本质是 Promise.then）。执行规则是：每执行完一个宏任务，就把微任务队列清空（清空过程中新产生的微任务也会在本轮执行完），然后浏览器判断是否需要渲染（样式计算、布局、绘制），渲染前会执行 requestAnimationFrame 回调；之后取下一个宏任务，循环往复。所以 DOM 渲染发生在当前宏任务和它产生的所有微任务都执行完之后，而不是每个微任务后。这也解释了为什么在 Promise.then 里改数据比在 setTimeout 里更早拿到更新后的 DOM——Vue 的 nextTick 就是基于微任务。
+JavaScript 是单线程的，事件循环负责调度任务，任务分宏任务和微任务两类。宏任务常见来源：整体 script 代码（第一个宏任务）、setTimeout、setInterval、setImmediate（Node，浏览器非标准）、I/O 回调、UI 事件回调（click、scroll）、MessageChannel、以及 Node 里的 setImmediate 和 I/O。
+
+微任务常见来源：Promise 的 then/catch/finally、queueMicrotask、MutationObserver、Node 的 process.nextTick（优先级比 Promise 更高）、以及 async/await 里 await 之后的部分（本质是 Promise.then）。
+
+执行规则是：每执行完一个宏任务，就把微任务队列清空（清空过程中新产生的微任务也会在本轮执行完），然后浏览器判断是否需要渲染（样式计算、布局、绘制），渲染前会执行 requestAnimationFrame 回调；之后取下一个宏任务，循环往复。
+
+所以 DOM 渲染发生在当前宏任务和它产生的所有微任务都执行完之后，而不是每个微任务后。这也解释了为什么在 Promise.then 里改数据比在 setTimeout 里更早拿到更新后的 DOM——Vue 的 nextTick 就是基于微任务。
 
 **常见追问**：那 requestAnimationFrame 和 setTimeout 相对于渲染分别在什么位置执行？
 
@@ -768,7 +974,16 @@ JavaScript 是单线程的，事件循环负责调度任务，任务分宏任务
 
 **参考回答**：
 
-延迟加载的核心是让脚本不阻塞 HTML 解析和首屏渲染，方式有几种。第一，defer：异步下载，文档解析完成后、DOMContentLoaded 之前按脚本出现顺序执行，适合有依赖关系的主逻辑。第二，async：异步下载，下载完立刻执行，可能打断解析，多个之间不保证顺序，适合统计、广告这类独立第三方脚本。第三，动态创建 script：用 document.createElement 插入并设置 src，此时脚本默认是 async 的，可以通过设置 script.async = false 来保证插入顺序执行，常配合 onload 回调做按需加载。第四，动态 import()：配合打包器做代码分割，路由懒加载、按需加载重模块的标准做法。第五，type=module：模块脚本默认具有 defer 行为，且支持按需加载和 tree-shaking。第六，位置与提示：把脚本放到 body 末尾让解析先完成，或用 link rel=preload 预加载关键脚本、prefetch 空闲预取后续可能用到的脚本。实际项目里通常组合使用：首屏关键逻辑内联或 preload，路由级用动态 import，第三方脚本用 async 且加超时兜底。
+延迟加载的核心是让脚本不阻塞 HTML 解析和首屏渲染，方式有几种。
+
+- 第一，defer：异步下载，文档解析完成后、DOMContentLoaded 之前按脚本出现顺序执行，适合有依赖关系的主逻辑。
+- 第二，async：异步下载，下载完立刻执行，可能打断解析，多个之间不保证顺序，适合统计、广告这类独立第三方脚本。
+- 第三，动态创建 script：用 document.createElement 插入并设置 src，此时脚本默认是 async 的，可以通过设置 script.async = false 来保证插入顺序执行，常配合 onload 回调做按需加载。
+- 第四，动态 import()：配合打包器做代码分割，路由懒加载、按需加载重模块的标准做法。
+- 第五，type=module：模块脚本默认具有 defer 行为，且支持按需加载和 tree-shaking。
+- 第六，位置与提示：把脚本放到 body 末尾让解析先完成，或用 link rel=preload 预加载关键脚本、prefetch 空闲预取后续可能用到的脚本。
+
+实际项目里通常组合使用：首屏关键逻辑内联或 preload，路由级用动态 import，第三方脚本用 async 且加超时兜底。
 
 **常见追问**：那 DOMContentLoaded 和 load 事件分别在什么时机触发？defer 脚本在哪个之前执行？
 
@@ -788,7 +1003,11 @@ JavaScript 是单线程的，事件循环负责调度任务，任务分宏任务
 
 **参考回答**：
 
-Vue 的事件绑定可以分编译、运行时和组件事件三层。编译阶段：写 button 上的 @click 时，编译器把 @click 解析成 AST 上的事件属性，生成 render 函数里形如 on: { click: handler } 的配置，也就是事件最终变成 VNode 的 data.on 对象。运行时 patch 阶段：创建真实 DOM 后，Vue 调用 updateDOMListeners，对比新旧事件的差异，用 addEventListener 把事件绑到元素上，移除时用 removeEventListener。这里有个优化点：Vue 不会把用户函数直接交给 addEventListener，而是先创建一个 invoker 对象或函数，内部持有当前的回调，绑定的是这个稳定的 invoker。这样数据更新导致回调变化时，只需要更新 invoker 内部的回调引用，而不需要解绑再重绑，减少 DOM 操作。组件自定义事件：子组件 emit 时，Vue 在实例上查找父组件模板里绑定的对应监听器，同步调用，等同发布订阅；Vue 3 里还有 emits 选项声明和 v-model 的 update 事件约定。
+Vue 的事件绑定可以分编译、运行时和组件事件三层。编译阶段：写 button 上的 @click 时，编译器把 @click 解析成 AST 上的事件属性，生成 render 函数里形如 on: { click: handler } 的配置，也就是事件最终变成 VNode 的 data.on 对象。
+
+运行时 patch 阶段：创建真实 DOM 后，Vue 调用 updateDOMListeners，对比新旧事件的差异，用 addEventListener 把事件绑到元素上，移除时用 removeEventListener。这里有个优化点：Vue 不会把用户函数直接交给 addEventListener，而是先创建一个 invoker 对象或函数，内部持有当前的回调，绑定的是这个稳定的 invoker。
+
+这样数据更新导致回调变化时，只需要更新 invoker 内部的回调引用，而不需要解绑再重绑，减少 DOM 操作。组件自定义事件：子组件 emit 时，Vue 在实例上查找父组件模板里绑定的对应监听器，同步调用，等同发布订阅；Vue 3 里还有 emits 选项声明和 v-model 的 update 事件约定。
 
 **常见追问**：那为什么 Vue 要用 invoker 而不是直接绑用户函数？
 
@@ -808,7 +1027,10 @@ Vue 的事件绑定可以分编译、运行时和组件事件三层。编译阶�
 
 **参考回答**：
 
-Vue2 的响应式基于 Object.defineProperty 在初始化时递归地把 data 里每个已有属性转成 getter/setter，于是有两个盲区：一是对象新增属性（this.obj.newKey = 1）或删除属性能不被侦测，因为没有 setter；二是直接用索引改数组（this.arr[0] = x）或改 length 不被侦测，Vue 只重写了数组的 7 个变更方法（push、pop、shift、unshift、splice、sort、reverse）来覆盖常见操作。$set 就是用来补这两个洞的。原理分两种：如果目标是数组且 key 是合法索引，就调用 target.splice(key, 1, val)，因为 splice 是被重写过的方法，会自动触发更新；如果目标是对象且 key 不存在，就用 defineReactive 把新属性定义为响应式的 getter/setter（并在 defineReactive 时收集已有的 Dep.target），然后手动调用 ob.dep.notify() 通知所有依赖该对象的 watcher 更新，这就是为什么新增的属性也能触发视图刷新。Vue3 用 Proxy 后这些盲区消失，$set 也被移除。
+Vue2 的响应式基于 Object.defineProperty 在初始化时递归地把 data 里每个已有属性转成 getter/setter，于是有两个盲区：
+
+- 一是对象新增属性（this.obj.newKey = 1）或删除属性能不被侦测，因为没有 setter；
+- 二是直接用索引改数组（this.arr[0] = x）或改 length 不被侦测，Vue 只重写了数组的 7 个变更方法（push、pop、shift、unshift、splice、sort、reverse）来覆盖常见操作。$set 就是用来补这两个洞的。原理分两种：如果目标是数组且 key 是合法索引，就调用 target.splice(key, 1, val)，因为 splice 是被重写过的方法，会自动触发更新；如果目标是对象且 key 不存在，就用 defineReactive 把新属性定义为响应式的 getter/setter（并在 defineReactive 时收集已有的 Dep.target），然后手动调用 ob.dep.notify() 通知所有依赖该对象的 watcher 更新，这就是为什么新增的属性也能触发视图刷新。Vue3 用 Proxy 后这些盲区消失，$set 也被移除。
 
 **常见追问**：那在 Vue3 里如果我需要给响应式对象动态加属性，还需要特殊处理吗？
 
@@ -828,7 +1050,17 @@ Vue2 的响应式基于 Object.defineProperty 在初始化时递归地把 data �
 
 **参考回答**：
 
-核心原因是两者的编译优先级在不同版本中相反。Vue2 里 v-for 优先级高于 v-if，模板上同时写 v-for 和 v-if 会被编译成先遍历整个 list，再对每个元素做条件判断。即使列表里只有少数元素满足条件，也要遍历全部数据，纯属浪费渲染性能；而且如果条件是依赖外层变量的，语义上也很含混。Vue3 里优先级反过来了，v-if 高于 v-for，这意味着 v-if 的条件表达式在编译时无法访问 v-for 的迭代变量，直接报错，因为此时 item 还不存在。所以两个版本官方都不建议同时用，原因不同但结论一致。正确做法：如果要过滤列表，用计算属性或写一个过滤后的渲染函数，在遍历前就把数据筛好，这样只遍历需要渲染的元素；如果是要控制整块列表是否渲染，把 v-if 提到包含 v-for 的外层元素或 template 上；如果是条件渲染单个元素，把它们拆开到子组件或分开写。这样既避免无谓遍历，也避免作用域和可读性问题。
+核心原因是两者的编译优先级在不同版本中相反。Vue2 里 v-for 优先级高于 v-if，模板上同时写 v-for 和 v-if 会被编译成先遍历整个 list，再对每个元素做条件判断。即使列表里只有少数元素满足条件，也要遍历全部数据，纯属浪费渲染性能；而且如果条件是依赖外层变量的，语义上也很含混。
+
+Vue3 里优先级反过来了，v-if 高于 v-for，这意味着 v-if 的条件表达式在编译时无法访问 v-for 的迭代变量，直接报错，因为此时 item 还不存在。
+
+所以两个版本官方都不建议同时用，原因不同但结论一致。
+
+- 正确做法：如果要过滤列表，用计算属性或写一个过滤后的渲染函数，在遍历前就把数据筛好，这样只遍历需要渲染的元素；
+- 如果是要控制整块列表是否渲染，把 v-if 提到包含 v-for 的外层元素或 template 上；
+- 如果是条件渲染单个元素，把它们拆开到子组件或分开写。
+
+这样既避免无谓遍历，也避免作用域和可读性问题。
 
 **常见追问**：那如果过滤条件本身依赖响应式数据，用计算属性有什么额外收益？
 
@@ -848,7 +1080,13 @@ Vue2 的响应式基于 Object.defineProperty 在初始化时递归地把 data �
 
 **参考回答**：
 
-核心区别在于节点是否还存在于 DOM 树中。不占位置常见做法有 display: none、visibility: hidden、position: absolute 脱离文档流、opacity: 0、height: 0，它们只是让元素在布局或视觉上不可见或不占空间，元素仍是文档树的一部分，JS 依然能访问、事件监听依然存在、表单值和内部状态都保留。删除 DOM 节点则是用 removeChild 或 remove 把节点从文档树里真正摘掉，节点不再参与渲染，若无其他引用会被垃圾回收，其上的事件监听（若通过 addEventListener 绑在元素上）也会随节点一起失效，但注意如果监听绑在 window 或 document 上就没被清掉，会造成内存泄漏。性能上：display: none 会触发重排和重绘，但节点保留；频繁切换显隐时，display 切换比反复创建销毁节点便宜得多，这也是 v-show 采用 display 的原因。删除节点本身开销不大，但频繁创建和销毁大量节点会带来持续的 GC 和重建成本，所以列表大量增删时更推荐复用节点（虚拟滚动、key 复用）。适用场景：需要频繁切换显隐、保留状态时用视觉隐藏；需要真正释放内存、减少 DOM 规模时删除。
+核心区别在于节点是否还存在于 DOM 树中。不占位置常见做法有 display: none、visibility: hidden、position: absolute 脱离文档流、opacity: 0、height: 0，它们只是让元素在布局或视觉上不可见或不占空间，元素仍是文档树的一部分，JS 依然能访问、事件监听依然存在、表单值和内部状态都保留。
+
+删除 DOM 节点则是用 removeChild 或 remove 把节点从文档树里真正摘掉，节点不再参与渲染，若无其他引用会被垃圾回收，其上的事件监听（若通过 addEventListener 绑在元素上）也会随节点一起失效，但注意如果监听绑在 window 或 document 上就没被清掉，会造成内存泄漏。
+
+性能上：display: none 会触发重排和重绘，但节点保留；频繁切换显隐时，display 切换比反复创建销毁节点便宜得多，这也是 v-show 采用 display 的原因。删除节点本身开销不大，但频繁创建和销毁大量节点会带来持续的 GC 和重建成本，所以列表大量增删时更推荐复用节点（虚拟滚动、key 复用）。
+
+适用场景：需要频繁切换显隐、保留状态时用视觉隐藏；需要真正释放内存、减少 DOM 规模时删除。
 
 **常见追问**：那 v-if 和 v-show 的选择是不是也是这个逻辑？各适合什么场景？
 
@@ -868,7 +1106,11 @@ Vue2 的响应式基于 Object.defineProperty 在初始化时递归地把 data �
 
 **参考回答**：
 
-Vue 的核心是数据驱动视图，DOM 是状态的映射，所以直接操作 DOM 通常意味着绕过了响应式系统，容易造成状态与视图不一致。真要操作 DOM，合适的时机有两个：一是首次渲染，mounted 钩子触发时真实 DOM 已创建并插入父节点，可以访问 this.$el、模板 ref；二是数据更新引起的 DOM 更新完成之后，也就是 updated 钩子里，或者用 this.$nextTick 的回调。原因是修改响应式数据不会立即更新 DOM，Vue 会把更新任务放进异步队列，在同一事件循环的微任务里批量 flush，所以赋值后立刻读 DOM 会拿到旧值。工程实践上，优先用数据和模板解决问题：要算样式用 computed、要控制结构用条件渲染、要拿元素引用用模板 ref、要拿尺寸用 ResizeObserver 代替轮询。确实必须手动操作的场景有：第三方库初始化（图表、地图、富文本）、手动 focus 或滚动定位、Canvas 绘制、以及测量元素尺寸做动态布局，这些也建议统一封装在 onMounted 或 nextTick 之后，并在卸载时清理。
+Vue 的核心是数据驱动视图，DOM 是状态的映射，所以直接操作 DOM 通常意味着绕过了响应式系统，容易造成状态与视图不一致。真要操作 DOM，合适的时机有两个：一是首次渲染，mounted 钩子触发时真实 DOM 已创建并插入父节点，可以访问 this.$el、模板 ref；二是数据更新引起的 DOM 更新完成之后，也就是 updated 钩子里，或者用 this.$nextTick 的回调。
+
+原因是修改响应式数据不会立即更新 DOM，Vue 会把更新任务放进异步队列，在同一事件循环的微任务里批量 flush，所以赋值后立刻读 DOM 会拿到旧值。工程实践上，优先用数据和模板解决问题：要算样式用 computed、要控制结构用条件渲染、要拿元素引用用模板 ref、要拿尺寸用 ResizeObserver 代替轮询。
+
+确实必须手动操作的场景有：第三方库初始化（图表、地图、富文本）、手动 focus 或滚动定位、Canvas 绘制、以及测量元素尺寸做动态布局，这些也建议统一封装在 onMounted 或 nextTick 之后，并在卸载时清理。
 
 **常见追问**：那在 setup 里用 ref 拿子组件实例，为什么 mounted 之前是 null？
 
@@ -888,7 +1130,13 @@ Vue 的核心是数据驱动视图，DOM 是状态的映射，所以直接操作
 
 **参考回答**：
 
-因为组件是可复用的，如果 data 直接写成对象，所有使用该组件的实例都会引用同一个对象。JavaScript 里对象是引用类型，一个实例修改 count，其他实例会跟着变，状态互相污染，这显然不是组件化想要的效果。把 data 写成函数后，Vue 在创建每个组件实例时会调用这个函数，函数每次返回一个全新的对象，所以每个实例都拿到独立的数据副本。类比一下：对象像一张贴在墙上的公共表格，谁都能涂改；函数像每次复印一张新表格，各写各的。举例：一个计数器组件被渲染三次，如果 data 是对象，点其中一个数字 +1，三个都会跟着变；写成函数返回对象后各点各的互不影响。那为什么根实例 new Vue({ data: { ... } }) 可以写成对象？因为根实例在整个应用里只会创建一个，不存在多实例共享的问题，Vue 内部会做兼容处理；但从 Vue3 的 createApp 开始，统一要求 data 是函数，语义更一致。补充一点：data 函数不能是箭头函数，因为箭头函数没有自己的 this，拿不到组件实例，Vue 会报警告。
+因为组件是可复用的，如果 data 直接写成对象，所有使用该组件的实例都会引用同一个对象。JavaScript 里对象是引用类型，一个实例修改 count，其他实例会跟着变，状态互相污染，这显然不是组件化想要的效果。把 data 写成函数后，Vue 在创建每个组件实例时会调用这个函数，函数每次返回一个全新的对象，所以每个实例都拿到独立的数据副本。
+
+类比一下：对象像一张贴在墙上的公共表格，谁都能涂改；函数像每次复印一张新表格，各写各的。
+
+举例：一个计数器组件被渲染三次，如果 data 是对象，点其中一个数字 +1，三个都会跟着变；写成函数返回对象后各点各的互不影响。那为什么根实例 new Vue({ data: { ... } }) 可以写成对象？因为根实例在整个应用里只会创建一个，不存在多实例共享的问题，Vue 内部会做兼容处理；但从 Vue3 的 createApp 开始，统一要求 data 是函数，语义更一致。
+
+补充一点：data 函数不能是箭头函数，因为箭头函数没有自己的 this，拿不到组件实例，Vue 会报警告。
 
 **常见追问**：那如果两个组件之间确实需要共享同一份数据，你会怎么做？
 
@@ -908,7 +1156,14 @@ Vue 的核心是数据驱动视图，DOM 是状态的映射，所以直接操作
 
 **参考回答**：
 
-在 React 里把父组件收到的所有 props 原样传给子组件，最常用的是展开运算符，直接写 <Child {...props} />。原理是 props 本质就是一个普通对象，JSX 会被编译成 React.createElement(Child, props)，也就是把父组件的 props 对象整体作为子组件的 props 传入，等价于全量透传。几种常见写法：一是完全透传，<Child {...props} />；二是透传并覆写某个属性，<Child {...props} extra={1} />，注意后面的属性会覆盖前面的；三是只透传部分，用解构取出需要的，再把剩余属性用 rest 透传，比如 const { title, ...rest } = props 然后 <Child {...rest} />，这是很实用的白名单透传模式；四是不希望中间层消费任何 props，只是把它包一层做布局或增强，可以用 children 或 render props，甚至用 Context 让深层组件直接取，避免一层层 props 钻取。在 Vue 里对应的做法是 v-bind 展开对象（把 $props 整体展开到子组件上），配合 inheritAttrs 和 useAttrs 控制属性落到哪个元素上。
+在 React 里把父组件收到的所有 props 原样传给子组件，最常用的是展开运算符，直接写 <Child {...props} />。原理是 props 本质就是一个普通对象，JSX 会被编译成 React.createElement(Child, props)，也就是把父组件的 props 对象整体作为子组件的 props 传入，等价于全量透传。
+
+几种常见写法：
+
+- 一是完全透传，<Child {...props} />；
+- 二是透传并覆写某个属性，<Child {...props} extra={1} />，注意后面的属性会覆盖前面的；
+- 三是只透传部分，用解构取出需要的，再把剩余属性用 rest 透传，比如 const { title, ...rest } = props 然后 <Child {...rest} />，这是很实用的白名单透传模式；
+- 四是不希望中间层消费任何 props，只是把它包一层做布局或增强，可以用 children 或 render props，甚至用 Context 让深层组件直接取，避免一层层 props 钻取。在 Vue 里对应的做法是 v-bind 展开对象（把 $props 整体展开到子组件上），配合 inheritAttrs 和 useAttrs 控制属性落到哪个元素上。
 
 **常见追问**：那 Vue 里的 inheritAttrs 和 $attrs 解决了什么问题？和透传有什么关系？
 
@@ -928,7 +1183,11 @@ Vue 的核心是数据驱动视图，DOM 是状态的映射，所以直接操作
 
 **参考回答**：
 
-多个组件有相同逻辑时，先判断重复的是纯计算无状态逻辑，还是带状态的交互逻辑，再选复用单元。纯逻辑：格式化、校验、请求封装、数据转换这类直接抽成普通工具函数或 service 模块，最容易测试也最简单。带状态的副作用逻辑：React 抽成自定义 Hook，比如 useWindowSize 内部用 useState 和 useEffect 订阅 resize 并在清理时解绑，组件只需调用一行就能拿到响应式尺寸；Vue 对应的是组合式函数 useXxx，内部用 ref 和生命周期钩子，这也是 Composition API 最大的价值。再往上还有几种模式：HOC 高阶组件（接收组件返回新组件，适合做统一注入 props 的横切逻辑，但容易造成嵌套地狱和 props 来源不清晰）、Render Props（把渲染交给回调，灵活性高但代码层级深）、Context（解决跨层传递，避免 props 钻取）。要避免的是 Mixin：Vue2 时代的 mixin 存在命名冲突、来源不清晰、隐式依赖、无法声明入参等问题，Vue3 已经用组合式函数取代它。原则是复用状态逻辑而不是复用 UI，UI 复用交给组件和插槽。
+多个组件有相同逻辑时，先判断重复的是纯计算无状态逻辑，还是带状态的交互逻辑，再选复用单元。纯逻辑：格式化、校验、请求封装、数据转换这类直接抽成普通工具函数或 service 模块，最容易测试也最简单。带状态的副作用逻辑：React 抽成自定义 Hook，比如 useWindowSize 内部用 useState 和 useEffect 订阅 resize 并在清理时解绑，组件只需调用一行就能拿到响应式尺寸；Vue 对应的是组合式函数 useXxx，内部用 ref 和生命周期钩子，这也是 Composition API 最大的价值。
+
+再往上还有几种模式：HOC 高阶组件（接收组件返回新组件，适合做统一注入 props 的横切逻辑，但容易造成嵌套地狱和 props 来源不清晰）、Render Props（把渲染交给回调，灵活性高但代码层级深）、Context（解决跨层传递，避免 props 钻取）。要避免的是 Mixin：Vue2 时代的 mixin 存在命名冲突、来源不清晰、隐式依赖、无法声明入参等问题，Vue3 已经用组合式函数取代它。
+
+原则是复用状态逻辑而不是复用 UI，UI 复用交给组件和插槽。
 
 **常见追问**：那自定义 Hook 之间可以互相调用吗？会有什么坑？
 
@@ -948,7 +1207,15 @@ Vue 的核心是数据驱动视图，DOM 是状态的映射，所以直接操作
 
 **参考回答**：
 
-前端路由的核心是：URL 变化时不向服务器发请求，而是由前端 JS 捕获变化并渲染对应视图。两种主流模式。Hash 模式：URL 形如 example.com/#/home，# 后面的内容变化不会触发页面刷新也不会发请求，通过监听 window 的 hashchange 事件感知变化，读取 location.hash 得到路径，匹配路由表后渲染组件。优点是兼容性好、不需要服务端配置；缺点是 URL 带 # 不美观，对 SEO 不友好。History 模式：利用 HTML5 History API 的 pushState 和 replaceState，它们能在不刷新页面的前提下改变 URL 并往历史栈里压一条记录；用户点击链接时前端拦截默认跳转，调用 pushState 并渲染组件；浏览器前进后退时触发 popstate 事件，前端据此匹配并渲染。History 模式 URL 干净、和真实路径一致，但有个硬性要求：直接访问或刷新这个子路径时浏览器会真的向服务器请求该路径，服务端必须配置 fallback（把未匹配的路径全部返回 index.html，如 Nginx 的 try_files），否则会 404。此外 Vue Router 4 还提供 memory 模式用于 SSR 和服务端测试，React Router 也有类似抽象。
+前端路由的核心是：URL 变化时不向服务器发请求，而是由前端 JS 捕获变化并渲染对应视图。两种主流模式。Hash 模式：URL 形如 example.com/#/home，# 后面的内容变化不会触发页面刷新也不会发请求，通过监听 window 的 hashchange 事件感知变化，读取 location.hash 得到路径，匹配路由表后渲染组件。
+
+优点是兼容性好、不需要服务端配置；缺点是 URL 带 # 不美观，对 SEO 不友好。
+
+- History 模式：利用 HTML5 History API 的 pushState 和 replaceState，它们能在不刷新页面的前提下改变 URL 并往历史栈里压一条记录；
+- 用户点击链接时前端拦截默认跳转，调用 pushState 并渲染组件；
+- 浏览器前进后退时触发 popstate 事件，前端据此匹配并渲染。
+
+History 模式 URL 干净、和真实路径一致，但有个硬性要求：直接访问或刷新这个子路径时浏览器会真的向服务器请求该路径，服务端必须配置 fallback（把未匹配的路径全部返回 index.html，如 Nginx 的 try_files），否则会 404。此外 Vue Router 4 还提供 memory 模式用于 SSR 和服务端测试，React Router 也有类似抽象。
 
 **常见追问**：那 history 模式下的 404 页面该怎么处理？和 fallback 冲突吗？
 
@@ -968,7 +1235,15 @@ Vue 的核心是数据驱动视图，DOM 是状态的映射，所以直接操作
 
 **参考回答**：
 
-Vue 生命周期分创建、挂载、更新、销毁四个阶段。创建阶段：beforeCreate 时实例刚初始化，数据观测和事件配置还没开始，拿不到 data 和 methods；created 时数据观测、属性和方法已配置好，可以访问 data 和发异步请求，但 DOM 还没生成，$el 不可用。挂载阶段：beforeMount 时模板已编译成 render 函数，但还没生成真实 DOM；mounted 时真实 DOM 已创建并插入父节点，可以访问 $el 和 ref，适合初始化图表、地图这类依赖 DOM 的第三方库。更新阶段：beforeUpdate 在数据变化后、DOM 重新渲染前触发，此时可以拿到更新前的 DOM；updated 在 DOM 更新完成后触发，注意不要在这里改数据，否则可能死循环。销毁阶段：beforeUnmount 在实例销毁前触发，适合清理定时器、取消请求、解绑全局事件；unmounted 在实例销毁后触发，此时所有指令、事件监听、子实例都被移除。父子组件顺序：初始化时父 beforeCreate、父 created、父 beforeMount、子 beforeCreate、子 created、子 beforeMount、子 mounted、父 mounted，即父先创建、子先挂载完成、父最后 mounted，因为父要等子渲染完才能插入；更新时是父 beforeUpdate、子 beforeUpdate、子 updated、父 updated，因为父先触发更新再等子完成；销毁时是父 beforeUnmount、子 beforeUnmount、子 unmounted、父 unmounted，即父先发起销毁通知，子先完成清理。Vue3 还把 beforeDestroy/destroyed 改名为 beforeUnmount/unmounted，并新增了 setup 和 onMounted 这类组合式 API 钩子。
+Vue 生命周期分创建、挂载、更新、销毁四个阶段。创建阶段：beforeCreate 时实例刚初始化，数据观测和事件配置还没开始，拿不到 data 和 methods；created 时数据观测、属性和方法已配置好，可以访问 data 和发异步请求，但 DOM 还没生成，$el 不可用。挂载阶段：beforeMount 时模板已编译成 render 函数，但还没生成真实 DOM；mounted 时真实 DOM 已创建并插入父节点，可以访问 $el 和 ref，适合初始化图表、地图这类依赖 DOM 的第三方库。
+
+更新阶段：beforeUpdate 在数据变化后、DOM 重新渲染前触发，此时可以拿到更新前的 DOM；updated 在 DOM 更新完成后触发，注意不要在这里改数据，否则可能死循环。销毁阶段：beforeUnmount 在实例销毁前触发，适合清理定时器、取消请求、解绑全局事件；unmounted 在实例销毁后触发，此时所有指令、事件监听、子实例都被移除。
+
+- 父子组件顺序：初始化时父 beforeCreate、父 created、父 beforeMount、子 beforeCreate、子 created、子 beforeMount、子 mounted、父 mounted，即父先创建、子先挂载完成、父最后 mounted，因为父要等子渲染完才能插入；
+- 更新时是父 beforeUpdate、子 beforeUpdate、子 updated、父 updated，因为父先触发更新再等子完成；
+- 销毁时是父 beforeUnmount、子 beforeUnmount、子 unmounted、父 unmounted，即父先发起销毁通知，子先完成清理。
+
+Vue3 还把 beforeDestroy/destroyed 改名为 beforeUnmount/unmounted，并新增了 setup 和 onMounted 这类组合式 API 钩子。
 
 **常见追问**：那如果在父组件 mounted 里取子组件的数据，能拿到吗？为什么？
 
@@ -988,7 +1263,13 @@ Vue 生命周期分创建、挂载、更新、销毁四个阶段。创建阶段�
 
 **参考回答**：
 
-动态组件指用 <component :is="currentComponent"> 根据变量动态决定渲染哪个组件，它解决的是同一位置渲染不同组件的问题。默认情况下切换时 Vue 会销毁旧组件、创建新组件，所以旧组件的内部状态（输入框内容、滚动位置、定时器）都会丢，生命周期会完整走一遍 unmounted 再 mounted。keep-alive 是 Vue 内置的抽象组件，本身不渲染 DOM，用来包裹动态组件或路由组件，把不活跃的组件实例缓存到内存里。被缓存的组件切换时不再走 unmounted，而是触发 deactivated；再次激活时不再走 mounted，而是触发 activated，状态、DOM、内部数据都保留下来，所以表单填写到一半切走再回来内容还在。它的常用配置有 include 和 exclude（按组件名决定哪些缓存）以及 max（限制缓存数量，超出按 LRU 淘汰）。两者关系是职责不同、常配合使用：动态组件负责切换，keep-alive 负责保留。典型场景是 Tab 页签、多步表单、路由缓存（router-view 外包 keep-alive）。要注意 keep-alive 缓存的是实例而不是快照，所以缓存里的定时器和长连接仍会继续跑，需要在 deactivated 里主动暂停，避免后台持续消耗资源。
+动态组件指用 <component :is="currentComponent"> 根据变量动态决定渲染哪个组件，它解决的是同一位置渲染不同组件的问题。默认情况下切换时 Vue 会销毁旧组件、创建新组件，所以旧组件的内部状态（输入框内容、滚动位置、定时器）都会丢，生命周期会完整走一遍 unmounted 再 mounted。
+
+keep-alive 是 Vue 内置的抽象组件，本身不渲染 DOM，用来包裹动态组件或路由组件，把不活跃的组件实例缓存到内存里。被缓存的组件切换时不再走 unmounted，而是触发 deactivated；再次激活时不再走 mounted，而是触发 activated，状态、DOM、内部数据都保留下来，所以表单填写到一半切走再回来内容还在。
+
+它的常用配置有 include 和 exclude（按组件名决定哪些缓存）以及 max（限制缓存数量，超出按 LRU 淘汰）。
+
+两者关系是职责不同、常配合使用：动态组件负责切换，keep-alive 负责保留。典型场景是 Tab 页签、多步表单、路由缓存（router-view 外包 keep-alive）。要注意 keep-alive 缓存的是实例而不是快照，所以缓存里的定时器和长连接仍会继续跑，需要在 deactivated 里主动暂停，避免后台持续消耗资源。
 
 **常见追问**：那被 keep-alive 缓存的页面，怎么在重新激活时刷新数据？
 
@@ -1008,7 +1289,14 @@ Vue 生命周期分创建、挂载、更新、销毁四个阶段。创建阶段�
 
 **参考回答**：
 
-DOM 操作慢，不是因为 DOM 本身是慢对象，而是每次修改都可能触发样式计算、布局和绘制，还可能跨越 JS 引擎与渲染引擎的边界，而强制同步布局代价更大。减少 DOM 操作的本质是减少触发重排重绘的次数和访问真实 DOM 的次数。常见做法：第一，批量读写，避免布局抖动。浏览器有渲染队列会攒着变更，但如果你先改样式又立刻读 offsetHeight、getBoundingClientRect，就会强制刷新队列触发同步布局。正确姿势是所有读操作先做完，再统一写。第二，用 DocumentFragment 或离线 DOM 批量操作：先把节点创建好挂在 fragment 上，最后一次插入文档，只触发一次布局；也可以用 display: none 把容器摘掉、操作完再放回来。第三，用 class 切换代替逐条改 style，减少样式计算次数。第四，动画优先用 transform 和 opacity，它们只触发合成层，不引起重排重绘，必要时用 will-change 提升为独立图层。第五，用虚拟列表只渲染视口内的节点，长列表从几千个 DOM 降到几十个。第六，优先状态驱动，用框架的 diff 批量更新代替手工 DOM 操作。此外还有事件委托减少监听器数量、用 requestAnimationFrame 把 DOM 写入对齐到渲染帧。
+DOM 操作慢，不是因为 DOM 本身是慢对象，而是每次修改都可能触发样式计算、布局和绘制，还可能跨越 JS 引擎与渲染引擎的边界，而强制同步布局代价更大。减少 DOM 操作的本质是减少触发重排重绘的次数和访问真实 DOM 的次数。常见做法：
+
+- 第一，批量读写，避免布局抖动。浏览器有渲染队列会攒着变更，但如果你先改样式又立刻读 offsetHeight、getBoundingClientRect，就会强制刷新队列触发同步布局。正确姿势是所有读操作先做完，再统一写。
+- 第二，用 DocumentFragment 或离线 DOM 批量操作：先把节点创建好挂在 fragment 上，最后一次插入文档，只触发一次布局；也可以用 display: none 把容器摘掉、操作完再放回来。
+- 第三，用 class 切换代替逐条改 style，减少样式计算次数。
+- 第四，动画优先用 transform 和 opacity，它们只触发合成层，不引起重排重绘，必要时用 will-change 提升为独立图层。
+- 第五，用虚拟列表只渲染视口内的节点，长列表从几千个 DOM 降到几十个。
+- 第六，优先状态驱动，用框架的 diff 批量更新代替手工 DOM 操作。此外还有事件委托减少监听器数量、用 requestAnimationFrame 把 DOM 写入对齐到渲染帧。
 
 **常见追问**：那为什么读 offsetHeight 会导致强制同步布局？怎么避免？
 
@@ -1028,7 +1316,13 @@ DOM 操作慢，不是因为 DOM 本身是慢对象，而是每次修改都可�
 
 **参考回答**：
 
-要分 Vue2 和 Vue3 两种情况。Vue2 支持 IE9 及以上，原理有三点：一是响应式用 Object.defineProperty 递归劫持属性的 getter/setter，配合重写 7 个数组方法，defineProperty 在 IE9 就支持；二是模板编译产物是 ES5 函数，运行时本身不依赖新语法；三是构建时用 Babel 加 preset-env 把源码转成 ES5，并用 core-js 注入缺失的 API polyfill（Promise、Array.from、Object.assign 等），CSS 侧还要注意 flex 的兼容写法和 autoprefixer。但 Vue2 也有 IE 下必须注意的点：不支持 Proxy 所以不能用 Vue3 的某些写法，还需要在 index.html 加 X-UA-Compatible meta 强制走标准模式。Vue3 官方不支持 IE，根本原因是响应式依赖 Proxy，而 Proxy 无法被 polyfill（无法拦截已有对象的全部操作），加上源码大量使用 ES2015+ 语法和 Proxy、Reflect、Symbol 等不可完全垫片的 API。如果业务真的必须兼容 IE，可行做法只有继续留在 Vue2、提供功能降级页面、或者给 IE 用户引导到提示页。所以新项目选型时兼容性要求要先确认清楚。
+要分 Vue2 和 Vue3 两种情况。Vue2 支持 IE9 及以上，原理有三点：
+
+- 一是响应式用 Object.defineProperty 递归劫持属性的 getter/setter，配合重写 7 个数组方法，defineProperty 在 IE9 就支持；
+- 二是模板编译产物是 ES5 函数，运行时本身不依赖新语法；
+- 三是构建时用 Babel 加 preset-env 把源码转成 ES5，并用 core-js 注入缺失的 API polyfill（Promise、Array.from、Object.assign 等），CSS 侧还要注意 flex 的兼容写法和 autoprefixer。但 Vue2 也有 IE 下必须注意的点：不支持 Proxy 所以不能用 Vue3 的某些写法，还需要在 index.html 加 X-UA-Compatible meta 强制走标准模式。Vue3 官方不支持 IE，根本原因是响应式依赖 Proxy，而 Proxy 无法被 polyfill（无法拦截已有对象的全部操作），加上源码大量使用 ES2015+ 语法和 Proxy、Reflect、Symbol 等不可完全垫片的 API。如果业务真的必须兼容 IE，可行做法只有继续留在 Vue2、提供功能降级页面、或者给 IE 用户引导到提示页。
+
+所以新项目选型时兼容性要求要先确认清楚。
 
 **常见追问**：那如果现在有个老项目必须支持 IE11，你会怎么规划升级路径？
 
@@ -1048,7 +1342,11 @@ DOM 操作慢，不是因为 DOM 本身是慢对象，而是每次修改都可�
 
 **参考回答**：
 
-图片懒加载的核心思想是：页面初始只加载可视区域内的图片，视口外的图片等即将进入视口时再设置真实 src 发起请求。收益是减少首屏网络请求和带宽、加快首屏渲染、节省内存，长列表和图片站效果最明显。实现原理有两种：传统方案是监听 scroll 和 resize 事件，用 getBoundingClientRect 或 offsetTop 计算图片位置，判断是否进入视口，进入就把 data-src 换成 src；缺点是滚动回调非常频繁，需要节流，而且读几何属性会强制同步布局，性能差。现代方案是 IntersectionObserver，浏览器异步观察目标元素与视口（或指定根元素）的交叉状态，交叉时触发回调，不需要监听滚动，也没有频繁计算布局的开销，性能好得多。Vue 里标准做法是封装一个自定义指令 v-lazy：指令的 mounted 钩子里给元素设置占位图并创建 observer，回调里替换 src 并 unobserve 该元素，unmounted 时断开 observer 防止泄漏。工程细节上还要考虑：用 loading 属性和占位色块避免布局抖动、设置宽高防止 CLS、加载失败时兜底图片、首屏关键图片用 preload 或直接加载不懒加载、以及配合 CDN 的响应式图（srcset）按屏幕选尺寸。
+图片懒加载的核心思想是：页面初始只加载可视区域内的图片，视口外的图片等即将进入视口时再设置真实 src 发起请求。收益是减少首屏网络请求和带宽、加快首屏渲染、节省内存，长列表和图片站效果最明显。实现原理有两种：传统方案是监听 scroll 和 resize 事件，用 getBoundingClientRect 或 offsetTop 计算图片位置，判断是否进入视口，进入就把 data-src 换成 src；缺点是滚动回调非常频繁，需要节流，而且读几何属性会强制同步布局，性能差。
+
+现代方案是 IntersectionObserver，浏览器异步观察目标元素与视口（或指定根元素）的交叉状态，交叉时触发回调，不需要监听滚动，也没有频繁计算布局的开销，性能好得多。Vue 里标准做法是封装一个自定义指令 v-lazy：指令的 mounted 钩子里给元素设置占位图并创建 observer，回调里替换 src 并 unobserve 该元素，unmounted 时断开 observer 防止泄漏。
+
+工程细节上还要考虑：用 loading 属性和占位色块避免布局抖动、设置宽高防止 CLS、加载失败时兜底图片、首屏关键图片用 preload 或直接加载不懒加载、以及配合 CDN 的响应式图（srcset）按屏幕选尺寸。
 
 **常见追问**：那图片的宽高没写会导致什么问题？和懒加载有关系吗？
 
@@ -1068,7 +1366,16 @@ DOM 操作慢，不是因为 DOM 本身是慢对象，而是每次修改都可�
 
 **参考回答**：
 
-Vue SSR 指在 Node.js 服务端运行 Vue 应用，把组件树渲染成完整的 HTML 字符串直接返回，浏览器首屏立刻展示内容；同时下载客户端 bundle 并执行 hydration（注水），把静态 DOM 接管成响应式、可交互的 Vue 应用。为什么需要：纯 SPA 的首屏是空壳 HTML，要等 JS 下载并执行后才渲染，导致白屏久、SEO 差；SSR 让 HTML 里已经有内容，利于搜索引擎抓取和弱网、低端设备体验。通俗类比：SPA 像点外卖只给了张菜单，要自己等做饭；SSR 像先把做好的菜端上来，再慢慢补服务和互动。实现上要用 createSSRApp 和 renderToString，配合 Vue Router 的服务端匹配、数据预取（asyncData 或 useAsyncData）、以及客户端激活时的 store 状态同步。要注意的点：一是同构代码限制，浏览器专有 API 只能在 onMounted 之后用；二是数据污染，不能把每个请求的状态存在模块级全局变量里，要用每次请求独立的应用实例和 useState；三是 hydration mismatch，服务端和客户端渲染结果必须一致，否则会警告并退化；四是性能与成本，服务端要承担渲染 CPU 和并发压力，通常配合缓存、降级成 CSR、或改用 Nuxt 这类框架。现在更常见的方案是 SSG 或 ISR 加流式 SSR。
+Vue SSR 指在 Node.js 服务端运行 Vue 应用，把组件树渲染成完整的 HTML 字符串直接返回，浏览器首屏立刻展示内容；同时下载客户端 bundle 并执行 hydration（注水），把静态 DOM 接管成响应式、可交互的 Vue 应用。为什么需要：纯 SPA 的首屏是空壳 HTML，要等 JS 下载并执行后才渲染，导致白屏久、SEO 差；SSR 让 HTML 里已经有内容，利于搜索引擎抓取和弱网、低端设备体验。
+
+通俗类比：SPA 像点外卖只给了张菜单，要自己等做饭；SSR 像先把做好的菜端上来，再慢慢补服务和互动。实现上要用 createSSRApp 和 renderToString，配合 Vue Router 的服务端匹配、数据预取（asyncData 或 useAsyncData）、以及客户端激活时的 store 状态同步。
+
+要注意的点：
+
+- 一是同构代码限制，浏览器专有 API 只能在 onMounted 之后用；
+- 二是数据污染，不能把每个请求的状态存在模块级全局变量里，要用每次请求独立的应用实例和 useState；
+- 三是 hydration mismatch，服务端和客户端渲染结果必须一致，否则会警告并退化；
+- 四是性能与成本，服务端要承担渲染 CPU 和并发压力，通常配合缓存、降级成 CSR、或改用 Nuxt 这类框架。现在更常见的方案是 SSG 或 ISR 加流式 SSR。
 
 **常见追问**：那 hydration 失败或者首屏不需要交互的场景，你会怎么取舍？
 
@@ -1088,7 +1395,15 @@ Vue SSR 指在 Node.js 服务端运行 Vue 应用，把组件树渲染成完整�
 
 **参考回答**：
 
-Vue Router 主要有 hash、history 两种模式，Vue Router 4 还支持 memory 模式。它们的区别在 URL 形式和底层实现。Hash 模式是默认模式，URL 形如 example.com/#/user/1，原理是监听 window 的 hashchange 事件，读取 location.hash 匹配路由表。hash 变化不会触发浏览器向服务器发请求，所以不需要服务端额外配置，兼容性也好；缺点是 URL 带 # 不够美观，对 SEO 不友好，且锚点跳转语义会被占用。History 模式 URL 形如 example.com/user/1，基于 HTML5 History API 的 pushState 和 replaceState，能改 URL 而不刷新页面；前进后退时监听 popstate 事件重新匹配路由。它的硬性要求是服务端做 fallback：用户直接访问或刷新某个子路径时，服务器必须把未匹配的路径返回 index.html，比如 Nginx 配 try_files $uri $uri/ /index.html，否则会 404。Memory 模式不操作 URL，路由历史保存在内存里，主要用于 SSR（服务端没有 window）和单元测试。选型上，内部系统、兼容性优先用 hash；对 SEO 和 URL 美观有要求的 C 端用 history 并配好服务端；SSR 用 memory。
+Vue Router 主要有 hash、history 两种模式，Vue Router 4 还支持 memory 模式。它们的区别在 URL 形式和底层实现。Hash 模式是默认模式，URL 形如 example.com/#/user/1，原理是监听 window 的 hashchange 事件，读取 location.hash 匹配路由表。
+
+hash 变化不会触发浏览器向服务器发请求，所以不需要服务端额外配置，兼容性也好；缺点是 URL 带 # 不够美观，对 SEO 不友好，且锚点跳转语义会被占用。History 模式 URL 形如 example.com/user/1，基于 HTML5 History API 的 pushState 和 replaceState，能改 URL 而不刷新页面；前进后退时监听 popstate 事件重新匹配路由。
+
+它的硬性要求是服务端做 fallback：用户直接访问或刷新某个子路径时，服务器必须把未匹配的路径返回 index.html，比如 Nginx 配 try_files $uri $uri/ /index.html，否则会 404。Memory 模式不操作 URL，路由历史保存在内存里，主要用于 SSR（服务端没有 window）和单元测试。
+
+- 选型上，内部系统、兼容性优先用 hash；
+- 对 SEO 和 URL 美观有要求的 C 端用 history 并配好服务端；
+- SSR 用 memory。
 
 **常见追问**：那 history 模式下怎么区分用户是刷新页面还是前端跳转？
 
@@ -1108,7 +1423,19 @@ Vue Router 主要有 hash、history 两种模式，Vue Router 4 还支持 memory
 
 **参考回答**：
 
-webpack 把每个 import/require 的文件当作一个模块。构建时先根据 module.rules 里的 test、include、exclude 等条件判断某个模块命中哪条 rule，命中后把该 rule 的 use 数组里的 loader 串成一条 loader 链。执行顺序是：从右到左、从下到上，也就是数组里最后一个 loader 最先执行，它的输出作为上一个 loader 的输入，最左边的 loader 输出被 webpack 当作该模块的最终 JS 源码去解析。举个常见配置：对 .css 用 [style-loader, css-loader, postcss-loader]，实际执行顺序是 postcss-loader 处理前缀，css-loader 把 CSS 转成 JS 模块，style-loader 再把样式注入 DOM。另外 loader 还有 pitch 阶段：从左边第一个 loader 开始依次调用 pitch 方法，如果某个 loader 的 pitch 返回了值，就会跳过后续 loader 直接进入正常阶段并回传给左边的 loader，style-loader 正是利用这个机制在 pitch 阶段返回注入代码。关键细节：loader 本质是导出函数的模块，接收 source、map、meta 参数；可以同步或异步（用 this.async() 返回 callback）；可以用 this.callback 返回多值；可以用 this.getOptions 拿配置、this.resourcePath 拿文件路径；也可以用 this.emitFile 产出额外文件。理解这条链是从右到左串行、纯转换，就能解释大部分 loader 配置问题。
+webpack 把每个 import/require 的文件当作一个模块。构建时先根据 module.rules 里的 test、include、exclude 等条件判断某个模块命中哪条 rule，命中后把该 rule 的 use 数组里的 loader 串成一条 loader 链。
+
+执行顺序是：从右到左、从下到上，也就是数组里最后一个 loader 最先执行，它的输出作为上一个 loader 的输入，最左边的 loader 输出被 webpack 当作该模块的最终 JS 源码去解析。举个常见配置：对 .css 用 [style-loader, css-loader, postcss-loader]，实际执行顺序是 postcss-loader 处理前缀，css-loader 把 CSS 转成 JS 模块，style-loader 再把样式注入 DOM。
+
+另外 loader 还有 pitch 阶段：从左边第一个 loader 开始依次调用 pitch 方法，如果某个 loader 的 pitch 返回了值，就会跳过后续 loader 直接进入正常阶段并回传给左边的 loader，style-loader 正是利用这个机制在 pitch 阶段返回注入代码。
+
+- 关键细节：loader 本质是导出函数的模块，接收 source、map、meta 参数；
+- 可以同步或异步（用 this.async() 返回 callback）；
+- 可以用 this.callback 返回多值；
+- 可以用 this.getOptions 拿配置、this.resourcePath 拿文件路径；
+- 也可以用 this.emitFile 产出额外文件。
+
+理解这条链是从右到左串行、纯转换，就能解释大部分 loader 配置问题。
 
 **常见追问**：那 loader 和 plugin 的区别是什么？plugin 在哪个阶段跑？
 
@@ -1128,7 +1455,20 @@ webpack 把每个 import/require 的文件当作一个模块。构建时先根�
 
 **参考回答**：
 
-我会分选型、规范、目录、质量四步。技术选型：构建工具优先 Vite，冷启动和 HMR 快、生态成熟，除非有微前端或特殊构建诉求再评估 Rspack；框架用 Vue3 加 script setup 和 Composition API，默认 TypeScript，中大型项目类型安全收益明显；路由 Vue Router 4 并做路由懒加载；状态用 Pinia 替代 Vuex，按模块拆 store 避免全局大 store；UI 库按业务选 Element Plus、Ant Design Vue 或 Naive UI，配合按需引入或 unplugin 自动导入；请求层统一封装 axios 加拦截器，或用 VueUse 的 useFetch。规范：ESLint 加 Prettier 加 Stylelint，提交用 husky 加 lint-staged 加 commitlint，配置路径别名、环境变量文件、TS 严格模式。目录组织：src 下设 api（接口层）、assets、components（通用组件）、views 或 pages（页面）、layouts、router、stores、composables（逻辑复用）、utils、types、styles 和 directives，复杂业务按领域再拆 modules，避免按类型硬分导致页面相关文件散落各处。质量与交付：Vitest 做单元测试、Playwright 或 Cypress 做 E2E，配置 CI 跑 lint、type-check、test、build，接入 Sentry 做错误监控、埋点与性能指标、Source Map 上传。最后写 README 和脚手架模板，让新同学能一条命令起项目。
+我会分选型、规范、目录、质量四步。
+
+- 技术选型：构建工具优先 Vite，冷启动和 HMR 快、生态成熟，除非有微前端或特殊构建诉求再评估 Rspack；
+- 框架用 Vue3 加 script setup 和 Composition API，默认 TypeScript，中大型项目类型安全收益明显；
+- 路由 Vue Router 4 并做路由懒加载；
+- 状态用 Pinia 替代 Vuex，按模块拆 store 避免全局大 store；
+- UI 库按业务选 Element Plus、Ant Design Vue 或 Naive UI，配合按需引入或 unplugin 自动导入；
+- 请求层统一封装 axios 加拦截器，或用 VueUse 的 useFetch。
+
+规范：ESLint 加 Prettier 加 Stylelint，提交用 husky 加 lint-staged 加 commitlint，配置路径别名、环境变量文件、TS 严格模式。目录组织：src 下设 api（接口层）、assets、components（通用组件）、views 或 pages（页面）、layouts、router、stores、composables（逻辑复用）、utils、types、styles 和 directives，复杂业务按领域再拆 modules，避免按类型硬分导致页面相关文件散落各处。
+
+质量与交付：Vitest 做单元测试、Playwright 或 Cypress 做 E2E，配置 CI 跑 lint、type-check、test、build，接入 Sentry 做错误监控、埋点与性能指标、Source Map 上传。
+
+最后写 README 和脚手架模板，让新同学能一条命令起项目。
 
 **常见追问**：那如果团队已有 Webpack 项目，你会直接换 Vite 吗？怎么评估风险？
 
@@ -1148,7 +1488,12 @@ webpack 把每个 import/require 的文件当作一个模块。构建时先根�
 
 **参考回答**：
 
-Vue2 的响应式和双向绑定可以拆成三块：数据劫持、依赖收集与派发更新、模板编译与双向绑定。第一，数据劫持：初始化时 Observer 遍历 data 对象，对每个属性调用 Object.defineProperty 重写 get 和 set，对象递归处理；数组因为 defineProperty 无法监听索引赋值，Vue 重写了 push、pop、shift、unshift、splice、sort、reverse 七个方法并在其中手动触发更新，同时监听数组元素如果是对象也会递归劫持。第二，依赖收集与派发更新：每个属性有一个 Dep 依赖收集器，get 被触发时如果当前有正在求值的 Watcher（Dep.target），就把它加入该属性的 Dep；set 时如果值变了就调用 dep.notify 通知所有订阅者。Watcher 是订阅者，分渲染 Watcher 和用户 Watcher（computed、watch）。第三，模板渲染：模板编译生成 render 函数，渲染时创建一个渲染 Watcher，执行 render 过程中访问到的响应式数据会被收集为该 Watcher 的依赖，数据变化触发 notify 后重新执行 render，生成新 VNode 并 patch 更新真实 DOM。第四，双向绑定：v-model 本质是语法糖，在表单元素上编译成 :value 加 @input，输入时通过事件监听把值写回数据，数据变化又通过响应式更新视图，形成双向。组件上的 v-model 则编译成 value prop 加 input 事件监听。
+Vue2 的响应式和双向绑定可以拆成三块：数据劫持、依赖收集与派发更新、模板编译与双向绑定。
+
+- 第一，数据劫持：初始化时 Observer 遍历 data 对象，对每个属性调用 Object.defineProperty 重写 get 和 set，对象递归处理；数组因为 defineProperty 无法监听索引赋值，Vue 重写了 push、pop、shift、unshift、splice、sort、reverse 七个方法并在其中手动触发更新，同时监听数组元素如果是对象也会递归劫持。
+- 第二，依赖收集与派发更新：每个属性有一个 Dep 依赖收集器，get 被触发时如果当前有正在求值的 Watcher（Dep.target），就把它加入该属性的 Dep；set 时如果值变了就调用 dep.notify 通知所有订阅者。Watcher 是订阅者，分渲染 Watcher 和用户 Watcher（computed、watch）。
+- 第三，模板渲染：模板编译生成 render 函数，渲染时创建一个渲染 Watcher，执行 render 过程中访问到的响应式数据会被收集为该 Watcher 的依赖，数据变化触发 notify 后重新执行 render，生成新 VNode 并 patch 更新真实 DOM。
+- 第四，双向绑定：v-model 本质是语法糖，在表单元素上编译成 :value 加 @input，输入时通过事件监听把值写回数据，数据变化又通过响应式更新视图，形成双向。组件上的 v-model 则编译成 value prop 加 input 事件监听。
 
 **常见追问**：那为什么 Vue2 数组的下标赋值监听不到？Vue 是怎么绕过的？
 
@@ -1168,7 +1513,13 @@ Vue2 的响应式和双向绑定可以拆成三块：数据劫持、依赖收集
 
 **参考回答**：
 
-可以从五个维度对比。响应式原理：Vue2 用 Object.defineProperty 递归劫持对象属性，监听不到属性新增删除、数组索引和 length 变化，需要 Vue.set 和 Vue.delete 兜底；Vue3 用 Proxy 代理整个对象，能监听属性增删、数组索引、Map 和 Set，而且是惰性递归，初始化更快。代码组织：Vue2 以 Options API 为主，同一功能的代码分散在 data、methods、computed 里，复杂组件难维护，复用靠 mixin（有命名冲突、来源不清的问题）；Vue3 引入 Composition API 和 script setup，可以按功能组织逻辑，组合式函数是干净的可复用单元，还支持更好的类型推导。性能与体积：Vue3 有静态提升、Patch Flag、Block Tree、事件缓存等编译期优化，diff 用最长递增子序列减少节点移动，运行时按模块拆分支持 tree-shaking，体积更小、首屏更快。TypeScript 支持：Vue2 的 Options API 对 TS 推导不友好，需要 vue-class-component 或 Vue.extend 绕路；Vue3 用 TS 重写，defineComponent 和 script setup 都有很好的类型支持。新能力：Vue3 新增 Fragment（多根节点）、Teleport（传送门）、Suspense（异步组件占位）、多 v-model、自定义渲染器 API 等，API 上把 beforeDestroy 改为 beforeUnmount，filter 被移除，$listeners 合并进 $attrs。
+可以从五个维度对比。响应式原理：Vue2 用 Object.defineProperty 递归劫持对象属性，监听不到属性新增删除、数组索引和 length 变化，需要 Vue.set 和 Vue.delete 兜底；Vue3 用 Proxy 代理整个对象，能监听属性增删、数组索引、Map 和 Set，而且是惰性递归，初始化更快。
+
+代码组织：Vue2 以 Options API 为主，同一功能的代码分散在 data、methods、computed 里，复杂组件难维护，复用靠 mixin（有命名冲突、来源不清的问题）；Vue3 引入 Composition API 和 script setup，可以按功能组织逻辑，组合式函数是干净的可复用单元，还支持更好的类型推导。
+
+性能与体积：Vue3 有静态提升、Patch Flag、Block Tree、事件缓存等编译期优化，diff 用最长递增子序列减少节点移动，运行时按模块拆分支持 tree-shaking，体积更小、首屏更快。TypeScript 支持：Vue2 的 Options API 对 TS 推导不友好，需要 vue-class-component 或 Vue.extend 绕路；Vue3 用 TS 重写，defineComponent 和 script setup 都有很好的类型支持。
+
+新能力：Vue3 新增 Fragment（多根节点）、Teleport（传送门）、Suspense（异步组件占位）、多 v-model、自定义渲染器 API 等，API 上把 beforeDestroy 改为 beforeUnmount，filter 被移除，$listeners 合并进 $attrs。
 
 **常见追问**：那从 Vue2 迁移到 Vue3，你会优先迁移哪部分？
 
@@ -1188,7 +1539,11 @@ Vue2 的响应式和双向绑定可以拆成三块：数据劫持、依赖收集
 
 **参考回答**：
 
-Vue3 的响应式核心是 reactive 函数返回一个 Proxy 代理对象，handler 里拦截多种操作：get 收集依赖，set 和 deleteProperty 触发更新，has 处理 in 操作，ownKeys 处理遍历。具体来说，get 陷阱里先通过 Reflect.get 拿到原始值，然后调用 track 把当前活跃的副作用函数（effect）收集到以目标对象和 key 为索引的依赖表里；如果读到的值是对象，就递归调用 reactive 把它也包成响应式（这就是惰性递归，只有访问到才代理，所以初始化更快）。set 陷阱里先用 Reflect.set 写入，比较新旧值是否变化，若变化则调用 trigger 找出所有依赖该 key 的 effect 并执行；这里对新增属性、数组 length 变化也会正确触发。用 Reflect 而不是直接操作 target 是为了保持 this 指向和返回值语义正确，也是 Proxy 的标准搭档。此外 Vue3 还提供几组变体：readonly 做只读代理、shallowReactive 只代理第一层、shallowRef 不做深层代理、以及 ref 用来包装原始值（内部用 get value 和 set value 加上依赖收集）。实现上还有两个关键设计：用 WeakMap 做缓存避免同一对象被重复代理、用 effect 加 scheduler 把更新推入队列做批量调度。
+Vue3 的响应式核心是 reactive 函数返回一个 Proxy 代理对象，handler 里拦截多种操作：get 收集依赖，set 和 deleteProperty 触发更新，has 处理 in 操作，ownKeys 处理遍历。具体来说，get 陷阱里先通过 Reflect.get 拿到原始值，然后调用 track 把当前活跃的副作用函数（effect）收集到以目标对象和 key 为索引的依赖表里；如果读到的值是对象，就递归调用 reactive 把它也包成响应式（这就是惰性递归，只有访问到才代理，所以初始化更快）。
+
+set 陷阱里先用 Reflect.set 写入，比较新旧值是否变化，若变化则调用 trigger 找出所有依赖该 key 的 effect 并执行；这里对新增属性、数组 length 变化也会正确触发。用 Reflect 而不是直接操作 target 是为了保持 this 指向和返回值语义正确，也是 Proxy 的标准搭档。
+
+此外 Vue3 还提供几组变体：readonly 做只读代理、shallowReactive 只代理第一层、shallowRef 不做深层代理、以及 ref 用来包装原始值（内部用 get value 和 set value 加上依赖收集）。实现上还有两个关键设计：用 WeakMap 做缓存避免同一对象被重复代理、用 effect 加 scheduler 把更新推入队列做批量调度。
 
 **常见追问**：那为什么用 Reflect 而不是直接 target[key]？两者有什么区别？
 
@@ -1208,7 +1563,16 @@ Vue3 的响应式核心是 reactive 函数返回一个 Proxy 代理对象，hand
 
 **参考回答**：
 
-v-model 不是什么黑魔法，它只是编译器帮你写好的语法糖，所以任何手动实现 prop 传入加事件回传的方式都能替代它。先说原理：Vue2 里 input 上的 v-model 会编译成 :value 加 @input 并在事件里赋值；组件上的 v-model 编译成 value prop 加 input 事件监听，所以子组件只要声明 value prop 并在需要时 emit input 就能工作。基于这个原理，替代方式有几种：一是手写，直接写 :value 和 @input 自己处理，最直白也最容易理解；二是 Vue2 的 .sync 修饰符，写成 :title.sync，编译成 :title 加 @update:title，适合更新多个属性的场景（Vue3 已把它合并进 v-model 的多参数形式）；三是 Vue2 里给组件设置 model 选项自定义 prop 名和事件名，比如用 model: { prop: 'checked', event: 'change' }；四是 Vue3 的自定义参数 v-model，写 v-model:title，等价于 :title 加 @update:title，同一组件可以绑定多个 v-model；五是 Vue3.4 的 defineModel 宏，子组件里 const model = defineModel() 直接得到一个可读写的 ref，父组件用 v-model 绑定，编译后自动生成 prop 和 emit 声明；六是 Vue3 的 useModel（VueUse）在 setup 里拿双向绑定。核心是理解 prop 向下、事件向上的数据流。
+v-model 不是什么黑魔法，它只是编译器帮你写好的语法糖，所以任何手动实现 prop 传入加事件回传的方式都能替代它。先说原理：Vue2 里 input 上的 v-model 会编译成 :value 加 @input 并在事件里赋值；组件上的 v-model 编译成 value prop 加 input 事件监听，所以子组件只要声明 value prop 并在需要时 emit input 就能工作。
+
+基于这个原理，替代方式有几种：
+
+- 一是手写，直接写 :value 和 @input 自己处理，最直白也最容易理解；
+- 二是 Vue2 的 .sync 修饰符，写成 :title.sync，编译成 :title 加 @update:title，适合更新多个属性的场景（Vue3 已把它合并进 v-model 的多参数形式）；
+- 三是 Vue2 里给组件设置 model 选项自定义 prop 名和事件名，比如用 model: { prop: 'checked', event: 'change' }；
+- 四是 Vue3 的自定义参数 v-model，写 v-model:title，等价于 :title 加 @update:title，同一组件可以绑定多个 v-model；
+- 五是 Vue3.4 的 defineModel 宏，子组件里 const model = defineModel() 直接得到一个可读写的 ref，父组件用 v-model 绑定，编译后自动生成 prop 和 emit 声明；
+- 六是 Vue3 的 useModel（VueUse）在 setup 里拿双向绑定。核心是理解 prop 向下、事件向上的数据流。
 
 **常见追问**：那 Vue3 的 defineModel 在编译后到底生成了什么？
 
@@ -1228,7 +1592,12 @@ v-model 不是什么黑魔法，它只是编译器帮你写好的语法糖，所
 
 **参考回答**：
 
-我学 Vue 原理分四步。第一步先建立整体心智模型：Vue 本质是数据驱动视图，核心链路是模板或 render 函数生成虚拟 DOM、数据变化触发响应式更新、重新渲染并 diff、打补丁到真实 DOM。可以类比 Excel：数据是单元格，公式是渲染函数，改一个单元格依赖它的公式自动重算，响应式就是自动记录谁用了谁。第二步按模块拆解，通常是五块：响应式（Vue2 的 defineProperty 加 Dep 加 Watcher，Vue3 的 Proxy 加 effect 加 track/trigger）、虚拟 DOM 与 diff（VNode 结构、patch 流程、Vue2 双端比较、Vue3 最长递增子序列）、模板编译（parse、optimize、generate 以及 Vue3 的 transform 和 Patch Flag）、组件化与生命周期（实例初始化、props 与事件、生命周期调用时机、父子顺序）、调度器（异步更新队列、nextTick 的微任务实现）。第三步动手实践：读官方源码关键函数，同时手写一个 200 行左右的 mini 响应式加 mini diff，用断点调试看调用栈和依赖表结构，这样比只看文章记得牢。第四步对比与输出：把 Vue2 和 Vue3 在同一模块上的差异列成表格，写笔记或团队分享，再回头验证自己能不能解释清楚。我一般还会结合官方文档、源码注释和 issue，遇到不确定的行为就写最小复现代码验证。
+我学 Vue 原理分四步。
+
+- 第一步先建立整体心智模型：Vue 本质是数据驱动视图，核心链路是模板或 render 函数生成虚拟 DOM、数据变化触发响应式更新、重新渲染并 diff、打补丁到真实 DOM。可以类比 Excel：数据是单元格，公式是渲染函数，改一个单元格依赖它的公式自动重算，响应式就是自动记录谁用了谁。
+- 第二步按模块拆解，通常是五块：响应式（Vue2 的 defineProperty 加 Dep 加 Watcher，Vue3 的 Proxy 加 effect 加 track/trigger）、虚拟 DOM 与 diff（VNode 结构、patch 流程、Vue2 双端比较、Vue3 最长递增子序列）、模板编译（parse、optimize、generate 以及 Vue3 的 transform 和 Patch Flag）、组件化与生命周期（实例初始化、props 与事件、生命周期调用时机、父子顺序）、调度器（异步更新队列、nextTick 的微任务实现）。
+- 第三步动手实践：读官方源码关键函数，同时手写一个 200 行左右的 mini 响应式加 mini diff，用断点调试看调用栈和依赖表结构，这样比只看文章记得牢。
+- 第四步对比与输出：把 Vue2 和 Vue3 在同一模块上的差异列成表格，写笔记或团队分享，再回头验证自己能不能解释清楚。我一般还会结合官方文档、源码注释和 issue，遇到不确定的行为就写最小复现代码验证。
 
 **常见追问**：那如果让你现在手写一个简易响应式，你会怎么写？
 
@@ -1248,7 +1617,11 @@ v-model 不是什么黑魔法，它只是编译器帮你写好的语法糖，所
 
 **参考回答**：
 
-跨域限制是浏览器施加给前端 JS 的安全策略：只要协议、域名、端口任一不同，浏览器就拦截 XHR/fetch 的响应（注意请求其实发出去了，服务端也收到了，只是响应被浏览器挡住了）。而服务端之间发 HTTP 请求没有同源策略限制。proxy 的思路就是：不让浏览器直接请求后端，而是请求同源的 dev server，比如把请求发到 localhost:5173/api/user，dev server 收到后在 Node 进程里用 http-proxy（webpack 用 http-proxy-middleware，vite 用 http-proxy）把请求转发到真实后端地址，拿到响应后再原样返回给浏览器。对浏览器来说，请求和响应都来自同一个源（dev server），自然不触发跨域拦截。配置上通常要设置 target 为后端地址、changeOrigin 为 true 把转发请求的 Host 头改成目标域名（有些后端按 Host 做校验，不设会 400 或 403）、pathRewrite 去掉前缀、有些还要配 secure 处理自签证书。需要强调的是，proxy 只解决开发态问题，因为生产环境没有 dev server，正式方案是 Nginx 反向代理把 /api 转发到后端、或者前后端同域部署、或者后端正确配置 CORS（Access-Control-Allow-Origin 等，带 cookie 时还要 Allow-Credentials 和具体 Origin），JSONP 和 postMessage 属于历史或特定场景方案。
+跨域限制是浏览器施加给前端 JS 的安全策略：只要协议、域名、端口任一不同，浏览器就拦截 XHR/fetch 的响应（注意请求其实发出去了，服务端也收到了，只是响应被浏览器挡住了）。而服务端之间发 HTTP 请求没有同源策略限制。proxy 的思路就是：不让浏览器直接请求后端，而是请求同源的 dev server，比如把请求发到 localhost:5173/api/user，dev server 收到后在 Node 进程里用 http-proxy（webpack 用 http-proxy-middleware，vite 用 http-proxy）把请求转发到真实后端地址，拿到响应后再原样返回给浏览器。
+
+对浏览器来说，请求和响应都来自同一个源（dev server），自然不触发跨域拦截。配置上通常要设置 target 为后端地址、changeOrigin 为 true 把转发请求的 Host 头改成目标域名（有些后端按 Host 做校验，不设会 400 或 403）、pathRewrite 去掉前缀、有些还要配 secure 处理自签证书。
+
+需要强调的是，proxy 只解决开发态问题，因为生产环境没有 dev server，正式方案是 Nginx 反向代理把 /api 转发到后端、或者前后端同域部署、或者后端正确配置 CORS（Access-Control-Allow-Origin 等，带 cookie 时还要 Allow-Credentials 和具体 Origin），JSONP 和 postMessage 属于历史或特定场景方案。
 
 **常见追问**：那 CORS 的预检请求是什么时候触发的？为什么简单请求不预检？
 
@@ -1268,7 +1641,15 @@ v-model 不是什么黑魔法，它只是编译器帮你写好的语法糖，所
 
 **参考回答**：
 
-v-if 是条件渲染，本质是编译期和运行时的条件分支：值为 false 时节点根本不会被创建，为 true 时才创建。所以对一个组件用 v-if，false 变 true 会走完整挂载流程：setup、beforeMount、子组件同样按序挂载、然后父的 mounted；true 变 false 会走卸载流程：beforeUnmount、子组件卸载、unmounted，组件实例被销毁，内部状态、定时器、事件监听都会丢失，除非自己清理过或外面套了 keep-alive。反复切换就意味着反复创建销毁，开销较大。v-show 是条件显示，本质是给元素加或去掉 display: none，元素本身一直存在、组件始终处于挂载状态。所以无论 false 变 true 还是 true 变 false，组件的生命周期钩子都只在首次渲染时执行一次，之后切换不会再触发 mounted 或 unmounted，只是样式变化触发重排重绘。如果外面套了 keep-alive，那么对应的钩子变成 activated 和 deactivated：第一次挂载仍走 mounted，之后切走触发 deactivated、切回触发 activated，状态保留。选型上，频繁切换用 v-show（代价是一次性渲染和初始样式计算），条件基本不变或初始就不该渲染时用 v-if（能真正减少 DOM 和组件实例，也有利于首屏）；另外 v-show 不支持 template 和 v-else，也不能用于多个元素。
+v-if 是条件渲染，本质是编译期和运行时的条件分支：值为 false 时节点根本不会被创建，为 true 时才创建。
+
+所以对一个组件用 v-if，false 变 true 会走完整挂载流程：setup、beforeMount、子组件同样按序挂载、然后父的 mounted；true 变 false 会走卸载流程：beforeUnmount、子组件卸载、unmounted，组件实例被销毁，内部状态、定时器、事件监听都会丢失，除非自己清理过或外面套了 keep-alive。
+
+反复切换就意味着反复创建销毁，开销较大。v-show 是条件显示，本质是给元素加或去掉 display: none，元素本身一直存在、组件始终处于挂载状态。
+
+所以无论 false 变 true 还是 true 变 false，组件的生命周期钩子都只在首次渲染时执行一次，之后切换不会再触发 mounted 或 unmounted，只是样式变化触发重排重绘。如果外面套了 keep-alive，那么对应的钩子变成 activated 和 deactivated：第一次挂载仍走 mounted，之后切走触发 deactivated、切回触发 activated，状态保留。
+
+选型上，频繁切换用 v-show（代价是一次性渲染和初始样式计算），条件基本不变或初始就不该渲染时用 v-if（能真正减少 DOM 和组件实例，也有利于首屏）；另外 v-show 不支持 template 和 v-else，也不能用于多个元素。
 
 **常见追问**：那如果 v-if 包裹的组件里有定时器，切换时要不要手动清理？
 
@@ -1288,7 +1669,13 @@ v-if 是条件渲染，本质是编译期和运行时的条件分支：值为 fa
 
 **参考回答**：
 
-一个 .vue 文件本质是自定义格式，浏览器不认识，必须经过编译和打包。以 Vite 加 Vue3 为例分几步。第一步解析：@vue/compiler-sfc 的 parse 方法把 SFC 源码按顶层块拆成 descriptor，包含 template、script、script setup、style 和 customBlocks。第二步编译 script：普通 script 直接作为组件选项对象；script setup 会被编译成 setup 函数，顶层绑定通过编译宏处理（defineProps、defineEmits、defineExpose 被编译成对应的选项声明，defineModel 变成 prop 加 emit），同时生成内联的 render 函数并暴露给组件。第三步编译 template：编译器把模板转成 render 函数代码，Vue3 会做静态提升、Patch Flag 标记、Block Tree 优化，并处理指令、插槽和事件，产物里会从 vue 导入 createElementVNode 等辅助函数。第四步编译 style：根据是否 scoped 和是否 module 做处理，scoped 会追加属性选择器并给元素打 data-v 标记，CSS 模块会生成类名映射对象；开发态用 style-loader 类似方式注入 style 标签，生产态通常提取成独立 CSS 文件。第五步打包与产物：Vite 生产构建用 Rollup 把所有模块按依赖图合并、tree-shaking、压缩混淆、按路由做代码分割，输出带 hash 的 JS 和 CSS 文件，配合 index.html 引入；部署时再配 CDN 缓存和 gzip 或 brotli 压缩。
+一个 .vue 文件本质是自定义格式，浏览器不认识，必须经过编译和打包。以 Vite 加 Vue3 为例分几步。
+
+- 第一步解析：@vue/compiler-sfc 的 parse 方法把 SFC 源码按顶层块拆成 descriptor，包含 template、script、script setup、style 和 customBlocks。
+- 第二步编译 script：普通 script 直接作为组件选项对象；script setup 会被编译成 setup 函数，顶层绑定通过编译宏处理（defineProps、defineEmits、defineExpose 被编译成对应的选项声明，defineModel 变成 prop 加 emit），同时生成内联的 render 函数并暴露给组件。
+- 第三步编译 template：编译器把模板转成 render 函数代码，Vue3 会做静态提升、Patch Flag 标记、Block Tree 优化，并处理指令、插槽和事件，产物里会从 vue 导入 createElementVNode 等辅助函数。
+- 第四步编译 style：根据是否 scoped 和是否 module 做处理，scoped 会追加属性选择器并给元素打 data-v 标记，CSS 模块会生成类名映射对象；开发态用 style-loader 类似方式注入 style 标签，生产态通常提取成独立 CSS 文件。
+- 第五步打包与产物：Vite 生产构建用 Rollup 把所有模块按依赖图合并、tree-shaking、压缩混淆、按路由做代码分割，输出带 hash 的 JS 和 CSS 文件，配合 index.html 引入；部署时再配 CDN 缓存和 gzip 或 brotli 压缩。
 
 **常见追问**：那 script setup 里的顶层变量为什么能直接在模板里用？原理是什么？
 
@@ -1308,7 +1695,15 @@ v-if 是条件渲染，本质是编译期和运行时的条件分支：值为 fa
 
 **参考回答**：
 
-Vue 单文件组件里 style scoped 的隔离不是靠 Shadow DOM，而是靠编译期改写选择器加运行时给元素打标记。原理分两步：编译阶段，Vue 编译器为每个组件生成一个唯一 ID（形如 data-v-7ba5bd90，基于文件路径和内容），对 style scoped 里每条 CSS 规则，在最后一个选择器后面追加属性选择器，比如把 .title 改写成 .title[data-v-7ba5bd90]，复合选择器 .a .b 会变成 .a .b[data-v-7ba5bd90]；渲染阶段，同一个 ID 作为自定义属性加到该组件模板渲染出的所有元素上。浏览器匹配时只有同时拥有这个属性、又符合选择器的元素才命中，样式就限定在本组件。几个边界要注意：一是子组件的根元素会同时带上父组件的 data-v-xxx 和子组件自己的 data-v-yyy，所以父组件可以直接给子组件根元素写样式；二是父组件的样式无法命中子组件内部元素，因为属性选择器加在最后一级，需要深度选择器穿透；三是动态渲染的 HTML（v-html 内容）不会被加上 data-v 属性，所以 scoped 样式对它们不生效，要用深度选择器或全局样式；四是 scoped 会提升一点选择器权重，覆盖时要留意优先级；五是同名类名在不同组件里互不影响，但全局样式仍然会渗透进来，所以最好配合命名约定或 CSS Modules、Tailwind 等方案。
+Vue 单文件组件里 style scoped 的隔离不是靠 Shadow DOM，而是靠编译期改写选择器加运行时给元素打标记。原理分两步：编译阶段，Vue 编译器为每个组件生成一个唯一 ID（形如 data-v-7ba5bd90，基于文件路径和内容），对 style scoped 里每条 CSS 规则，在最后一个选择器后面追加属性选择器，比如把 .title 改写成 .title[data-v-7ba5bd90]，复合选择器 .a .b 会变成 .a .b[data-v-7ba5bd90]；渲染阶段，同一个 ID 作为自定义属性加到该组件模板渲染出的所有元素上。
+
+浏览器匹配时只有同时拥有这个属性、又符合选择器的元素才命中，样式就限定在本组件。几个边界要注意：
+
+- 一是子组件的根元素会同时带上父组件的 data-v-xxx 和子组件自己的 data-v-yyy，所以父组件可以直接给子组件根元素写样式；
+- 二是父组件的样式无法命中子组件内部元素，因为属性选择器加在最后一级，需要深度选择器穿透；
+- 三是动态渲染的 HTML（v-html 内容）不会被加上 data-v 属性，所以 scoped 样式对它们不生效，要用深度选择器或全局样式；
+- 四是 scoped 会提升一点选择器权重，覆盖时要留意优先级；
+- 五是同名类名在不同组件里互不影响，但全局样式仍然会渗透进来，所以最好配合命名约定或 CSS Modules、Tailwind 等方案。
 
 **常见追问**：那如果我想让某个类名全局生效，scoped 里应该怎么写？
 
@@ -1328,7 +1723,11 @@ Vue 单文件组件里 style scoped 的隔离不是靠 Shadow DOM，而是靠编
 
 **参考回答**：
 
-因为 Vue 的 scoped 样式并不是真正的 Shadow DOM 隔离，只是编译期的属性选择器方案：编译时给当前组件模板里每个元素加上唯一属性（如 data-v-7ba5bd90），同时把 CSS 选择器改写成 .title[data-v-7ba5bd90]。注意属性选择器是加在选择器链的最后一级，所以父组件写的 .wrap .item 会变成 .wrap .item[data-v-xxx]，只能命中带父组件标记的元素；而子组件内部元素只有子组件自己的 data-v-yyy 标记，自然匹配不上，这就是样式穿不进去的原因。深度选择器的作用就是把这个属性选择器从最后一级挪到父级部分：写 :deep(.item) 时，编译产物会变成 .wrap[data-v-xxx] .item，即父组件的标记加在深度选择器前面的那一段上，而后面的 .item 不再带属性限定，于是就能命中子组件内部元素了。旧写法 /deep/ 和 >>> 是同一作用的语法，Vue3 推荐统一的 :deep() 伪类形式，因为原生 CSS 里也支持类似的 :deep 语义扩展。使用时要注意：深度选择器本质是破坏封装，一旦子组件内部类名变更样式就会失效，还会提升优先级造成覆盖困难；更好的替代是让子组件通过 CSS 变量或 props 暴露主题能力，或者把这段样式放到全局样式文件里并加业务命名空间。
+因为 Vue 的 scoped 样式并不是真正的 Shadow DOM 隔离，只是编译期的属性选择器方案：编译时给当前组件模板里每个元素加上唯一属性（如 data-v-7ba5bd90），同时把 CSS 选择器改写成 .title[data-v-7ba5bd90]。
+
+注意属性选择器是加在选择器链的最后一级，所以父组件写的 .wrap .item 会变成 .wrap .item[data-v-xxx]，只能命中带父组件标记的元素；而子组件内部元素只有子组件自己的 data-v-yyy 标记，自然匹配不上，这就是样式穿不进去的原因。深度选择器的作用就是把这个属性选择器从最后一级挪到父级部分：写 :deep(.item) 时，编译产物会变成 .wrap[data-v-xxx] .item，即父组件的标记加在深度选择器前面的那一段上，而后面的 .item 不再带属性限定，于是就能命中子组件内部元素了。
+
+旧写法 /deep/ 和 >>> 是同一作用的语法，Vue3 推荐统一的 :deep() 伪类形式，因为原生 CSS 里也支持类似的 :deep 语义扩展。使用时要注意：深度选择器本质是破坏封装，一旦子组件内部类名变更样式就会失效，还会提升优先级造成覆盖困难；更好的替代是让子组件通过 CSS 变量或 props 暴露主题能力，或者把这段样式放到全局样式文件里并加业务命名空间。
 
 **常见追问**：那如果子组件用的是第三方 UI 库，你会用 deep 还是有更好的做法？
 
@@ -1348,7 +1747,19 @@ Vue 单文件组件里 style scoped 的隔离不是靠 Shadow DOM，而是靠编
 
 **参考回答**：
 
-工程化不是某个工具，而是一套围绕多人协作和持续交付的体系，通常分五层：规范层（ESLint、Prettier、commitlint、husky、分支与 Code Review 流程）、构建层（模块打包、转译、压缩、Tree Shaking、代码分割、资源处理，代表工具 webpack、vite、rollup）、测试层（单元、集成、E2E）、发布层（CI/CD、灰度、回滚、版本与 changelog）、监控层（日志、埋点、错误上报、性能指标）。我落地过的具体事情包括：统一 monorepo 的构建与依赖治理，把构建时间从 5 分钟降到 1 分钟；接入 lint-staged 加 commitlint 规范提交；搭 CI 在合并前跑 type-check、单测和体积门禁，防止劣化上线。webpack 我理解的核心是：从入口出发递归分析 import/require 构建依赖图，每个模块经过 loader 转换成 JS，再用 plugin 在生命周期钩子上做优化和产物组织，最终按 splitChunks 规则输出多个 chunk 和运行时，配合 Tree Shaking（依赖 ESM 静态分析和 sideEffects 标记）删除未用代码，用 contenthash 做长期缓存。常用的性能优化手段有：把 loader 限定 include 减少匹配范围、用 cache 加持久化缓存、用 thread-loader 或 esbuild 做并行转译、用 DLL 或 externals 抽离不变依赖、用 splitChunks 合理分包、用 webpack-bundle-analyzer 定位大包、source-map 选型控制体积。现在新项目我会优先选 Vite（开发态 esbuild、生产态 Rollup），但理解 webpack 对排查存量工程问题仍然非常关键。
+工程化不是某个工具，而是一套围绕多人协作和持续交付的体系，通常分五层：规范层（ESLint、Prettier、commitlint、husky、分支与 Code Review 流程）、构建层（模块打包、转译、压缩、Tree Shaking、代码分割、资源处理，代表工具 webpack、vite、rollup）、测试层（单元、集成、E2E）、发布层（CI/CD、灰度、回滚、版本与 changelog）、监控层（日志、埋点、错误上报、性能指标）。
+
+我落地过的具体事情包括：
+
+- 统一 monorepo 的构建与依赖治理，把构建时间从 5 分钟降到 1 分钟；
+- 接入 lint-staged 加 commitlint 规范提交；
+- 搭 CI 在合并前跑 type-check、单测和体积门禁，防止劣化上线。
+
+webpack 我理解的核心是：从入口出发递归分析 import/require 构建依赖图，每个模块经过 loader 转换成 JS，再用 plugin 在生命周期钩子上做优化和产物组织，最终按 splitChunks 规则输出多个 chunk 和运行时，配合 Tree Shaking（依赖 ESM 静态分析和 sideEffects 标记）删除未用代码，用 contenthash 做长期缓存。
+
+常用的性能优化手段有：把 loader 限定 include 减少匹配范围、用 cache 加持久化缓存、用 thread-loader 或 esbuild 做并行转译、用 DLL 或 externals 抽离不变依赖、用 splitChunks 合理分包、用 webpack-bundle-analyzer 定位大包、source-map 选型控制体积。
+
+现在新项目我会优先选 Vite（开发态 esbuild、生产态 Rollup），但理解 webpack 对排查存量工程问题仍然非常关键。
 
 **常见追问**：那你怎么衡量构建优化的收益？会看哪些指标？
 
@@ -1368,7 +1779,19 @@ Vue 单文件组件里 style scoped 的隔离不是靠 Shadow DOM，而是靠编
 
 **参考回答**：
 
-要辩证看：虚拟 DOM 本身不保证提升性能。它的原理是在内存中用 JS 对象描述真实 DOM，更新时先生成新 VNode 树，与旧树 diff 得到最小变更集，再批量 patch 到真实 DOM。它带来的是可维护性，不是无条件的速度。为什么不一定更快：一是真实 DOM 操作本身并不慢，慢的是频繁读写触发的样式计算、布局、绘制以及跨引擎通信；虚拟 DOM 通过批量更新减少了无效操作，但 diff 本身有 CPU 和内存开销；二是对简单静态页面，虚拟 DOM 比直接 innerHTML 或手写 DOM 更慢，因为多了一层 VNode 创建和 diff；三是极端性能场景，比如高频动画和大量节点，直接操作 DOM 或用 Canvas 会更优。它的真实价值在三处：一是声明式编程模型，开发者只描述状态对应的 UI，不用手工维护 DOM 与状态的同步，大幅降低复杂交互的出错概率；二是跨平台能力，同一套 VNode 可以渲染到浏览器、Native、小程序、Canvas，React Native 和 Weex 就是这么做的；三是可预测的更新，配合 key 和批量调度能把变更收敛到最小集，在中大型应用里整体表现更稳定。所以面试里我会说：虚拟 DOM 是用可接受的运行时开销换声明式开发体验和跨端能力，性能提升只在频繁、复杂更新场景下成立，选它主要是因为工程收益而非纯性能。
+要辩证看：虚拟 DOM 本身不保证提升性能。它的原理是在内存中用 JS 对象描述真实 DOM，更新时先生成新 VNode 树，与旧树 diff 得到最小变更集，再批量 patch 到真实 DOM。它带来的是可维护性，不是无条件的速度。为什么不一定更快：
+
+- 一是真实 DOM 操作本身并不慢，慢的是频繁读写触发的样式计算、布局、绘制以及跨引擎通信；虚拟 DOM 通过批量更新减少了无效操作，但 diff 本身有 CPU 和内存开销；
+- 二是对简单静态页面，虚拟 DOM 比直接 innerHTML 或手写 DOM 更慢，因为多了一层 VNode 创建和 diff；
+- 三是极端性能场景，比如高频动画和大量节点，直接操作 DOM 或用 Canvas 会更优。
+
+它的真实价值在三处：
+
+- 一是声明式编程模型，开发者只描述状态对应的 UI，不用手工维护 DOM 与状态的同步，大幅降低复杂交互的出错概率；
+- 二是跨平台能力，同一套 VNode 可以渲染到浏览器、Native、小程序、Canvas，React Native 和 Weex 就是这么做的；
+- 三是可预测的更新，配合 key 和批量调度能把变更收敛到最小集，在中大型应用里整体表现更稳定。
+
+所以面试里我会说：虚拟 DOM 是用可接受的运行时开销换声明式开发体验和跨端能力，性能提升只在频繁、复杂更新场景下成立，选它主要是因为工程收益而非纯性能。
 
 **常见追问**：那为什么 React 不直接用手写 DOM 加优化？框架的取舍点在哪？
 
@@ -1388,7 +1811,18 @@ Vue 单文件组件里 style scoped 的隔离不是靠 Shadow DOM，而是靠编
 
 **参考回答**：
 
-在 Vue 里，子组件 emit 触发的事件处理函数（也就是父组件模板上通过 on 绑定的回调）是同步执行的，所以父组件的 on 会先执行，然后才回到子组件继续执行 emit 的下一行代码。原因是 Vue 的组件事件系统基于发布订阅：子组件调用 emit 时，Vue 会查找父组件在该组件上绑定的对应监听器并立即同步调用它，整个过程没有异步调度。执行顺序可以这样描述：第一，子组件执行到 emit 语句；第二，emit 内部同步找到并调用父组件的监听函数；第三，监听函数全部执行完毕；第四，回到子组件继续执行 emit 后面的代码。类比就是按门铃，门铃一响屋里的人立刻开门，然后你才继续往前走。需要注意区分的是：事件回调本身同步，但回调里如果改了响应式数据，DOM 更新仍然是异步批量的，要等 nextTick 才能拿到新 DOM；另外 Vue3 里 emit 返回值是 undefined，如果父组件回调里有异常它会向上抛出，可能中断子组件后续代码，所以重要场景要做错误处理。还有 v-model 的 update 事件、provide/inject 不是事件系统，不要混淆。
+在 Vue 里，子组件 emit 触发的事件处理函数（也就是父组件模板上通过 on 绑定的回调）是同步执行的，所以父组件的 on 会先执行，然后才回到子组件继续执行 emit 的下一行代码。原因是 Vue 的组件事件系统基于发布订阅：子组件调用 emit 时，Vue 会查找父组件在该组件上绑定的对应监听器并立即同步调用它，整个过程没有异步调度。
+
+执行顺序可以这样描述：
+
+- 第一，子组件执行到 emit 语句；
+- 第二，emit 内部同步找到并调用父组件的监听函数；
+- 第三，监听函数全部执行完毕；
+- 第四，回到子组件继续执行 emit 后面的代码。类比就是按门铃，门铃一响屋里的人立刻开门，然后你才继续往前走。
+
+需要注意区分的是：事件回调本身同步，但回调里如果改了响应式数据，DOM 更新仍然是异步批量的，要等 nextTick 才能拿到新 DOM；另外 Vue3 里 emit 返回值是 undefined，如果父组件回调里有异常它会向上抛出，可能中断子组件后续代码，所以重要场景要做错误处理。
+
+还有 v-model 的 update 事件、provide/inject 不是事件系统，不要混淆。
 
 **常见追问**：那如果父组件回调里抛了异常，子组件后面的代码还会执行吗？
 
@@ -1408,7 +1842,20 @@ Vue 单文件组件里 style scoped 的隔离不是靠 Shadow DOM，而是靠编
 
 **参考回答**：
 
-写过，两者职责完全不同。loader 本质是导出一个函数的模块，webpack 解析模块时按 rules 匹配文件，把文件内容（字符串或 Buffer）依次交给 loader 链，最后一个 loader 的输出就是该模块的 JS 源码。它是文件级、一对一、串行、纯转换，执行顺序从右到左。关键 API 有：函数接收 source、map、meta 三个参数；异步处理用 this.async() 返回 callback；需要返回多个值用 this.callback(null, code, map)；拿配置用 this.getOptions()；拿路径用 this.resourcePath；产出额外文件用 this.emitFile。我写过的例子有：给多语言文件做编译期替换的 loader（用 getOptions 拿映射表，用正则替换后返回新 source 和 source map），以及一个把 Markdown 转成 React 组件的 loader。plugin 是流程级扩展，本质是一个带 apply 方法的类，constructor 里存配置，apply 里接收 compiler，在 webpack 的生命周期钩子（compilation、emit、done、afterEmit 等）上注册回调做副作用，比如操作 compilation.assets 增删产物、生成版本清单、做体积分析。它是多对多、跨阶段、可以改构建流程的。我写过的例子有：一个构建完成后生成资源清单并上报的 plugin，用 compilation.hooks.processAssets 挂 tap 修改产物，用 compiler.hooks.done 上报结果。调试 loader 常用 this.emitWarning 打印中间态，或用 loader-runner 单测；plugin 主要靠看 Compiler 和 Compilation 的钩子文档并打日志。
+写过，两者职责完全不同。loader 本质是导出一个函数的模块，webpack 解析模块时按 rules 匹配文件，把文件内容（字符串或 Buffer）依次交给 loader 链，最后一个 loader 的输出就是该模块的 JS 源码。它是文件级、一对一、串行、纯转换，执行顺序从右到左。
+
+关键 API 有：
+
+- 函数接收 source、map、meta 三个参数；
+- 异步处理用 this.async() 返回 callback；
+- 需要返回多个值用 this.callback(null, code, map)；
+- 拿配置用 this.getOptions()；
+- 拿路径用 this.resourcePath；
+- 产出额外文件用 this.emitFile。
+
+我写过的例子有：给多语言文件做编译期替换的 loader（用 getOptions 拿映射表，用正则替换后返回新 source 和 source map），以及一个把 Markdown 转成 React 组件的 loader。plugin 是流程级扩展，本质是一个带 apply 方法的类，constructor 里存配置，apply 里接收 compiler，在 webpack 的生命周期钩子（compilation、emit、done、afterEmit 等）上注册回调做副作用，比如操作 compilation.assets 增删产物、生成版本清单、做体积分析。
+
+它是多对多、跨阶段、可以改构建流程的。我写过的例子有：一个构建完成后生成资源清单并上报的 plugin，用 compilation.hooks.processAssets 挂 tap 修改产物，用 compiler.hooks.done 上报结果。调试 loader 常用 this.emitWarning 打印中间态，或用 loader-runner 单测；plugin 主要靠看 Compiler 和 Compilation 的钩子文档并打日志。
 
 **常见追问**：那 loader 里怎么拿到 source map？如果转换后 map 对不上会怎样？
 
@@ -1428,7 +1875,11 @@ Vue 单文件组件里 style scoped 的隔离不是靠 Shadow DOM，而是靠编
 
 **参考回答**：
 
-核心差异在开发阶段的构建理念。Webpack 是 bundle-based：启动时递归分析依赖图，把所有模块打包成 bundle 再交给 dev server，项目越大冷启动和 HMR 越慢，因为每次都要重建打包结果。Vite 是 unbundled：开发时利用浏览器原生 ESM，只对当前请求到的模块做即时编译，同时用 esbuild 预构建第三方依赖（把 CommonJS 转成 ESM 并合并成少量文件减少请求），所以冷启动几乎是秒级，HMR 只更新受影响的模块链路，几乎与项目规模无关。类比就是：Webpack 像先把整本书翻译装订好再给你看，改一个字也要重新装订；Vite 像按需翻译当前这一页，改哪页翻哪页。生产环境两者都做完整打包：Vite 用 Rollup，产物更小、tree-shaking 更好，默认支持按路由代码分割；Webpack 用自己的打包器，产物成熟稳定。其他差异：Webpack 生态庞大、loader 和 plugin 覆盖极广、微前端和特殊构建场景支持更成熟；Vite 配置更简洁、开发体验更好，但在依赖 CommonJS 的旧库、特殊资源处理上生态还不如 Webpack。另外 Vite 生产构建用 esbuild 做代码压缩（现在也支持更稳的 terser 选项），这些都是选型时要权衡的点。
+核心差异在开发阶段的构建理念。Webpack 是 bundle-based：启动时递归分析依赖图，把所有模块打包成 bundle 再交给 dev server，项目越大冷启动和 HMR 越慢，因为每次都要重建打包结果。Vite 是 unbundled：开发时利用浏览器原生 ESM，只对当前请求到的模块做即时编译，同时用 esbuild 预构建第三方依赖（把 CommonJS 转成 ESM 并合并成少量文件减少请求），所以冷启动几乎是秒级，HMR 只更新受影响的模块链路，几乎与项目规模无关。
+
+类比就是：Webpack 像先把整本书翻译装订好再给你看，改一个字也要重新装订；Vite 像按需翻译当前这一页，改哪页翻哪页。生产环境两者都做完整打包：Vite 用 Rollup，产物更小、tree-shaking 更好，默认支持按路由代码分割；Webpack 用自己的打包器，产物成熟稳定。
+
+其他差异：Webpack 生态庞大、loader 和 plugin 覆盖极广、微前端和特殊构建场景支持更成熟；Vite 配置更简洁、开发体验更好，但在依赖 CommonJS 的旧库、特殊资源处理上生态还不如 Webpack。另外 Vite 生产构建用 esbuild 做代码压缩（现在也支持更稳的 terser 选项），这些都是选型时要权衡的点。
 
 **常见追问**：那 Vite 开发态用原生 ESM，为什么还需要预构建依赖？
 
@@ -1448,7 +1899,13 @@ Vue 单文件组件里 style scoped 的隔离不是靠 Shadow DOM，而是靠编
 
 **参考回答**：
 
-三者是 webpack 构建流程不同阶段的产物，可以类比做菜。module 是模块：webpack 把项目里每个被 import 或 require 的文件都视为一个 module，比如每个 .js、.css、.png、.vue 文件，它是最小构建单元。webpack 从 entry 出发递归解析依赖，形成 module graph，每个 module 有唯一标识（通常是相对路径或 hash），并带有 loader 处理后的源码。chunk 是代码块：webpack 内部按依赖关系和分包策略把一组 module 组合成 chunk，它是打包过程中的逻辑单位。chunk 的来源通常有三种：入口配置产生的 entry chunk、动态 import 或代码分割产生的 async chunk、以及 splitChunks 优化产生的公共 chunk（vendor）。chunk 之间还有父子关系和加载依赖。bundle 是产物文件：chunk 经过最终处理（合并、压缩、加运行时代码、加 hash 文件名）后输出到磁盘的文件，一个 chunk 通常对应一个 bundle 文件，但配置了 hashing 或 runtime 拆分会更复杂。关系可以概括为：多个 module 组成一个 chunk，一个 chunk 输出成一个 bundle。理解这三个概念能解释很多配置问题，比如为什么某个依赖没被 tree-shaking、为什么动态导入会多出一个 js 文件。
+三者是 webpack 构建流程不同阶段的产物，可以类比做菜。module 是模块：webpack 把项目里每个被 import 或 require 的文件都视为一个 module，比如每个 .js、.css、.png、.vue 文件，它是最小构建单元。webpack 从 entry 出发递归解析依赖，形成 module graph，每个 module 有唯一标识（通常是相对路径或 hash），并带有 loader 处理后的源码。
+
+chunk 是代码块：webpack 内部按依赖关系和分包策略把一组 module 组合成 chunk，它是打包过程中的逻辑单位。chunk 的来源通常有三种：入口配置产生的 entry chunk、动态 import 或代码分割产生的 async chunk、以及 splitChunks 优化产生的公共 chunk（vendor）。
+
+chunk 之间还有父子关系和加载依赖。bundle 是产物文件：chunk 经过最终处理（合并、压缩、加运行时代码、加 hash 文件名）后输出到磁盘的文件，一个 chunk 通常对应一个 bundle 文件，但配置了 hashing 或 runtime 拆分会更复杂。关系可以概括为：多个 module 组成一个 chunk，一个 chunk 输出成一个 bundle。
+
+理解这三个概念能解释很多配置问题，比如为什么某个依赖没被 tree-shaking、为什么动态导入会多出一个 js 文件。
 
 **常见追问**：那 runtime chunk 和 vendor chunk 分别在什么情况下产生？
 
@@ -1468,7 +1925,17 @@ Vue 单文件组件里 style scoped 的隔离不是靠 Shadow DOM，而是靠编
 
 **参考回答**：
 
-v-html 是 Vue 提供的指令，用来把字符串当作真实 HTML 插入元素的 innerHTML，浏览器会解析并渲染其中的标签，因此这部分内容不会作为 Vue 模板编译，也不会创建子组件，里面的插值语法、指令都不会生效。原理上：编译阶段 v-html 被编译成设置元素的 innerHTML 属性；Vue2 里它是 web 平台运行时指令，核心就是给宿主元素做 innerHTML 赋值；Vue3 把它编译成 innerHTML 的 prop patch，在 patchProp 时直接把字符串赋给 el.innerHTML。为什么这样设计：Vue 的模板是静态编译的，运行时再遇到动态字符串无法安全地把它当模板编译（否则会带来性能问题和作用域混乱），所以官方选择最简单直接的方案——交给浏览器原生解析。这带来两个必须知道的后果：一是 XSS 风险，如果内容来自用户或不可信来源（评论、富文本、AI 输出），脚本、事件属性、javascript 协议链接都可能被执行，插入前必须用 DOMPurify 这类库净化，或者用服务端白名单过滤；二是 CSP 影响，内联脚本会被 CSP 拦截，但 img onerror 这类仍可能触发；三是样式隔离问题，v-html 插入的节点不会被加上 scoped 的 data-v 属性，所以 scoped 样式对它不生效。更安全的替代方案是用 Markdown 渲染加净化、或者用 iframe sandbox 隔离渲染不可信内容。
+v-html 是 Vue 提供的指令，用来把字符串当作真实 HTML 插入元素的 innerHTML，浏览器会解析并渲染其中的标签，因此这部分内容不会作为 Vue 模板编译，也不会创建子组件，里面的插值语法、指令都不会生效。
+
+- 原理上：编译阶段 v-html 被编译成设置元素的 innerHTML 属性；
+- Vue2 里它是 web 平台运行时指令，核心就是给宿主元素做 innerHTML 赋值；
+- Vue3 把它编译成 innerHTML 的 prop patch，在 patchProp 时直接把字符串赋给 el.innerHTML。
+
+为什么这样设计：Vue 的模板是静态编译的，运行时再遇到动态字符串无法安全地把它当模板编译（否则会带来性能问题和作用域混乱），所以官方选择最简单直接的方案——交给浏览器原生解析。这带来两个必须知道的后果：
+
+- 一是 XSS 风险，如果内容来自用户或不可信来源（评论、富文本、AI 输出），脚本、事件属性、javascript 协议链接都可能被执行，插入前必须用 DOMPurify 这类库净化，或者用服务端白名单过滤；
+- 二是 CSP 影响，内联脚本会被 CSP 拦截，但 img onerror 这类仍可能触发；
+- 三是样式隔离问题，v-html 插入的节点不会被加上 scoped 的 data-v 属性，所以 scoped 样式对它不生效。更安全的替代方案是用 Markdown 渲染加净化、或者用 iframe sandbox 隔离渲染不可信内容。
 
 **常见追问**：那你会怎么安全地渲染一段 Markdown？净化放在前端还是后端？
 
@@ -1488,7 +1955,17 @@ v-html 是 Vue 提供的指令，用来把字符串当作真实 HTML 插入元�
 
 **参考回答**：
 
-两者都是前端路由的实现方式，核心区别在 URL 形态、是否触发浏览器请求和服务端配置要求。hash 模式：URL 形如 example.com/#/user/1，hash 是 # 后面的部分，浏览器不会把它发送给服务器；hash 变化会触发 hashchange 事件，前端监听后切换视图。优点是兼容性好、不需要服务端任何配置、刷新页面也不会 404；缺点是 URL 带 # 不够美观，分享和 SEO 不友好，且锚点的语义被路由占用了。history 模式：URL 形如 example.com/user/1，基于 HTML5 History API 的 pushState 和 replaceState，可以改 URL 而不刷新页面，用户点前进后退时触发 popstate 事件，前端重新匹配路由。优点是 URL 干净、和真实路径一致、对 SEO 友好、也支持 SSR；缺点是需要服务端配置 fallback，把未匹配的路径都返回 index.html（比如 Nginx 的 try_files），否则用户刷新或直接访问子路径会 404；另外兼容性上 IE9 及以下不支持 History API。选型上：内部管理系统、追求零配置和最大兼容性用 hash；C 端、对 SEO 和分享链接美观有要求用 history，并确保服务端、CDN、网关都做了 fallback；SSR 场景用 Vue Router 的 memory 模式（服务端没有 window）。
+两者都是前端路由的实现方式，核心区别在 URL 形态、是否触发浏览器请求和服务端配置要求。hash 模式：URL 形如 example.com/#/user/1，hash 是 # 后面的部分，浏览器不会把它发送给服务器；hash 变化会触发 hashchange 事件，前端监听后切换视图。
+
+优点是兼容性好、不需要服务端任何配置、刷新页面也不会 404；缺点是 URL 带 # 不够美观，分享和 SEO 不友好，且锚点的语义被路由占用了。history 模式：URL 形如 example.com/user/1，基于 HTML5 History API 的 pushState 和 replaceState，可以改 URL 而不刷新页面，用户点前进后退时触发 popstate 事件，前端重新匹配路由。
+
+- 优点是 URL 干净、和真实路径一致、对 SEO 友好、也支持 SSR；
+- 缺点是需要服务端配置 fallback，把未匹配的路径都返回 index.html（比如 Nginx 的 try_files），否则用户刷新或直接访问子路径会 404；
+- 另外兼容性上 IE9 及以下不支持 History API。
+
+- 选型上：内部管理系统、追求零配置和最大兼容性用 hash；
+- C 端、对 SEO 和分享链接美观有要求用 history，并确保服务端、CDN、网关都做了 fallback；
+- SSR 场景用 Vue Router 的 memory 模式（服务端没有 window）。
 
 **常见追问**：那 history 模式下刷新页面 Nginx 是怎么处理的？和 404 页面怎么共存？
 
@@ -1508,7 +1985,11 @@ v-html 是 Vue 提供的指令，用来把字符串当作真实 HTML 插入元�
 
 **参考回答**：
 
-Vue 的模板不是浏览器能直接执行的代码，编译器的任务是把类 HTML 的模板转成渲染函数。以 Vue3 为例分三步。第一步 parse 解析：用词法分析和语法分析把模板字符串解析成抽象语法树 AST，识别标签、属性、插值、指令 v-if/v-for/v-bind、插槽和事件，并处理嵌套关系，可以类比成把一句话拆成主谓宾结构。Vue3 的解析器对性能做了优化，处理大量静态文本时更快。第二步 transform 转换与优化：遍历 AST 做语义转换，Vue3 的 transform 是插件式流水线，常见转换包括把 v-if 转成条件表达式、把 v-for 转成渲染列表调用、把静态节点提升到 render 函数外（hoistStatic）、给动态节点打 Patch Flag 标记、按结构指令切分 Block Tree 以便 diff 时跳过静态节点、以及缓存内联事件处理函数。第三步 generate 代码生成：把转换后的 AST 拼成可执行的 render 函数代码，Vue3 产物是从 vue 导入 createElementVNode、toDisplayString 等辅助函数并返回虚拟节点树，相比 Vue2 的 with(this) 写法性能更好、也更利于 tree-shaking 和打包体积优化。最终 render 函数执行得到 VNode，交给渲染器 patch 成真实 DOM。需要补充的是，编译可以发生在构建时（vue-loader、compiler-sfc 预编译，生产推荐）或运行时（完整版 Vue 带 compiler），运行时编译对性能不友好且体积更大。
+Vue 的模板不是浏览器能直接执行的代码，编译器的任务是把类 HTML 的模板转成渲染函数。以 Vue3 为例分三步。
+
+- 第一步 parse 解析：用词法分析和语法分析把模板字符串解析成抽象语法树 AST，识别标签、属性、插值、指令 v-if/v-for/v-bind、插槽和事件，并处理嵌套关系，可以类比成把一句话拆成主谓宾结构。Vue3 的解析器对性能做了优化，处理大量静态文本时更快。
+- 第二步 transform 转换与优化：遍历 AST 做语义转换，Vue3 的 transform 是插件式流水线，常见转换包括把 v-if 转成条件表达式、把 v-for 转成渲染列表调用、把静态节点提升到 render 函数外（hoistStatic）、给动态节点打 Patch Flag 标记、按结构指令切分 Block Tree 以便 diff 时跳过静态节点、以及缓存内联事件处理函数。
+- 第三步 generate 代码生成：把转换后的 AST 拼成可执行的 render 函数代码，Vue3 产物是从 vue 导入 createElementVNode、toDisplayString 等辅助函数并返回虚拟节点树，相比 Vue2 的 with(this) 写法性能更好、也更利于 tree-shaking 和打包体积优化。最终 render 函数执行得到 VNode，交给渲染器 patch 成真实 DOM。需要补充的是，编译可以发生在构建时（vue-loader、compiler-sfc 预编译，生产推荐）或运行时（完整版 Vue 带 compiler），运行时编译对性能不友好且体积更大。
 
 **常见追问**：那 Patch Flag 具体是怎么在 diff 时省掉工作的？
 
@@ -1528,7 +2009,13 @@ Vue 的模板不是浏览器能直接执行的代码，编译器的任务是把�
 
 **参考回答**：
 
-nextTick 本质是利用 EventLoop 的微任务机制，把回调延迟到当前同步代码执行完毕、DOM 更新完成之后执行。JavaScript 是单线程的，EventLoop 负责调度任务：每次执行栈清空后先清空微任务队列（Promise.then、MutationObserver、queueMicrotask），然后浏览器可能渲染，再取下一个宏任务（setTimeout、事件回调）执行。Vue 的 DOM 更新是异步的：数据变化后不会同步更新 DOM，而是把对应的更新 watcher 推入调度队列，并在下一个微任务里批量执行 flushSchedulerQueue，这样同一轮里多次改数据只会渲染一次。nextTick 的巧妙之处在于它复用了同一条微任务队列：当你在改完数据后调用 nextTick(cb)，因为更新任务的微任务是先入队的，所以 cb 会排在它之后执行，从而保证回调执行时 DOM 已经是新的。实现上 nextTick 维护一个回调数组，用微任务异步清空，优先用 Promise.then，不支持时降级 MutationObserver，再降级 setImmediate 和 setTimeout。所以从时序上看，nextTick 回调通常在当前宏任务的微任务阶段执行，早于 setTimeout，也早于下一次渲染。这也是为什么改数据后立刻读 DOM 拿到旧值，而 nextTick 里读就是新值。
+nextTick 本质是利用 EventLoop 的微任务机制，把回调延迟到当前同步代码执行完毕、DOM 更新完成之后执行。JavaScript 是单线程的，EventLoop 负责调度任务：每次执行栈清空后先清空微任务队列（Promise.then、MutationObserver、queueMicrotask），然后浏览器可能渲染，再取下一个宏任务（setTimeout、事件回调）执行。
+
+Vue 的 DOM 更新是异步的：数据变化后不会同步更新 DOM，而是把对应的更新 watcher 推入调度队列，并在下一个微任务里批量执行 flushSchedulerQueue，这样同一轮里多次改数据只会渲染一次。nextTick 的巧妙之处在于它复用了同一条微任务队列：当你在改完数据后调用 nextTick(cb)，因为更新任务的微任务是先入队的，所以 cb 会排在它之后执行，从而保证回调执行时 DOM 已经是新的。
+
+实现上 nextTick 维护一个回调数组，用微任务异步清空，优先用 Promise.then，不支持时降级 MutationObserver，再降级 setImmediate 和 setTimeout。
+
+所以从时序上看，nextTick 回调通常在当前宏任务的微任务阶段执行，早于 setTimeout，也早于下一次渲染。这也是为什么改数据后立刻读 DOM 拿到旧值，而 nextTick 里读就是新值。
 
 **常见追问**：那如果在 nextTick 回调里再次修改数据，DOM 什么时候更新？
 
@@ -1548,7 +2035,13 @@ nextTick 本质是利用 EventLoop 的微任务机制，把回调延迟到当前
 
 **参考回答**：
 
-题目要求左侧固定 200px、右侧自适应填满剩余空间，主流有四种写法。第一种浮动加 margin：左侧 float left 加 width 200px，右侧 margin-left 200px，父容器要清除浮动（overflow hidden 或 clearfix）。原理是浮动元素脱离文档流但仍占空间，右侧靠 margin 让出 200px。缺点是必须处理父容器高度塌陷，且右侧内容若超过宽度会绕到浮动元素下方。第二种绝对定位加留白：父容器 position relative，左侧 absolute 加 left 0 加 width 200px，右侧 margin-left 200px 或 padding-left 200px。原理是绝对定位元素脱离文档流，右侧靠外边距或内边距避让；缺点是父容器高度需要自己撑开或让左侧也写高度，维护成本高。第三种 Flex：父容器 display flex，左侧 flex 0 0 200px（不放大不缩小固定 200px），右侧 flex 1 或 flex auto 占满剩余。这是目前最推荐的写法，语义清晰、不用清浮动、右侧内容也不会跑偏，还能轻松改成右侧固定左自适应。第四种 Grid：父容器 display grid 加 grid-template-columns 200px 1fr，一行代码就搞定，表达力最强，适合更复杂的栅格布局。对比来说，浮动和定位属于历史方案，主要问题是副作用多；Flex 和 Grid 是现代方案，其中 Flex 适合一维布局、Grid 适合二维，日常这个需求我一般直接用 Flex。
+题目要求左侧固定 200px、右侧自适应填满剩余空间，主流有四种写法。第一种浮动加 margin：左侧 float left 加 width 200px，右侧 margin-left 200px，父容器要清除浮动（overflow hidden 或 clearfix）。原理是浮动元素脱离文档流但仍占空间，右侧靠 margin 让出 200px。
+
+缺点是必须处理父容器高度塌陷，且右侧内容若超过宽度会绕到浮动元素下方。第二种绝对定位加留白：父容器 position relative，左侧 absolute 加 left 0 加 width 200px，右侧 margin-left 200px 或 padding-left 200px。
+
+原理是绝对定位元素脱离文档流，右侧靠外边距或内边距避让；缺点是父容器高度需要自己撑开或让左侧也写高度，维护成本高。第三种 Flex：父容器 display flex，左侧 flex 0 0 200px（不放大不缩小固定 200px），右侧 flex 1 或 flex auto 占满剩余。
+
+这是目前最推荐的写法，语义清晰、不用清浮动、右侧内容也不会跑偏，还能轻松改成右侧固定左自适应。第四种 Grid：父容器 display grid 加 grid-template-columns 200px 1fr，一行代码就搞定，表达力最强，适合更复杂的栅格布局。对比来说，浮动和定位属于历史方案，主要问题是副作用多；Flex 和 Grid 是现代方案，其中 Flex 适合一维布局、Grid 适合二维，日常这个需求我一般直接用 Flex。
 
 **常见追问**：那如果右侧内容很长出现横向滚动，用哪种方案最稳？
 
@@ -1568,7 +2061,11 @@ nextTick 本质是利用 EventLoop 的微任务机制，把回调延迟到当前
 
 **参考回答**：
 
-JS 的内存管理是自动的，分三个阶段：分配、使用、释放。第一，分配：声明变量、创建对象、函数调用都会分配内存，原始值通常分配在栈上或引擎内部（比如小整数和短字符串有优化），对象、数组、函数等引用类型分配在堆上。第二，使用：读写变量、访问对象属性，这一步由开发者掌控。第三，释放：由垃圾回收器自动完成，核心思想是可达性：从根（全局对象、当前调用栈上的变量、闭包引用等）出发，能通过引用链访问到的对象就是可达的会保留，不可达的才回收。主流算法是标记清除：先标记所有可达对象，再清除未标记的；配合分代回收（新生代用 Scavenge 复制算法、老生代用标记整理）和增量、并发回收降低卡顿。常见的内存泄漏包括：意外的全局变量（未声明就赋值挂到 window 上）、闭包长期持有大对象、setInterval 或 setTimeout 未清除且回调引用了外部大对象、addEventListener 绑定后组件卸载没解绑、游离 DOM 引用（节点从 DOM 移除但 JS 里还留着引用）、Map 或 Set 或不设上限的缓存累积。排查手段：Chrome DevTools 的 Memory 面板做堆快照对比、Performance 面板看内存曲线是否持续上升、用 Allocation instrumentation 看分配来源；工程上还要注意用 WeakMap 和 WeakRef 存弱引用、给定时器和监听器统一在卸载时清理、缓存加容量上限或淘汰策略。
+JS 的内存管理是自动的，分三个阶段：分配、使用、释放。
+
+- 第一，分配：声明变量、创建对象、函数调用都会分配内存，原始值通常分配在栈上或引擎内部（比如小整数和短字符串有优化），对象、数组、函数等引用类型分配在堆上。
+- 第二，使用：读写变量、访问对象属性，这一步由开发者掌控。
+- 第三，释放：由垃圾回收器自动完成，核心思想是可达性：从根（全局对象、当前调用栈上的变量、闭包引用等）出发，能通过引用链访问到的对象就是可达的会保留，不可达的才回收。主流算法是标记清除：先标记所有可达对象，再清除未标记的；配合分代回收（新生代用 Scavenge 复制算法、老生代用标记整理）和增量、并发回收降低卡顿。常见的内存泄漏包括：意外的全局变量（未声明就赋值挂到 window 上）、闭包长期持有大对象、setInterval 或 setTimeout 未清除且回调引用了外部大对象、addEventListener 绑定后组件卸载没解绑、游离 DOM 引用（节点从 DOM 移除但 JS 里还留着引用）、Map 或 Set 或不设上限的缓存累积。排查手段：Chrome DevTools 的 Memory 面板做堆快照对比、Performance 面板看内存曲线是否持续上升、用 Allocation instrumentation 看分配来源；工程上还要注意用 WeakMap 和 WeakRef 存弱引用、给定时器和监听器统一在卸载时清理、缓存加容量上限或淘汰策略。
 
 **常见追问**：那 WeakMap 为什么能帮助避免内存泄漏？它的 key 有什么特点？
 
@@ -1588,7 +2085,13 @@ JS 的内存管理是自动的，分三个阶段：分配、使用、释放。�
 
 **参考回答**：
 
-实现通用 Modal 要同时兼顾渲染位置、交互细节、无障碍和 API 设计。第一是渲染位置：Modal 需要覆盖整页，但通常写在业务组件内部，如果直接渲染在父组件中，会被父级的 overflow、z-index、transform 影响（比如 transform 会创建新的层叠上下文导致 fixed 失效）。所以要用 ReactDOM.createPortal 或 Vue 的 Teleport 把内容渲染到 body 下，同时用容器元素统一管理 z-index 层级。第二是视觉结构：遮罩层用固定定位铺满视口，内容区居中或按配置定位（top、center、drawer 方向），配合进入退出动画。第三是无障碍与交互：打开时把焦点移到弹窗内第一个可聚焦元素或容器本身，关闭时把焦点还给触发元素；用焦点陷阱让 Tab 循环在弹窗内；监听 Esc 关闭；给弹窗加 role 为 dialog 和 aria-modal、aria-labelledby 属性；打开时锁定 body 滚动，且要在多个弹窗叠加时用引用计数正确恢复滚动条；点击遮罩是否关闭要可配置。第四是 API 设计：声明式用 visible 或 modelValue 加事件，命令式提供 show、confirm 这类静态方法返回 Promise，方便链式调用；还要支持标题、内容插槽、自定义页脚、宽度、是否销毁（destroyOnClose）、挂载容器等配置。第五是工程细节：用 Suspense 或懒加载减小包体、支持服务端渲染避免 document 未定义、注意 z-index 冲突和嵌套弹窗的层级管理。
+实现通用 Modal 要同时兼顾渲染位置、交互细节、无障碍和 API 设计。
+
+- 第一是渲染位置：Modal 需要覆盖整页，但通常写在业务组件内部，如果直接渲染在父组件中，会被父级的 overflow、z-index、transform 影响（比如 transform 会创建新的层叠上下文导致 fixed 失效）。所以要用 ReactDOM.createPortal 或 Vue 的 Teleport 把内容渲染到 body 下，同时用容器元素统一管理 z-index 层级。
+- 第二是视觉结构：遮罩层用固定定位铺满视口，内容区居中或按配置定位（top、center、drawer 方向），配合进入退出动画。
+- 第三是无障碍与交互：打开时把焦点移到弹窗内第一个可聚焦元素或容器本身，关闭时把焦点还给触发元素；用焦点陷阱让 Tab 循环在弹窗内；监听 Esc 关闭；给弹窗加 role 为 dialog 和 aria-modal、aria-labelledby 属性；打开时锁定 body 滚动，且要在多个弹窗叠加时用引用计数正确恢复滚动条；点击遮罩是否关闭要可配置。
+- 第四是 API 设计：声明式用 visible 或 modelValue 加事件，命令式提供 show、confirm 这类静态方法返回 Promise，方便链式调用；还要支持标题、内容插槽、自定义页脚、宽度、是否销毁（destroyOnClose）、挂载容器等配置。
+- 第五是工程细节：用 Suspense 或懒加载减小包体、支持服务端渲染避免 document 未定义、注意 z-index 冲突和嵌套弹窗的层级管理。
 
 **常见追问**：那多层弹窗叠加时，body 滚动锁定怎么保证关闭一层不会误恢复滚动？
 
@@ -1608,7 +2111,17 @@ JS 的内存管理是自动的，分三个阶段：分配、使用、释放。�
 
 **参考回答**：
 
-四个方法的核心区别在于何时 resolve、何时 reject，以及是否短路。Promise.all：全部成功才成功，任意一个失败立即失败并短路；成功时返回值和输入顺序一致的数组（不是完成顺序），失败时返回第一个失败的原因；适合并发请求多个接口、全部拿到才渲染。要注意输入里的非 Promise 值会被当作已成功处理，传空数组会立即成功返回空数组。Promise.race：谁先敲定就跟着谁，不管是成功还是失败，第一个 settled 的结果决定整体结果；适合做超时控制（把业务请求和延时 reject 的 Promise 一起 race）。Promise.allSettled：等所有 Promise 都敲定，永远成功，返回值是每个元素带 status 的数组，成功是 fulfilled 带 value、失败是 rejected 带 reason；适合批量操作要统计成功失败明细的场景，比如批量提交、批量删除。Promise.any：只要有一个成功就成功并返回第一个成功的值，全部失败才 reject，且 reject 的是一个 AggregateError，里面 errors 数组收集了所有失败原因；适合多个镜像源、多个候选接口只要一个能用的场景，这也是 ES2021 新增的。可以这样记：all 是严父、race 是抢跑、allSettled 是都要交代、any 是只要一个成功。另外这四个方法都接收可迭代对象，内部都会 Promise.resolve 包装每一项。
+四个方法的核心区别在于何时 resolve、何时 reject，以及是否短路。
+
+- Promise.all：全部成功才成功，任意一个失败立即失败并短路；
+- 成功时返回值和输入顺序一致的数组（不是完成顺序），失败时返回第一个失败的原因；
+- 适合并发请求多个接口、全部拿到才渲染。
+
+要注意输入里的非 Promise 值会被当作已成功处理，传空数组会立即成功返回空数组。Promise.race：谁先敲定就跟着谁，不管是成功还是失败，第一个 settled 的结果决定整体结果；适合做超时控制（把业务请求和延时 reject 的 Promise 一起 race）。
+
+Promise.allSettled：等所有 Promise 都敲定，永远成功，返回值是每个元素带 status 的数组，成功是 fulfilled 带 value、失败是 rejected 带 reason；适合批量操作要统计成功失败明细的场景，比如批量提交、批量删除。Promise.any：只要有一个成功就成功并返回第一个成功的值，全部失败才 reject，且 reject 的是一个 AggregateError，里面 errors 数组收集了所有失败原因；适合多个镜像源、多个候选接口只要一个能用的场景，这也是 ES2021 新增的。
+
+可以这样记：all 是严父、race 是抢跑、allSettled 是都要交代、any 是只要一个成功。另外这四个方法都接收可迭代对象，内部都会 Promise.resolve 包装每一项。
 
 **常见追问**：那手写 Promise.all 需要注意哪些点？
 
@@ -1628,7 +2141,14 @@ JS 的内存管理是自动的，分三个阶段：分配、使用、释放。�
 
 **参考回答**：
 
-核心是把模型输出的结构化描述（比如 JSON、DSL 或工具调用参数）映射为前端组件树，思路是协议约定加解析加递归渲染加状态事件回填。第一，协议约定：先定义组件白名单和 schema，每个组件有 type、props、children 三段结构，比如一个 Card 组件带 title 属性、children 里放 Text 节点。协议要能校验，通常用 JSON Schema 或 Zod 校验，非法结构直接拒绝或降级成纯文本，避免模型乱输出把页面搞崩。第二，组件注册表：维护一个 type 到组件实现的映射表，只有注册表里的组件才允许渲染，这样既能限制模型能力边界，也方便按需注册和懒加载。第三，递归渲染：写一个渲染器，根据 type 从注册表取组件，把 props 做类型转换和默认值填充后传给组件，再递归处理 children 作为插槽或子节点；对未知 type 或校验失败渲染兜底组件并上报。第四，状态与事件回填：模型给的往往只是初始展示结构，真正的交互需要绑定业务状态和事件处理函数，常见做法是把渲染器的上下文（当前会话、表单值、API 调用能力）通过 Context 或 provide 注入，组件里通过约定的 key 引用；事件则通过动作描述（如 action 为调用某接口或设置某字段）映射到预注册的处理器，而不是让模型直接生成函数。工程上还要考虑：渲染结果的安全净化（防 XSS）、流式渲染时的增量更新、以及同一份 schema 的顺序稳定（用稳定 key 避免重渲染）。
+核心是把模型输出的结构化描述（比如 JSON、DSL 或工具调用参数）映射为前端组件树，思路是协议约定加解析加递归渲染加状态事件回填。
+
+- 第一，协议约定：先定义组件白名单和 schema，每个组件有 type、props、children 三段结构，比如一个 Card 组件带 title 属性、children 里放 Text 节点。协议要能校验，通常用 JSON Schema 或 Zod 校验，非法结构直接拒绝或降级成纯文本，避免模型乱输出把页面搞崩。
+- 第二，组件注册表：维护一个 type 到组件实现的映射表，只有注册表里的组件才允许渲染，这样既能限制模型能力边界，也方便按需注册和懒加载。
+- 第三，递归渲染：写一个渲染器，根据 type 从注册表取组件，把 props 做类型转换和默认值填充后传给组件，再递归处理 children 作为插槽或子节点；对未知 type 或校验失败渲染兜底组件并上报。
+- 第四，状态与事件回填：模型给的往往只是初始展示结构，真正的交互需要绑定业务状态和事件处理函数，常见做法是把渲染器的上下文（当前会话、表单值、API 调用能力）通过 Context 或 provide 注入，组件里通过约定的 key 引用；事件则通过动作描述（如 action 为调用某接口或设置某字段）映射到预注册的处理器，而不是让模型直接生成函数。
+
+工程上还要考虑：渲染结果的安全净化（防 XSS）、流式渲染时的增量更新、以及同一份 schema 的顺序稳定（用稳定 key 避免重渲染）。
 
 **常见追问**：那模型输出的结构不合法或者引用了不存在的组件，你会怎么处理？
 
@@ -1648,7 +2168,12 @@ JS 的内存管理是自动的，分三个阶段：分配、使用、释放。�
 
 **参考回答**：
 
-以 React 为例，组件本身不是 DOM，它只是一个返回元素描述的函数或类。渲染分两步：第一步渲染阶段（render），React 调用组件函数或类的 render 方法，得到一棵 React Element 树，可以理解为轻量的 JS 对象，只描述要什么 UI；然后经过协调（Reconciliation）与上一次的元素树做 diff，算出最小变更集，这一步是纯计算、可中断的，不会碰真实 DOM。第二步提交阶段（commit），把变更一次性写入真实 DOM：React 通过 createRoot 或 createElement 拿到容器元素，首次渲染时创建真实节点并插入容器，后续更新时按 diff 结果做属性更新、增删和移动节点，然后执行副作用（useEffect 的清理与回调）。整个流程可以类比成：组件是图纸，渲染阶段是画图并对比新旧图纸，提交阶段是真正施工。Vue 的对应链路是：组件模板编译成 render 函数，执行得到 VNode，首次渲染时 patch 把 VNode 转成真实 DOM 并挂载到 app 容器；数据变化时重新执行 render 得到新 VNode，与旧 VNode 做同层 diff，再把最小变更打补丁到真实 DOM。所以抽象一下就是：组件描述经过执行变成虚拟节点树，渲染器把虚拟节点树转成真实 DOM 并挂载到宿主容器，后续更新由响应式或状态变化驱动差异更新。
+以 React 为例，组件本身不是 DOM，它只是一个返回元素描述的函数或类。渲染分两步：
+
+- 第一步渲染阶段（render），React 调用组件函数或类的 render 方法，得到一棵 React Element 树，可以理解为轻量的 JS 对象，只描述要什么 UI；然后经过协调（Reconciliation）与上一次的元素树做 diff，算出最小变更集，这一步是纯计算、可中断的，不会碰真实 DOM。
+- 第二步提交阶段（commit），把变更一次性写入真实 DOM：React 通过 createRoot 或 createElement 拿到容器元素，首次渲染时创建真实节点并插入容器，后续更新时按 diff 结果做属性更新、增删和移动节点，然后执行副作用（useEffect 的清理与回调）。整个流程可以类比成：组件是图纸，渲染阶段是画图并对比新旧图纸，提交阶段是真正施工。Vue 的对应链路是：组件模板编译成 render 函数，执行得到 VNode，首次渲染时 patch 把 VNode 转成真实 DOM 并挂载到 app 容器；数据变化时重新执行 render 得到新 VNode，与旧 VNode 做同层 diff，再把最小变更打补丁到真实 DOM。
+
+所以抽象一下就是：组件描述经过执行变成虚拟节点树，渲染器把虚拟节点树转成真实 DOM 并挂载到宿主容器，后续更新由响应式或状态变化驱动差异更新。
 
 **常见追问**：那首次渲染和更新渲染在提交阶段有什么不同？
 
@@ -1668,7 +2193,14 @@ JS 的内存管理是自动的，分三个阶段：分配、使用、释放。�
 
 **参考回答**：
 
-在低代码和可视化搭建场景里，组件间的联动通常不写成代码，而是抽成一份 JSON 配置，交给渲染引擎在运行时解释执行。这份配置一般包含四个要素：一是触发源 source，指哪个组件、哪个事件，比如某输入框的 change、某按钮的 click、或者组件挂载 mount；二是条件 condition，可选，比如值等于某值、大于某阈值、非空，用表达式或结构化条件描述，结构化条件更安全也更容易做可视化编辑；三是目标 target，要影响的一个或多个组件 id；四是动作 action，对目标做什么，比如 setValue 赋值、setVisible 显隐、setDisabled 禁用、setOptions 更新下拉项、或者触发请求和提示。整体就是一个规则列表，形如当 A 变化且条件成立时，对 B 执行某动作。实现上：渲染引擎在初始化时把规则建成依赖图（谁依赖谁），事件触发时只重算受影响的目标，而不是全量刷新；条件表达式用受控的解析器执行，禁止直接 eval；还要处理几种边界情况：环形依赖（A 依赖 B、B 又依赖 A）会导致死循环或抖动，需要在建图时做环检测并报错或限制传播深度；异步动作（比如触发接口后再赋值）要做好时序和竞态控制；动作执行失败要有兜底和日志。工程上这类规则最好可校验、可版本化，并在设计态给出冲突提示。
+在低代码和可视化搭建场景里，组件间的联动通常不写成代码，而是抽成一份 JSON 配置，交给渲染引擎在运行时解释执行。这份配置一般包含四个要素：
+
+- 一是触发源 source，指哪个组件、哪个事件，比如某输入框的 change、某按钮的 click、或者组件挂载 mount；
+- 二是条件 condition，可选，比如值等于某值、大于某阈值、非空，用表达式或结构化条件描述，结构化条件更安全也更容易做可视化编辑；
+- 三是目标 target，要影响的一个或多个组件 id；
+- 四是动作 action，对目标做什么，比如 setValue 赋值、setVisible 显隐、setDisabled 禁用、setOptions 更新下拉项、或者触发请求和提示。整体就是一个规则列表，形如当 A 变化且条件成立时，对 B 执行某动作。实现上：渲染引擎在初始化时把规则建成依赖图（谁依赖谁），事件触发时只重算受影响的目标，而不是全量刷新；条件表达式用受控的解析器执行，禁止直接 eval；还要处理几种边界情况：环形依赖（A 依赖 B、B 又依赖 A）会导致死循环或抖动，需要在建图时做环检测并报错或限制传播深度；异步动作（比如触发接口后再赋值）要做好时序和竞态控制；动作执行失败要有兜底和日志。
+
+工程上这类规则最好可校验、可版本化，并在设计态给出冲突提示。
 
 **常见追问**：那多个规则同时影响同一个组件时，优先级和执行顺序怎么定？
 
@@ -1688,7 +2220,12 @@ JS 的内存管理是自动的，分三个阶段：分配、使用、释放。�
 
 **参考回答**：
 
-拖拽本质是持续监听指针事件、实时计算被拖组件与候选落位区域的几何关系，用碰撞或吸附算法判定合法落点并给出预览，松手时提交位置变更。具体拆四步。第一，拖拽状态机：pointerdown 记录起点、被拖元素和初始位置，pointermove 更新位置，pointerup 和 pointercancel 结束；位置更新优先用 transform translate 而不是改 left/top，避免每帧触发重排；用 setPointerCapture 保证指针移出元素后仍能收到事件，同时要防止拖拽时选中文本或触发原生拖拽（设置 user-select 和 draggable 为 false）。第二，边界检测：把被拖元素的矩形与容器和其他组件的矩形做几何比较，常见判定有包含（中心点或大部分面积落在某区域内）、相交（重叠面积超过阈值）、以及最近边距离（用于吸附到某个插入位置）；矩形可以用 getBoundingClientRect 获取，但要注意它会引起同步布局，所以要在拖拽开始时缓存好各候选区域的矩形，拖拽过程中只做纯计算。第三，落位与吸附：如果是自由画布，通常配合网格吸附（把坐标四舍五入到网格步长）和参考线吸附（与其他组件对齐时显示参考线）；如果是流式容器，则计算插入位置（根据指针相对各兄弟元素中点判断插前还是插后）并展示插入指示线。第四，预览与提交：拖动过程中只渲染一个 ghost 或占位指示，目标位置高亮，避免频繁改动真实结构；松手时校验合法性（是否允许嵌套、是否超出边界、是否冲突）再提交到数据模型，并触发变更记录以支持撤销重做。性能上要用 requestAnimationFrame 节流 move 事件，并对大画布做视口裁剪。
+拖拽本质是持续监听指针事件、实时计算被拖组件与候选落位区域的几何关系，用碰撞或吸附算法判定合法落点并给出预览，松手时提交位置变更。具体拆四步。
+
+- 第一，拖拽状态机：pointerdown 记录起点、被拖元素和初始位置，pointermove 更新位置，pointerup 和 pointercancel 结束；位置更新优先用 transform translate 而不是改 left/top，避免每帧触发重排；用 setPointerCapture 保证指针移出元素后仍能收到事件，同时要防止拖拽时选中文本或触发原生拖拽（设置 user-select 和 draggable 为 false）。
+- 第二，边界检测：把被拖元素的矩形与容器和其他组件的矩形做几何比较，常见判定有包含（中心点或大部分面积落在某区域内）、相交（重叠面积超过阈值）、以及最近边距离（用于吸附到某个插入位置）；矩形可以用 getBoundingClientRect 获取，但要注意它会引起同步布局，所以要在拖拽开始时缓存好各候选区域的矩形，拖拽过程中只做纯计算。
+- 第三，落位与吸附：如果是自由画布，通常配合网格吸附（把坐标四舍五入到网格步长）和参考线吸附（与其他组件对齐时显示参考线）；如果是流式容器，则计算插入位置（根据指针相对各兄弟元素中点判断插前还是插后）并展示插入指示线。
+- 第四，预览与提交：拖动过程中只渲染一个 ghost 或占位指示，目标位置高亮，避免频繁改动真实结构；松手时校验合法性（是否允许嵌套、是否超出边界、是否冲突）再提交到数据模型，并触发变更记录以支持撤销重做。性能上要用 requestAnimationFrame 节流 move 事件，并对大画布做视口裁剪。
 
 **常见追问**：那如果画布有几千个组件，拖拽时怎么保证不卡？
 
@@ -1708,7 +2245,22 @@ JS 的内存管理是自动的，分三个阶段：分配、使用、释放。�
 
 **参考回答**：
 
-两者都是 ES6 引入的块级作用域声明，用来替代 var 的函数作用域和变量提升问题。区别主要有三点：第一，初始化要求，const 声明时必须赋初值，let 可以不赋值，默认为 undefined；第二，重新赋值，let 允许后续重新赋值，const 不允许对绑定重新赋值，否则抛 TypeError；第三，语义上 let 表示变量、const 表示常量引用，工程里默认用 const、需要重新赋值时才用 let，能减少意外修改。通俗类比：let 像一个可换内容的盒子，const 像把盒子焊死在某个位置，盒子本身不能换，但盒子里的东西（对象属性、数组元素）还能改。两者还有几个共同点，也是相对 var 的改进：都是块级作用域，只在最近的 {} 内有效，适合循环和条件分支；都存在暂时性死区（TDZ），声明前访问会抛 ReferenceError，不像 var 那样提升为 undefined；都不允许在同一作用域重复声明；在全局作用域下也不会挂到 window 上。另外要注意循环里用 let 会为每次迭代创建独立绑定，所以能正确配合闭包，这是经典面试点。
+两者都是 ES6 引入的块级作用域声明，用来替代 var 的函数作用域和变量提升问题。区别主要有三点：
+
+- 第一，初始化要求，const 声明时必须赋初值，let 可以不赋值，默认为 undefined；
+- 第二，重新赋值，let 允许后续重新赋值，const 不允许对绑定重新赋值，否则抛 TypeError；
+- 第三，语义上 let 表示变量、const 表示常量引用，工程里默认用 const、需要重新赋值时才用 let，能减少意外修改。
+
+通俗类比：let 像一个可换内容的盒子，const 像把盒子焊死在某个位置，盒子本身不能换，但盒子里的东西（对象属性、数组元素）还能改。
+
+两者还有几个共同点，也是相对 var 的改进：
+
+- 都是块级作用域，只在最近的 {} 内有效，适合循环和条件分支；
+- 都存在暂时性死区（TDZ），声明前访问会抛 ReferenceError，不像 var 那样提升为 undefined；
+- 都不允许在同一作用域重复声明；
+- 在全局作用域下也不会挂到 window 上。
+
+另外要注意循环里用 let 会为每次迭代创建独立绑定，所以能正确配合闭包，这是经典面试点。
 
 **常见追问**：那 for 循环里用 let 和 var 声明 i，配合 setTimeout 输出有什么差别？
 
@@ -1728,7 +2280,14 @@ JS 的内存管理是自动的，分三个阶段：分配、使用、释放。�
 
 **参考回答**：
 
-在低代码平台里，在线 JS 开发通常不是让用户写任意脚本，而是提供脚本块或逻辑编排能力。整体链路分四层。第一，编辑层：前端集成 Monaco 或 CodeMirror，提供语法高亮、自动补全和类型提示；提示通常来自平台预置的 d.ts 或 JSON Schema，把上下文 API（如 ctx、$page、$api、$utils）暴露给用户，让脚本有类型可循。第二，编译转译层：用户写的是 ES6+ 或 TypeScript，需要 Babel、SWC 或 esbuild 转成可执行的 JS，同时做静态检查（禁用部分全局变量和语法），编译产物通常做缓存，按脚本内容 hash 缓存避免重复编译。第三，执行层：这是最关键的一环，绝不能在主进程用 eval 直接跑。常见方案有三种：用 new Function 加参数白名单（把 context 作为形参传入，比 eval 作用域更干净，但仍在同 Realm，安全性有限）；用 iframe sandbox 加 postMessage 通信，隔离性最好；服务端用 Node 的 vm 模块或 isolated-vm、QuickJS 这类独立运行时做真隔离，配合超时和内存限制。第四，运行时桥接：脚本需要访问平台能力时，通过注入的受控 API 对象调用，而不是直接暴露 window 或 document；同时要做超时中断（用 Worker 加 terminate 或服务端强杀）、异常捕获与日志上报、以及输出结果的序列化校验。工程上还要给用户提供调试体验，比如报错行号映射回源码、控制台输出、以及预览沙箱。
+在低代码平台里，在线 JS 开发通常不是让用户写任意脚本，而是提供脚本块或逻辑编排能力。整体链路分四层。
+
+- 第一，编辑层：前端集成 Monaco 或 CodeMirror，提供语法高亮、自动补全和类型提示；提示通常来自平台预置的 d.ts 或 JSON Schema，把上下文 API（如 ctx、$page、$api、$utils）暴露给用户，让脚本有类型可循。
+- 第二，编译转译层：用户写的是 ES6+ 或 TypeScript，需要 Babel、SWC 或 esbuild 转成可执行的 JS，同时做静态检查（禁用部分全局变量和语法），编译产物通常做缓存，按脚本内容 hash 缓存避免重复编译。
+- 第三，执行层：这是最关键的一环，绝不能在主进程用 eval 直接跑。常见方案有三种：用 new Function 加参数白名单（把 context 作为形参传入，比 eval 作用域更干净，但仍在同 Realm，安全性有限）；用 iframe sandbox 加 postMessage 通信，隔离性最好；服务端用 Node 的 vm 模块或 isolated-vm、QuickJS 这类独立运行时做真隔离，配合超时和内存限制。
+- 第四，运行时桥接：脚本需要访问平台能力时，通过注入的受控 API 对象调用，而不是直接暴露 window 或 document；同时要做超时中断（用 Worker 加 terminate 或服务端强杀）、异常捕获与日志上报、以及输出结果的序列化校验。
+
+工程上还要给用户提供调试体验，比如报错行号映射回源码、控制台输出、以及预览沙箱。
 
 **常见追问**：那你会把脚本放前端沙箱跑还是服务端跑？各自的取舍是什么？
 
@@ -1748,7 +2307,13 @@ JS 的内存管理是自动的，分三个阶段：分配、使用、释放。�
 
 **参考回答**：
 
-在线运行 JS 本质是执行不可信代码，安全目标有三个：不破坏宿主、不越权访问数据、不耗尽资源。分四层防御。第一层也是最关键的，隔离执行环境：不要用 eval 或 new Function 在主进程直接跑，它们和宿主同权限。浏览器端用 iframe 的 sandbox 属性，只给 allow-scripts 而不加 allow-same-origin，让代码处于唯一源，无法读宿主 Cookie、localStorage 和 DOM，通信只走 postMessage；更轻的隔离用 Web Worker，它能防阻塞但要自己管 API 暴露，且 Worker 仍可访问同源网络请求，需要额外限制。服务端用 Node 的 vm 模块（隔离不彻底，仅做作用域隔离）、vm2（曾有逃逸漏洞，现已不推荐）、或者 isolated-vm、QuickJS、Deno 权限模型这类真正的隔离运行时；更彻底的是独立容器加 seccomp 限制系统调用。第二层，最小权限：只白名单暴露必要 API，比如日志、指定的 HTTP 客户端（且限制域名）、纯计算工具函数，绝不暴露文件系统、任意网络、进程和环境变量；敏感能力要通过代理函数二次校验参数。第三层，超时与资源配额：用 Worker 加定时 terminate，或者服务端强制杀进程加 CPU、内存、运行时长上限，防止 while true 死循环和内存爆炸，同时限制网络和磁盘 IO 速率。第四层，静态与动态检测：静态扫描禁用 eval、Function、import、require、WebAssembly、SharedArrayBuffer 等危险模式，动态侧可以插桩监控异常行为并做审计日志。此外还要注意输出侧的安全：脚本返回的内容如果被渲染到页面，仍要做 XSS 净化，因为脚本可能生成恶意 HTML 字符串。
+在线运行 JS 本质是执行不可信代码，安全目标有三个：不破坏宿主、不越权访问数据、不耗尽资源。分四层防御。第一层也是最关键的，隔离执行环境：不要用 eval 或 new Function 在主进程直接跑，它们和宿主同权限。浏览器端用 iframe 的 sandbox 属性，只给 allow-scripts 而不加 allow-same-origin，让代码处于唯一源，无法读宿主 Cookie、localStorage 和 DOM，通信只走 postMessage；更轻的隔离用 Web Worker，它能防阻塞但要自己管 API 暴露，且 Worker 仍可访问同源网络请求，需要额外限制。
+
+服务端用 Node 的 vm 模块（隔离不彻底，仅做作用域隔离）、vm2（曾有逃逸漏洞，现已不推荐）、或者 isolated-vm、QuickJS、Deno 权限模型这类真正的隔离运行时；更彻底的是独立容器加 seccomp 限制系统调用。第二层，最小权限：只白名单暴露必要 API，比如日志、指定的 HTTP 客户端（且限制域名）、纯计算工具函数，绝不暴露文件系统、任意网络、进程和环境变量；敏感能力要通过代理函数二次校验参数。
+
+第三层，超时与资源配额：用 Worker 加定时 terminate，或者服务端强制杀进程加 CPU、内存、运行时长上限，防止 while true 死循环和内存爆炸，同时限制网络和磁盘 IO 速率。第四层，静态与动态检测：静态扫描禁用 eval、Function、import、require、WebAssembly、SharedArrayBuffer 等危险模式，动态侧可以插桩监控异常行为并做审计日志。
+
+此外还要注意输出侧的安全：脚本返回的内容如果被渲染到页面，仍要做 XSS 净化，因为脚本可能生成恶意 HTML 字符串。
 
 **常见追问**：那 iframe sandbox 里如果加了 allow-same-origin 会有什么风险？
 
@@ -1768,7 +2333,16 @@ JS 的内存管理是自动的，分三个阶段：分配、使用、释放。�
 
 **参考回答**：
 
-页面抖动通常指 CLS，也就是累积布局偏移，衡量页面加载过程中元素意外移动的程度。原理是：浏览器解析 HTML 后先做首次布局并绘制，之后图片、字体、广告、异步组件、动态插入的 DOM 陆续到达，如果它们没有提前占位或尺寸未知，就会把已有元素挤开，产生偏移。所以保证不抖动的核心思路是让浏览器在首次布局时就知道每个元素最终占多大、放在哪。具体做法有六点：第一，图片、视频、iframe 显式设置 width 和 height，或者用 CSS 的 aspect-ratio 声明宽高比，让浏览器提前算出占位高度，这也是 CLS 优化收益最大的一条。第二，字体优化：用 font-display 的 optional 或 swap 并配合 preload 关键字体，或者用 size-adjust、font metric override 让回退字体的度量接近目标字体，减少字体切换时的重排；更稳的做法是首屏关键文本用系统字体。第三，骨架屏和占位：异步组件、列表、卡片先用固定高度的骨架占位，数据回来后替换，避免从 0 高度撑开。第四，避免在已有内容上方动态插入 DOM：比如顶部横幅、公告、错误提示，要么预留空间，要么绝对定位悬浮不占流。第五，控制资源优先级：首屏关键 CSS 内联或 preload，避免样式后到导致的 FOUC；非关键脚本用 defer 或 async 且不做影响布局的写入。第六，用隐藏到显示的切换代替先显示空内容后填充，即先 display none 或 visibility hidden 再统一展示。度量上可以用 PerformanceObserver 监听 layout-shift 指标，把 CLS 纳入监控。
+页面抖动通常指 CLS，也就是累积布局偏移，衡量页面加载过程中元素意外移动的程度。原理是：浏览器解析 HTML 后先做首次布局并绘制，之后图片、字体、广告、异步组件、动态插入的 DOM 陆续到达，如果它们没有提前占位或尺寸未知，就会把已有元素挤开，产生偏移。
+
+所以保证不抖动的核心思路是让浏览器在首次布局时就知道每个元素最终占多大、放在哪。具体做法有六点：
+
+- 第一，图片、视频、iframe 显式设置 width 和 height，或者用 CSS 的 aspect-ratio 声明宽高比，让浏览器提前算出占位高度，这也是 CLS 优化收益最大的一条。
+- 第二，字体优化：用 font-display 的 optional 或 swap 并配合 preload 关键字体，或者用 size-adjust、font metric override 让回退字体的度量接近目标字体，减少字体切换时的重排；更稳的做法是首屏关键文本用系统字体。
+- 第三，骨架屏和占位：异步组件、列表、卡片先用固定高度的骨架占位，数据回来后替换，避免从 0 高度撑开。
+- 第四，避免在已有内容上方动态插入 DOM：比如顶部横幅、公告、错误提示，要么预留空间，要么绝对定位悬浮不占流。
+- 第五，控制资源优先级：首屏关键 CSS 内联或 preload，避免样式后到导致的 FOUC；非关键脚本用 defer 或 async 且不做影响布局的写入。
+- 第六，用隐藏到显示的切换代替先显示空内容后填充，即先 display none 或 visibility hidden 再统一展示。度量上可以用 PerformanceObserver 监听 layout-shift 指标，把 CLS 纳入监控。
 
 **常见追问**：那广告或第三方组件尺寸不可控，你会怎么兜底？
 
@@ -1788,7 +2362,21 @@ JS 的内存管理是自动的，分三个阶段：分配、使用、释放。�
 
 **参考回答**：
 
-低代码平台的核心是把写代码变成配置元数据，分工可以类比成点菜与做菜：前端是菜单和点菜界面，后端是厨房和菜谱系统。前端职责有四块：一是可视化设计器，包括画布、拖拽、组件面板、属性配置面板、大纲树、撤销重做、快捷键；二是物料体系，负责基础组件和业务组件的注册、属性描述（Setter 与属性面板配置）、事件与插槽声明；三是运行时渲染引擎，把 Schema 递归渲染成真实页面，处理数据源绑定、表达式求值、联动、生命周期和权限；四是出码或产物生成，需要时把 Schema 转成可维护的源码工程。后端职责同样有四块：一是元数据存储与版本管理，把页面 Schema、数据模型、流程定义、权限规则持久化并支持版本回滚和灰度；二是 Schema 校验与解析，保存时做合法性与兼容性校验，防止脏数据进库；三是业务能力供给，提供数据模型服务、接口编排、流程引擎、权限与租户隔离、文件与消息等基础能力；四是发布与运行时支撑，包括应用发布、静态化生成、SSR 渲染、以及监控与审计。两者协作的关键是统一的元数据协议：Schema 的字段含义、组件描述格式、数据源与表达式的语法必须由前后端共同约定并版本化，前端负责生产 Schema，后端负责存储和校验，运行时可能在前端也可能在服务端。这样才能做到前后端解耦、并行迭代，避免改一个组件属性两边都改代码。
+低代码平台的核心是把写代码变成配置元数据，分工可以类比成点菜与做菜：前端是菜单和点菜界面，后端是厨房和菜谱系统。前端职责有四块：
+
+- 一是可视化设计器，包括画布、拖拽、组件面板、属性配置面板、大纲树、撤销重做、快捷键；
+- 二是物料体系，负责基础组件和业务组件的注册、属性描述（Setter 与属性面板配置）、事件与插槽声明；
+- 三是运行时渲染引擎，把 Schema 递归渲染成真实页面，处理数据源绑定、表达式求值、联动、生命周期和权限；
+- 四是出码或产物生成，需要时把 Schema 转成可维护的源码工程。
+
+后端职责同样有四块：
+
+- 一是元数据存储与版本管理，把页面 Schema、数据模型、流程定义、权限规则持久化并支持版本回滚和灰度；
+- 二是 Schema 校验与解析，保存时做合法性与兼容性校验，防止脏数据进库；
+- 三是业务能力供给，提供数据模型服务、接口编排、流程引擎、权限与租户隔离、文件与消息等基础能力；
+- 四是发布与运行时支撑，包括应用发布、静态化生成、SSR 渲染、以及监控与审计。
+
+两者协作的关键是统一的元数据协议：Schema 的字段含义、组件描述格式、数据源与表达式的语法必须由前后端共同约定并版本化，前端负责生产 Schema，后端负责存储和校验，运行时可能在前端也可能在服务端。这样才能做到前后端解耦、并行迭代，避免改一个组件属性两边都改代码。
 
 **常见追问**：那 Schema 的版本升级导致老页面渲染异常，你们怎么处理？
 
@@ -1808,7 +2396,14 @@ JS 的内存管理是自动的，分三个阶段：分配、使用、释放。�
 
 **参考回答**：
 
-组件库不是简单把代码复制到一个仓库，而是把跨项目重复出现的 UI 或逻辑抽象成稳定接口，独立开发、测试、发布、版本管理，再被业务项目以依赖形式引用。类比一下：组件库像乐高积木，业务项目是搭模型，积木要标准化接口、有说明书、有质检、有批次号。开发流程通常包括：第一，需求盘点，统计多个项目里重复出现的组件，确定边界，避免把业务逻辑塞进通用库，通用库只保留无业务耦合的能力，业务组件放到上层包。第二，技术选型，确定框架、样式方案（CSS 变量、CSS-in-JS、Tailwind）、构建工具（Vite 库模式、Rollup、tsup），产物一般同时输出 ESM、CJS 和 UMD 三种格式，配合 package.json 的 exports 字段和 sideEffects 标记支持按需加载与 tree-shaking。第三，开发与文档，用 Storybook 或自研文档站做组件预览和 API 文档，属性表从 TS 类型或 props 描述自动生成，配可交互示例。第四，测试，单元测试用 Vitest 加 Testing Library，视觉回归用 Chromatic 或 Playwright 截图对比，交互和可访问性用 axe 扫描。第五，发布与治理，遵循 SemVer 语义化版本，用 changesets 或 lerna 管理多包版本与 changelog，破坏性变更要出迁移指南和 codemod；同时配 CI 做 lint、构建、测试、发布校验，并在 npm 或私有源上做权限和审计。第六，运营，收集使用反馈、统计组件引用率，定期淘汰废弃组件。
+组件库不是简单把代码复制到一个仓库，而是把跨项目重复出现的 UI 或逻辑抽象成稳定接口，独立开发、测试、发布、版本管理，再被业务项目以依赖形式引用。类比一下：组件库像乐高积木，业务项目是搭模型，积木要标准化接口、有说明书、有质检、有批次号。开发流程通常包括：
+
+- 第一，需求盘点，统计多个项目里重复出现的组件，确定边界，避免把业务逻辑塞进通用库，通用库只保留无业务耦合的能力，业务组件放到上层包。
+- 第二，技术选型，确定框架、样式方案（CSS 变量、CSS-in-JS、Tailwind）、构建工具（Vite 库模式、Rollup、tsup），产物一般同时输出 ESM、CJS 和 UMD 三种格式，配合 package.json 的 exports 字段和 sideEffects 标记支持按需加载与 tree-shaking。
+- 第三，开发与文档，用 Storybook 或自研文档站做组件预览和 API 文档，属性表从 TS 类型或 props 描述自动生成，配可交互示例。
+- 第四，测试，单元测试用 Vitest 加 Testing Library，视觉回归用 Chromatic 或 Playwright 截图对比，交互和可访问性用 axe 扫描。
+- 第五，发布与治理，遵循 SemVer 语义化版本，用 changesets 或 lerna 管理多包版本与 changelog，破坏性变更要出迁移指南和 codemod；同时配 CI 做 lint、构建、测试、发布校验，并在 npm 或私有源上做权限和审计。
+- 第六，运营，收集使用反馈、统计组件引用率，定期淘汰废弃组件。
 
 **常见追问**：那你怎么保证组件库的样式不会和业务项目样式冲突？
 
@@ -1828,7 +2423,14 @@ JS 的内存管理是自动的，分三个阶段：分配、使用、释放。�
 
 **参考回答**：
 
-JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包引用）出发标记可达对象，未标记的回收。如果对象已经没用了但仍然可达，就是内存泄漏。常见情况有六类。第一，意外的全局变量：未声明就赋值（比如漏写 let 直接 a = 1）或者 this 指向全局导致挂在 window 上，永不回收；解决方式是开严格模式或加 lint 规则。第二，闭包：内部函数引用外部大对象，而闭包本身长期存活（比如挂在事件回调、定时器、全局注册表上），导致外部变量无法释放；解决办法是及时解除引用，只保留必要数据。第三，定时器和回调：setInterval 没有 clear，或者 setTimeout 递归且回调引用了大对象；组件卸载时必须清理。第四，事件监听：addEventListener 绑定在 window、document 或跨组件元素上，组件销毁时没 removeEventListener，监听器和它的闭包一起泄漏。第五，游离 DOM 引用：节点已从 DOM 树移除，但 JS 变量或 Map 里还存着引用，整个子树都无法回收。第六，无界缓存与数据结构：Map、Set、数组缓存不断累加没有上限和淘汰策略，或者用对象做缓存但没有清理机制。排查手段：Chrome DevTools 的 Memory 面板做两次堆快照对比，看哪些对象在增长；Performance 面板观察内存曲线是否持续上升；用 Allocation instrumentation on timeline 定位分配来源。预防措施：用 WeakMap 和 WeakRef 存弱引用（key 是对象且被回收时条目自动清除）、统一在组件卸载钩子里清理定时器与监听、缓存加 LRU 上限、避免在闭包里持有大对象。
+JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包引用）出发标记可达对象，未标记的回收。如果对象已经没用了但仍然可达，就是内存泄漏。常见情况有六类。
+
+- 第一，意外的全局变量：未声明就赋值（比如漏写 let 直接 a = 1）或者 this 指向全局导致挂在 window 上，永不回收；解决方式是开严格模式或加 lint 规则。
+- 第二，闭包：内部函数引用外部大对象，而闭包本身长期存活（比如挂在事件回调、定时器、全局注册表上），导致外部变量无法释放；解决办法是及时解除引用，只保留必要数据。
+- 第三，定时器和回调：setInterval 没有 clear，或者 setTimeout 递归且回调引用了大对象；组件卸载时必须清理。
+- 第四，事件监听：addEventListener 绑定在 window、document 或跨组件元素上，组件销毁时没 removeEventListener，监听器和它的闭包一起泄漏。
+- 第五，游离 DOM 引用：节点已从 DOM 树移除，但 JS 变量或 Map 里还存着引用，整个子树都无法回收。
+- 第六，无界缓存与数据结构：Map、Set、数组缓存不断累加没有上限和淘汰策略，或者用对象做缓存但没有清理机制。排查手段：Chrome DevTools 的 Memory 面板做两次堆快照对比，看哪些对象在增长；Performance 面板观察内存曲线是否持续上升；用 Allocation instrumentation on timeline 定位分配来源。预防措施：用 WeakMap 和 WeakRef 存弱引用（key 是对象且被回收时条目自动清除）、统一在组件卸载钩子里清理定时器与监听、缓存加 LRU 上限、避免在闭包里持有大对象。
 
 **常见追问**：那 WeakMap 的 key 有什么限制？为什么能帮助避免泄漏？
 
@@ -1848,7 +2450,13 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-先要明确一个前提：前端代码和运行环境对用户完全可见，任何写在前端的密钥、盐值、算法都能被逆向出来，所以前端加密本质上不是防破解，而是提高攻击门槛加满足合规要求。常见做法分几类。第一，传输安全：真正该做的是全站 HTTPS 加 TLS，这是传输加密的正解；HSTS、证书固定和 TLS 版本控制能进一步降低中间人风险，前端不需要自己再套一层。第二，敏感字段额外加密：对于登录密码、身份证、手机号这类高敏字段，可以在提交前用 RSA 或 ECC 公钥加密，公钥放前端、私钥只在后端，后端解密后再做加盐哈希存储。这样即使 TLS 在客户端侧被绕过（比如用户装了恶意根证书），攻击者拿到的也是密文。要注意每次加密最好配合随机盐或时间戳防重放，避免相同明文产生相同密文被重放攻击。第三，前端存储：token 尽量放 HttpOnly 加 Secure 加 SameSite 的 Cookie，避免被 XSS 窃取；不要把敏感数据放 localStorage；必须存的短期数据可以只用内存变量。第四，业务数据脱敏：列表和详情页只返回脱敏后的字段，前端展示时做掩码，避免明文进浏览器。第五，绝对不能做的是：把对称密钥硬编码在前端、用前端加密代替后端鉴权、或者以为前端加密能防止爬虫和篡改。核心结论是：前端加密是纵深防御的一环，安全必须由后端的鉴权、校验、限流和审计来兜底。
+先要明确一个前提：前端代码和运行环境对用户完全可见，任何写在前端的密钥、盐值、算法都能被逆向出来，所以前端加密本质上不是防破解，而是提高攻击门槛加满足合规要求。常见做法分几类。
+
+- 第一，传输安全：真正该做的是全站 HTTPS 加 TLS，这是传输加密的正解；HSTS、证书固定和 TLS 版本控制能进一步降低中间人风险，前端不需要自己再套一层。
+- 第二，敏感字段额外加密：对于登录密码、身份证、手机号这类高敏字段，可以在提交前用 RSA 或 ECC 公钥加密，公钥放前端、私钥只在后端，后端解密后再做加盐哈希存储。这样即使 TLS 在客户端侧被绕过（比如用户装了恶意根证书），攻击者拿到的也是密文。要注意每次加密最好配合随机盐或时间戳防重放，避免相同明文产生相同密文被重放攻击。
+- 第三，前端存储：token 尽量放 HttpOnly 加 Secure 加 SameSite 的 Cookie，避免被 XSS 窃取；不要把敏感数据放 localStorage；必须存的短期数据可以只用内存变量。
+- 第四，业务数据脱敏：列表和详情页只返回脱敏后的字段，前端展示时做掩码，避免明文进浏览器。
+- 第五，绝对不能做的是：把对称密钥硬编码在前端、用前端加密代替后端鉴权、或者以为前端加密能防止爬虫和篡改。核心结论是：前端加密是纵深防御的一环，安全必须由后端的鉴权、校验、限流和审计来兜底。
 
 **常见追问**：那 token 你放 localStorage 还是 Cookie？各自的 XSS 和 CSRF 风险是什么？
 
@@ -1868,7 +2476,22 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-所谓全局方法，就是希望在每个组件里都能直接调用、不用反复 import 的函数，比如 $http、$formatDate、$message。Vue2 的做法是挂在 Vue.prototype 上，因为组件实例的原型链最终指向 Vue.prototype，所以所有实例都能通过 this.$xxx 访问。Vue3 取消了全局 Vue 对象，改成挂在 app.config.globalProperties 上，写法是 app.config.globalProperties.$formatDate = fn，组件里在 Options API 中仍可用 this.$formatDate 访问；在 script setup 里因为拿不到 this，需要用 getCurrentInstance().proxy 取，但这是内部 API，官方不推荐在业务代码依赖。TypeScript 下还要用 declare module 给 ComponentCustomProperties 补充类型，否则没有提示。这种方式的缺点比较明显：一是污染全局命名空间，容易和第三方库或未来的内置属性冲突；二是类型提示需要额外声明；三是隐式依赖，看组件代码不知道这个方法是哪来的，不利于维护和测试；四是 SSR 场景下要小心跨请求污染。所以更推荐三种替代方案：第一，独立模块导出，直接在需要处 import，最清晰也最好做 tree-shaking；第二，用依赖注入，app.provide 提供能力，组件里 inject 消费，既能按层作用域覆盖又便于测试；第三，封装成组合式函数，比如 useMessage、useRequest，把相关逻辑和状态一起复用，这也是 Vue3 的主流做法。
+所谓全局方法，就是希望在每个组件里都能直接调用、不用反复 import 的函数，比如 $http、$formatDate、$message。Vue2 的做法是挂在 Vue.prototype 上，因为组件实例的原型链最终指向 Vue.prototype，所以所有实例都能通过 this.$xxx 访问。
+
+Vue3 取消了全局 Vue 对象，改成挂在 app.config.globalProperties 上，写法是 app.config.globalProperties.$formatDate = fn，组件里在 Options API 中仍可用 this.$formatDate 访问；在 script setup 里因为拿不到 this，需要用 getCurrentInstance().proxy 取，但这是内部 API，官方不推荐在业务代码依赖。
+
+TypeScript 下还要用 declare module 给 ComponentCustomProperties 补充类型，否则没有提示。这种方式的缺点比较明显：
+
+- 一是污染全局命名空间，容易和第三方库或未来的内置属性冲突；
+- 二是类型提示需要额外声明；
+- 三是隐式依赖，看组件代码不知道这个方法是哪来的，不利于维护和测试；
+- 四是 SSR 场景下要小心跨请求污染。
+
+所以更推荐三种替代方案：
+
+- 第一，独立模块导出，直接在需要处 import，最清晰也最好做 tree-shaking；
+- 第二，用依赖注入，app.provide 提供能力，组件里 inject 消费，既能按层作用域覆盖又便于测试；
+- 第三，封装成组合式函数，比如 useMessage、useRequest，把相关逻辑和状态一起复用，这也是 Vue3 的主流做法。
 
 **常见追问**：那 SSR 环境下挂全局属性会有什么问题？
 
@@ -1888,7 +2511,13 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-可以把整个流程理解成一条工厂流水线：入口是原料，Loader 是各道加工工序，Plugin 是能在任意工序插手的监工，Chunk 是打包好的箱子，Bundle 是最终出厂的成品。整体分三个阶段。第一，初始化阶段：合并命令行参数、配置文件、默认配置得到最终 options，用 options 实例化 Compiler（Compiler 代表一次完整构建，贯穿整个生命周期），然后注册所有 Plugin，Plugin 在 apply 方法里通过 tapable 往 Compiler 的各种钩子上挂回调。接着调用 compiler.run 或 watch 开始构建，触发 beforeRun、run、compile 等钩子。第二，构建阶段：从 entry 出发，调用 NormalModuleFactory 创建 Module，根据 module.rules 匹配 loader 并按从右到左的顺序转换文件内容；解析 import 和 require 语句找出依赖，递归处理直到整个依赖图构建完成。这个阶段会生成 module graph，并在 make、buildModule、succeedModule 等钩子上抛出事件。第三，封装与输出阶段：把 Module 按入口、动态导入和 splitChunks 规则组装成 Chunk，然后进入 seal 阶段，对 chunk 做优化（tree-shaking、scope hoisting、压缩、模块合并），再通过 Template 和 ChunkTemplate 生成最终代码，也就是 bundle 内容。最后在 emit 钩子把产物写入 output.path，并生成资源清单，配合 contenthash 做缓存。中间过程里 Plugin 可以在任意钩子上干预，比如额外产出文件、注入变量、分析体积。理解这条主干，排查构建问题就有了抓手。
+可以把整个流程理解成一条工厂流水线：入口是原料，Loader 是各道加工工序，Plugin 是能在任意工序插手的监工，Chunk 是打包好的箱子，Bundle 是最终出厂的成品。整体分三个阶段。
+
+- 第一，初始化阶段：合并命令行参数、配置文件、默认配置得到最终 options，用 options 实例化 Compiler（Compiler 代表一次完整构建，贯穿整个生命周期），然后注册所有 Plugin，Plugin 在 apply 方法里通过 tapable 往 Compiler 的各种钩子上挂回调。接着调用 compiler.run 或 watch 开始构建，触发 beforeRun、run、compile 等钩子。
+- 第二，构建阶段：从 entry 出发，调用 NormalModuleFactory 创建 Module，根据 module.rules 匹配 loader 并按从右到左的顺序转换文件内容；解析 import 和 require 语句找出依赖，递归处理直到整个依赖图构建完成。这个阶段会生成 module graph，并在 make、buildModule、succeedModule 等钩子上抛出事件。
+- 第三，封装与输出阶段：把 Module 按入口、动态导入和 splitChunks 规则组装成 Chunk，然后进入 seal 阶段，对 chunk 做优化（tree-shaking、scope hoisting、压缩、模块合并），再通过 Template 和 ChunkTemplate 生成最终代码，也就是 bundle 内容。
+
+最后在 emit 钩子把产物写入 output.path，并生成资源清单，配合 contenthash 做缓存。中间过程里 Plugin 可以在任意钩子上干预，比如额外产出文件、注入变量、分析体积。理解这条主干，排查构建问题就有了抓手。
 
 **常见追问**：那 Compilation 和 Compiler 有什么区别？分别代表什么？
 
@@ -1908,7 +2537,17 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-在低代码和可视化搭建场景里，画布区和表单区是两种典型布局范式。表单区是流式布局（Flow Layout）：组件按文档流从上到下排列，位置由前序组件和容器宽度决定，开发者只配置顺序、间距和栅格，不关心绝对坐标，天然自适应，也容易做响应式。画布区是自由布局（Free 或 Absolute Layout）：每个组件在画布上有一个显式的坐标和尺寸，比如 x、y、w、h 或 left、top、width、height，渲染时用绝对定位，拖哪放哪。但要注意，它是受约束的自由：一是网格约束，坐标和尺寸通常会对齐到网格步长，保证视觉整齐；二是吸附约束，靠近容器边缘或其他组件的对齐线时自动吸附并显示参考线；三是边界约束，组件不能超出画布或父容器，也可能禁止重叠或限制最小尺寸；四是层级约束，有明确的 z-index 顺序和分组、成组移动能力；五是单位和缩放约束，schema 存的是画布逻辑像素，画布缩放时按比例换算而不改数据。两种布局的差异带来一个典型难题是适配：自由布局按设计稿绝对定位，在不同屏幕宽度下会出现错位或留白，所以通常需要额外的适配策略，比如按容器宽度整体等比缩放、或者限制设计稿固定宽度加居中。工程上有些平台会同时支持两种布局，甚至提供从画布布局转换到流式布局的能力，但转换往往需要人工调整，因为绝对坐标里的对齐和间距语义很难自动还原。
+在低代码和可视化搭建场景里，画布区和表单区是两种典型布局范式。表单区是流式布局（Flow Layout）：组件按文档流从上到下排列，位置由前序组件和容器宽度决定，开发者只配置顺序、间距和栅格，不关心绝对坐标，天然自适应，也容易做响应式。画布区是自由布局（Free 或 Absolute Layout）：每个组件在画布上有一个显式的坐标和尺寸，比如 x、y、w、h 或 left、top、width、height，渲染时用绝对定位，拖哪放哪。
+
+但要注意，它是受约束的自由：
+
+- 一是网格约束，坐标和尺寸通常会对齐到网格步长，保证视觉整齐；
+- 二是吸附约束，靠近容器边缘或其他组件的对齐线时自动吸附并显示参考线；
+- 三是边界约束，组件不能超出画布或父容器，也可能禁止重叠或限制最小尺寸；
+- 四是层级约束，有明确的 z-index 顺序和分组、成组移动能力；
+- 五是单位和缩放约束，schema 存的是画布逻辑像素，画布缩放时按比例换算而不改数据。两种布局的差异带来一个典型难题是适配：自由布局按设计稿绝对定位，在不同屏幕宽度下会出现错位或留白，所以通常需要额外的适配策略，比如按容器宽度整体等比缩放、或者限制设计稿固定宽度加居中。
+
+工程上有些平台会同时支持两种布局，甚至提供从画布布局转换到流式布局的能力，但转换往往需要人工调整，因为绝对坐标里的对齐和间距语义很难自动还原。
 
 **常见追问**：那如果画布做了自由布局，怎么适配不同分辨率的屏幕？
 
@@ -1928,7 +2567,19 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-整体架构分三层。第一层设计态（Designer）：可视化拖拽画布、组件面板、属性配置面板、数据源与接口配置、逻辑编排（事件、条件、循环、调用 API），产出物是 JSON 元数据而不是代码。第二层元数据层（Schema 或 DSL）：描述页面结构（组件树）、布局、样式、数据绑定、事件、权限、流程定义，通常用 JSON Schema 或自定义 DSL 约束，保证可校验、可版本化、可迁移。第三层运行态（Renderer 与 Engine）：解析 Schema，递归渲染成真实页面，处理数据源、表达式、联动、生命周期；流程引擎解释执行流程定义；需要时还有出码器把 Schema 编译成源码工程。三层的边界是：设计态只负责生产元数据，运行态只负责消费元数据，两者不互相依赖，这样平台才能既支持运行时解释也支持出码。实现上的难点主要有五个：第一，抽象层级的取舍，抽象太低用户还是要写代码，抽象太高又覆盖不了真实业务，需要基于业务场景反复调整；第二，元数据的表达能力与一致性，Schema 要能表达布局、样式、数据、事件、权限、嵌套插槽，还要能校验和向后兼容，设计不好后期改不动；第三，运行时性能，递归渲染大量组件、表达式频繁求值、联动依赖重算都会影响性能，需要做依赖图增量更新、虚拟化、缓存和编译期优化；第四，扩展性，必须有自定义组件、脚本节点、插件机制，否则长尾需求无解；第五，版本与兼容，Schema 结构升级、组件升级、平台升级都可能让老页面渲染异常，需要 Schema 版本号加迁移器和灰度发布。此外还要有物料市场、权限体系、多租户隔离、发布与回滚、监控与审计这些配套能力。
+整体架构分三层。第一层设计态（Designer）：可视化拖拽画布、组件面板、属性配置面板、数据源与接口配置、逻辑编排（事件、条件、循环、调用 API），产出物是 JSON 元数据而不是代码。第二层元数据层（Schema 或 DSL）：描述页面结构（组件树）、布局、样式、数据绑定、事件、权限、流程定义，通常用 JSON Schema 或自定义 DSL 约束，保证可校验、可版本化、可迁移。
+
+- 第三层运行态（Renderer 与 Engine）：解析 Schema，递归渲染成真实页面，处理数据源、表达式、联动、生命周期；
+- 流程引擎解释执行流程定义；
+- 需要时还有出码器把 Schema 编译成源码工程。
+
+三层的边界是：设计态只负责生产元数据，运行态只负责消费元数据，两者不互相依赖，这样平台才能既支持运行时解释也支持出码。实现上的难点主要有五个：
+
+- 第一，抽象层级的取舍，抽象太低用户还是要写代码，抽象太高又覆盖不了真实业务，需要基于业务场景反复调整；
+- 第二，元数据的表达能力与一致性，Schema 要能表达布局、样式、数据、事件、权限、嵌套插槽，还要能校验和向后兼容，设计不好后期改不动；
+- 第三，运行时性能，递归渲染大量组件、表达式频繁求值、联动依赖重算都会影响性能，需要做依赖图增量更新、虚拟化、缓存和编译期优化；
+- 第四，扩展性，必须有自定义组件、脚本节点、插件机制，否则长尾需求无解；
+- 第五，版本与兼容，Schema 结构升级、组件升级、平台升级都可能让老页面渲染异常，需要 Schema 版本号加迁移器和灰度发布。此外还要有物料市场、权限体系、多租户隔离、发布与回滚、监控与审计这些配套能力。
 
 **常见追问**：那 Schema 结构升级时，历史页面你怎么保证还能正常渲染？
 
@@ -1948,7 +2599,12 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-以主流框架为例，自定义组件的渲染可以拆成四个阶段。第一，创建与初始化：框架根据组件定义（函数、类或选项对象）创建组件实例，Vue 里跑 setup 和实例初始化，React 里创建 Fiber 节点，这一步初始化 props、state、上下文和依赖收集。第二，渲染计算：执行组件的 render，React 是函数体或 class 的 render 方法，Vue 是模板编译成的 render 函数，返回虚拟节点（VNode 或 React Element）。这一步只做描述 UI，不直接碰真实 DOM，所以是纯计算、可打断的，也是框架能做时间切片和并发渲染的前提。第三，协调与 diff：把新产生的虚拟节点树和上一次的旧树对比，算出最小变更集。React 叫 Reconciliation，Vue 叫 patch，同层比较、按 type 和 key 判断复用，Vue3 还用最长递增子序列减少节点移动。第四，提交：把变更一次性写入真实 DOM，包括创建、更新属性、插入、移动和删除节点，然后执行副作用清理与回调，比如 React 的 useEffect 和 useLayoutEffect，Vue 的 mounted 和 updated 钩子。整个过程里生命周期和副作用调度穿插其中：React 在渲染阶段禁止副作用、在提交阶段执行，Vue 用调度队列把更新收集到微任务里批量执行。理解这条链路就能解释很多现象，比如为什么改了状态立刻读 DOM 拿不到新值，为什么 useEffect 里能拿到最新 DOM。自定义组件相比内置元素多了这一层实例化和生命周期，这也是它能持有状态和副作用的原因。
+以主流框架为例，自定义组件的渲染可以拆成四个阶段。
+
+- 第一，创建与初始化：框架根据组件定义（函数、类或选项对象）创建组件实例，Vue 里跑 setup 和实例初始化，React 里创建 Fiber 节点，这一步初始化 props、state、上下文和依赖收集。
+- 第二，渲染计算：执行组件的 render，React 是函数体或 class 的 render 方法，Vue 是模板编译成的 render 函数，返回虚拟节点（VNode 或 React Element）。这一步只做描述 UI，不直接碰真实 DOM，所以是纯计算、可打断的，也是框架能做时间切片和并发渲染的前提。
+- 第三，协调与 diff：把新产生的虚拟节点树和上一次的旧树对比，算出最小变更集。React 叫 Reconciliation，Vue 叫 patch，同层比较、按 type 和 key 判断复用，Vue3 还用最长递增子序列减少节点移动。
+- 第四，提交：把变更一次性写入真实 DOM，包括创建、更新属性、插入、移动和删除节点，然后执行副作用清理与回调，比如 React 的 useEffect 和 useLayoutEffect，Vue 的 mounted 和 updated 钩子。整个过程里生命周期和副作用调度穿插其中：React 在渲染阶段禁止副作用、在提交阶段执行，Vue 用调度队列把更新收集到微任务里批量执行。理解这条链路就能解释很多现象，比如为什么改了状态立刻读 DOM 拿不到新值，为什么 useEffect 里能拿到最新 DOM。自定义组件相比内置元素多了这一层实例化和生命周期，这也是它能持有状态和副作用的原因。
 
 **常见追问**：那渲染阶段为什么不允许写副作用？
 
@@ -1968,7 +2624,11 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-我在低代码项目里最大的痛点，可以概括成一句话：低代码擅长覆盖 80% 的标准场景，但剩下 20% 的复杂场景会把前面省下的效率全部吃掉，甚至变成负收益。具体拆三层。第一，表达力天花板：低代码本质是把常见业务抽象成表单、流程、规则和页面编排，但真实业务里大量逻辑是长尾的，比如跨系统事务、复杂状态机、动态权限、批量计算、异步补偿。一旦平台提供的可视化节点不够用，就要开脚本节点、自定义组件或插件，结果配置里嵌代码、代码里又依赖配置，两边都难维护。第二，调试与可维护性：生成的应用是运行时解释执行的，出问题时调用栈里全是渲染引擎的通用函数，业务语义丢失，排查比看源码还难；同时 Schema 一多，谁引用了谁、改一个组件会影响哪些页面都不清楚，缺少依赖分析和影响面评估。第三，版本兼容与性能：Schema 结构升级、组件升级、平台升级都可能让老页面渲染异常，需要额外的迁移器和灰度；大页面递归渲染和表达式频繁求值也容易卡顿，需要做依赖图增量更新和虚拟化。现有方案的应对是：把脚本节点做成受控的第一公民（有类型、有沙箱、有版本），提供出码能力让复杂页面可以弹出到源码工程，建 Schema 版本与迁移机制并做灰度发布，以及给渲染引擎加性能分析工具沉淀热点优化。但我的判断是这些只能缓解，低代码的边界是客观存在的，所以平台定位必须明确：服务标准化场景，不追求覆盖一切。
+我在低代码项目里最大的痛点，可以概括成一句话：低代码擅长覆盖 80% 的标准场景，但剩下 20% 的复杂场景会把前面省下的效率全部吃掉，甚至变成负收益。具体拆三层。
+
+- 第一，表达力天花板：低代码本质是把常见业务抽象成表单、流程、规则和页面编排，但真实业务里大量逻辑是长尾的，比如跨系统事务、复杂状态机、动态权限、批量计算、异步补偿。一旦平台提供的可视化节点不够用，就要开脚本节点、自定义组件或插件，结果配置里嵌代码、代码里又依赖配置，两边都难维护。
+- 第二，调试与可维护性：生成的应用是运行时解释执行的，出问题时调用栈里全是渲染引擎的通用函数，业务语义丢失，排查比看源码还难；同时 Schema 一多，谁引用了谁、改一个组件会影响哪些页面都不清楚，缺少依赖分析和影响面评估。
+- 第三，版本兼容与性能：Schema 结构升级、组件升级、平台升级都可能让老页面渲染异常，需要额外的迁移器和灰度；大页面递归渲染和表达式频繁求值也容易卡顿，需要做依赖图增量更新和虚拟化。现有方案的应对是：把脚本节点做成受控的第一公民（有类型、有沙箱、有版本），提供出码能力让复杂页面可以弹出到源码工程，建 Schema 版本与迁移机制并做灰度发布，以及给渲染引擎加性能分析工具沉淀热点优化。但我的判断是这些只能缓解，低代码的边界是客观存在的，所以平台定位必须明确：服务标准化场景，不追求覆盖一切。
 
 **常见追问**：那你会怎么判断一个需求到底该不该用低代码实现？
 
@@ -1988,7 +2648,20 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-低代码平台的核心是让用户通过拖拽配置生成页面，组件库往往很大，几十甚至上百个组件。如果整体打包进主应用，会导致首屏加载慢、更新要整包发版、也无法支持第三方物料接入。所以主流做法是动态加载。具体是：组件以独立模块形式发布，比如 UMD 或 ESM 包，平台在运行时根据页面 Schema 里实际用到的组件列表，用动态 import 或加载远程脚本来获取。常见加载方式有三种：一是基于构建工具的 dynamic import 加代码分割，产物按组件分 chunk，运行时按需请求；二是基于 SystemJS 或 Module Federation 的远程模块，每个物料是独立构建和部署的子应用，主应用在运行时远程加载并共享公共依赖，版本可以独立演进；三是直接 script 标签加载 UMD 产物并注册到全局组件表，兼容性最好但依赖管理和版本控制较弱。工程上要处理几个问题：第一，加载策略，先加载渲染首屏必需的组件，其余懒加载，配合骨架和加载失败重试；第二，版本一致性，同一个组件可能被多个页面引用不同版本，需要按需加载具体 revision 而不是最新版，避免升级破坏老页面；第三，缓存与更新，组件产物加 contenthash 做长期缓存，发布新版本时用清单文件控制生效；第四，注册与容错，加载失败时渲染兜底占位并上报，避免整个页面白屏。首屏主应用本身仍然整体打包，因为设计器和运行时框架是必需的，只有物料走动态加载。
+低代码平台的核心是让用户通过拖拽配置生成页面，组件库往往很大，几十甚至上百个组件。如果整体打包进主应用，会导致首屏加载慢、更新要整包发版、也无法支持第三方物料接入。
+
+所以主流做法是动态加载。具体是：组件以独立模块形式发布，比如 UMD 或 ESM 包，平台在运行时根据页面 Schema 里实际用到的组件列表，用动态 import 或加载远程脚本来获取。常见加载方式有三种：
+
+- 一是基于构建工具的 dynamic import 加代码分割，产物按组件分 chunk，运行时按需请求；
+- 二是基于 SystemJS 或 Module Federation 的远程模块，每个物料是独立构建和部署的子应用，主应用在运行时远程加载并共享公共依赖，版本可以独立演进；
+- 三是直接 script 标签加载 UMD 产物并注册到全局组件表，兼容性最好但依赖管理和版本控制较弱。
+
+工程上要处理几个问题：
+
+- 第一，加载策略，先加载渲染首屏必需的组件，其余懒加载，配合骨架和加载失败重试；
+- 第二，版本一致性，同一个组件可能被多个页面引用不同版本，需要按需加载具体 revision 而不是最新版，避免升级破坏老页面；
+- 第三，缓存与更新，组件产物加 contenthash 做长期缓存，发布新版本时用清单文件控制生效；
+- 第四，注册与容错，加载失败时渲染兜底占位并上报，避免整个页面白屏。首屏主应用本身仍然整体打包，因为设计器和运行时框架是必需的，只有物料走动态加载。
 
 **常见追问**：那如果页面用到的组件很多，首次打开会很慢，你怎么优化？
 
@@ -2008,7 +2681,22 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-确实不会直接裸操作原生 DOM，而是通过分层封装。先说不裸操作的原因：直接 querySelector 加 addEventListener 会导致状态与视图不同步、事件监听泄漏、逻辑无法复用、难以单测、跨框架迁移成本高。现代前端用声明式框架把状态到视图的映射交给运行时，DOM 操作被收敛到框架内部以及少量 ref、指令里，只有第三方库初始化、Canvas 绘制、尺寸测量这类场景才直接碰 DOM。代码组成上通常分四层：视图层是组件，只描述 UI 和绑定事件；状态层是 store 或组合式函数，管理数据与派生；逻辑层是纯函数和 service，处理业务规则与请求；服务层封装平台能力，比如请求、存储、埋点。拖拽这类独立能力当然会有封装，而且应该独立抽出来：常见形态有三种，一是自定义 Hook 或组合式函数，比如 useDrag，对外返回当前拖拽状态、位置偏移、事件处理器和是否正在拖拽；二是指令或包装组件，比如 v-draggable 或 Draggable 组件，用 props 配置边界、吸附步长、轴向限制，用事件回调上报开始、移动、结束；三是独立的状态机模块，内部用 pointerdown、pointermove、pointerup 加 setPointerCapture 实现，处理坐标系换算、边界约束、网格吸附、性能节流和触屏兼容。封装之后的好处是：业务代码只关心拖拽开始和落点，不关心坐标计算；同一套拖拽逻辑可以在列表排序、画布组件移动、弹窗拖动多个场景复用；也方便写单元测试和做无障碍支持。
+确实不会直接裸操作原生 DOM，而是通过分层封装。先说不裸操作的原因：直接 querySelector 加 addEventListener 会导致状态与视图不同步、事件监听泄漏、逻辑无法复用、难以单测、跨框架迁移成本高。现代前端用声明式框架把状态到视图的映射交给运行时，DOM 操作被收敛到框架内部以及少量 ref、指令里，只有第三方库初始化、Canvas 绘制、尺寸测量这类场景才直接碰 DOM。
+
+- 代码组成上通常分四层：视图层是组件，只描述 UI 和绑定事件；
+- 状态层是 store 或组合式函数，管理数据与派生；
+- 逻辑层是纯函数和 service，处理业务规则与请求；
+- 服务层封装平台能力，比如请求、存储、埋点。
+
+拖拽这类独立能力当然会有封装，而且应该独立抽出来：
+
+- 常见形态有三种，一是自定义 Hook 或组合式函数，比如 useDrag，对外返回当前拖拽状态、位置偏移、事件处理器和是否正在拖拽；
+- 二是指令或包装组件，比如 v-draggable 或 Draggable 组件，用 props 配置边界、吸附步长、轴向限制，用事件回调上报开始、移动、结束；
+- 三是独立的状态机模块，内部用 pointerdown、pointermove、pointerup 加 setPointerCapture 实现，处理坐标系换算、边界约束、网格吸附、性能节流和触屏兼容。
+
+- 封装之后的好处是：业务代码只关心拖拽开始和落点，不关心坐标计算；
+- 同一套拖拽逻辑可以在列表排序、画布组件移动、弹窗拖动多个场景复用；
+- 也方便写单元测试和做无障碍支持。
 
 **常见追问**：那封装拖拽时，坐标系换算最容易出什么问题？
 
@@ -2028,7 +2716,17 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-这个问题考察的是对低代码平台架构和运行时机制的理解。第一，页面数量：低代码平台一般不会硬性限制页面数量，因为页面本质上是配置数据（JSON Schema），存在数据库或文件系统里，理论上可以支持数万甚至更多；实际瓶颈在存储与检索性能、权限与租户管理、以及构建发布能力，比如每次发布要扫描全部依赖组件的页面，页面规模大时发布耗时会显著上升，所以要做好索引和增量发布。第二，是否都在线运行：不是所有页面都处于在线运行状态，通常要区分设计态和运行态。设计态下页面以配置形式存在，只有编辑者打开设计器时才加载，不消耗运行时资源；运行态下用户访问时由渲染引擎动态渲染。第三，运行方式有三种：一是动态渲染，访问时拉取 Schema 交给渲染引擎解释执行，灵活但首屏和 SEO 稍弱；二是静态化发布，把 Schema 预渲染成静态 HTML 和 JS，性能最好也最省资源，适合不需要个性化数据的页面；三是 SSR，在服务端渲染成 HTML 返回，兼顾首屏和 SEO，适合对首屏要求高的场景。所以我们的做法是：Schema 统一存储并加版本，热门页面走静态化或 SSR 加 CDN，个性化页面走动态渲染，同时按租户和权限做隔离。
+这个问题考察的是对低代码平台架构和运行时机制的理解。
+
+- 第一，页面数量：低代码平台一般不会硬性限制页面数量，因为页面本质上是配置数据（JSON Schema），存在数据库或文件系统里，理论上可以支持数万甚至更多；实际瓶颈在存储与检索性能、权限与租户管理、以及构建发布能力，比如每次发布要扫描全部依赖组件的页面，页面规模大时发布耗时会显著上升，所以要做好索引和增量发布。
+- 第二，是否都在线运行：不是所有页面都处于在线运行状态，通常要区分设计态和运行态。设计态下页面以配置形式存在，只有编辑者打开设计器时才加载，不消耗运行时资源；运行态下用户访问时由渲染引擎动态渲染。
+- 第三，运行方式有三种：
+
+- 一是动态渲染，访问时拉取 Schema 交给渲染引擎解释执行，灵活但首屏和 SEO 稍弱；
+- 二是静态化发布，把 Schema 预渲染成静态 HTML 和 JS，性能最好也最省资源，适合不需要个性化数据的页面；
+- 三是 SSR，在服务端渲染成 HTML 返回，兼顾首屏和 SEO，适合对首屏要求高的场景。
+
+所以我们的做法是：Schema 统一存储并加版本，热门页面走静态化或 SSR 加 CDN，个性化页面走动态渲染，同时按租户和权限做隔离。
 
 **常见追问**：那页面很多时，改一个公共组件怎么知道影响了哪些页面？
 
@@ -2048,7 +2746,15 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-低代码平台的核心产出可以分三层理解。第一层，面向业务用户的产出：一个可访问、可运行的应用，形态可能是 Web、移动端或小程序，内容包含表单、列表、流程、报表和权限，能直接解决业务问题，这是用户真正感知到的产出。第二层，面向平台的产出：描述这个应用的元数据或模型，包括页面 Schema、数据模型、流程定义、权限规则、逻辑编排 DSL。这一层才是平台真正持久化的东西，应用只是这些元数据在运行时被引擎解释执行的结果，所以平台最核心的资产是元数据，它的质量、可读性、可校验性和版本管理决定平台能否长期演进。第三层，面向工程侧的产出：可导出的代码、配置或 API，用于系统集成、二次开发、私有化部署或脱离平台独立运行，也就是出码能力，比如生成 React 或 Vue 源码工程，或者生成后端的接口定义和数据库 DDL。通俗类比：低代码平台像一个自动做菜机，业务用户拿到的是做好的菜（应用），平台内部保存的是菜谱（元数据），工程侧产出的是可以带走自己做的料理包（代码或配置）。这三层缺一不可：只有应用没有元数据，平台无法复用和演进；只有元数据没有运行能力，就只是设计器；没有出码能力，平台锁定风险高，企业不敢深度使用。
+低代码平台的核心产出可以分三层理解。第一层，面向业务用户的产出：一个可访问、可运行的应用，形态可能是 Web、移动端或小程序，内容包含表单、列表、流程、报表和权限，能直接解决业务问题，这是用户真正感知到的产出。第二层，面向平台的产出：描述这个应用的元数据或模型，包括页面 Schema、数据模型、流程定义、权限规则、逻辑编排 DSL。
+
+这一层才是平台真正持久化的东西，应用只是这些元数据在运行时被引擎解释执行的结果，所以平台最核心的资产是元数据，它的质量、可读性、可校验性和版本管理决定平台能否长期演进。第三层，面向工程侧的产出：可导出的代码、配置或 API，用于系统集成、二次开发、私有化部署或脱离平台独立运行，也就是出码能力，比如生成 React 或 Vue 源码工程，或者生成后端的接口定义和数据库 DDL。
+
+通俗类比：低代码平台像一个自动做菜机，业务用户拿到的是做好的菜（应用），平台内部保存的是菜谱（元数据），工程侧产出的是可以带走自己做的料理包（代码或配置）。
+
+- 这三层缺一不可：只有应用没有元数据，平台无法复用和演进；
+- 只有元数据没有运行能力，就只是设计器；
+- 没有出码能力，平台锁定风险高，企业不敢深度使用。
 
 **常见追问**：那出码出来的代码和运行时渲染的结果怎么保证一致？
 
@@ -2068,7 +2774,18 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-在低代码和可视化搭建场景里，画布是一个逻辑坐标系。拖入文本组件时，它的 x、y、width、height 都记录在这个坐标系里，单位是画布逻辑像素，可以理解为设计稿像素，schema 里一般存成纯数字，比如 x 为 100、width 为 120。为什么不用屏幕物理像素或 CSS 单位？因为画布会缩放、要自适应容器、还可能导出到不同分辨率：如果 schema 存的是屏幕物理像素，用户把画布放大到 200% 再拖组件，保存的尺寸就变成两倍，换个缩放比例看就全乱了；而且同一个页面在手机和桌面上打开时物理像素差异巨大，存物理值根本无法适配。存逻辑像素的好处是数据稳定、与视口无关，展示层统一换算：渲染时先根据当前缩放比例和容器宽度算出缩放因子，再把逻辑值乘以因子得到实际 CSS px，用绝对定位摆放。需要注意几个配套设计：第一，schema 里通常还会存设计稿宽度（比如 1440）或画布宽高，作为换算基准；第二，组件自身可以有 minWidth、maxWidth 这类约束，防止在窄屏被压扁；第三，需要响应式时，可以通过额外的断点配置或百分比宽高声明覆盖逻辑值；第四，文字类组件的字号也遵循同一套逻辑单位，否则缩放后会出现字号和框不匹配。工程上最好把坐标换算集中到一个转换函数里，避免各组件自己算导致不一致。
+在低代码和可视化搭建场景里，画布是一个逻辑坐标系。拖入文本组件时，它的 x、y、width、height 都记录在这个坐标系里，单位是画布逻辑像素，可以理解为设计稿像素，schema 里一般存成纯数字，比如 x 为 100、width 为 120。为什么不用屏幕物理像素或 CSS 单位？
+
+因为画布会缩放、要自适应容器、还可能导出到不同分辨率：如果 schema 存的是屏幕物理像素，用户把画布放大到 200% 再拖组件，保存的尺寸就变成两倍，换个缩放比例看就全乱了；而且同一个页面在手机和桌面上打开时物理像素差异巨大，存物理值根本无法适配。存逻辑像素的好处是数据稳定、与视口无关，展示层统一换算：渲染时先根据当前缩放比例和容器宽度算出缩放因子，再把逻辑值乘以因子得到实际 CSS px，用绝对定位摆放。
+
+需要注意几个配套设计：
+
+- 第一，schema 里通常还会存设计稿宽度（比如 1440）或画布宽高，作为换算基准；
+- 第二，组件自身可以有 minWidth、maxWidth 这类约束，防止在窄屏被压扁；
+- 第三，需要响应式时，可以通过额外的断点配置或百分比宽高声明覆盖逻辑值；
+- 第四，文字类组件的字号也遵循同一套逻辑单位，否则缩放后会出现字号和框不匹配。
+
+工程上最好把坐标换算集中到一个转换函数里，避免各组件自己算导致不一致。
 
 **常见追问**：那如果设计稿是 1440 宽，用户在小屏打开，你是等比缩放还是流式适配？
 
@@ -2088,7 +2805,14 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-面试官问解耦和复用做得好的组件，其实想考察你是否理解为什么这样设计、解决什么问题、什么场景用。可以用一个类比：解耦就像把电源插座标准化，电器不关心电从火电还是风电来，只关心插头能插上；复用就是同一套插座标准能被无数电器使用。具体可以讲几类。第一，IoC 与依赖注入容器：对象不自己 new 依赖，而是由容器注入，好处是替换实现不用改业务代码，天然支持单测和复用，原理是控制反转加依赖注入。第二，消息队列：生产者和消费者通过 topic 解耦，双方不感知对方存在，还能做削峰填谷和异步化，代价是引入了最终一致性和运维复杂度。第三，策略模式与插件化：把变化的算法抽象成接口，运行时按配置选择实现，比如支付渠道、导出格式、埋点上报；React 和 Vue 的插件机制也是这个思路。第四，中间件与洋葱模型：把横切关注点（日志、鉴权、限流、错误处理）串成可组合的管道，每个中间件只关心一件事，Koa、Express、Redux 中间件都是这个模式。第五，前端层面：React 的 Context 解决跨层 props 钻取，自定义 Hook 和组合式函数把状态逻辑从组件里抽出来复用，控制反转的组件（支持 render props 或插槽）让父组件决定渲染内容。第六，适配器与防腐层：外部系统变化时不直接改业务代码，而是通过适配器转换，比如把不同支付网关统一成同一个接口。落到自己项目里，我在低代码平台就做过类似设计：渲染引擎只依赖组件描述协议，具体组件通过注册表挂载，新增物料不用改引擎；数据源通过统一的适配层对接，切换接口协议只改一处。
+面试官问解耦和复用做得好的组件，其实想考察你是否理解为什么这样设计、解决什么问题、什么场景用。可以用一个类比：解耦就像把电源插座标准化，电器不关心电从火电还是风电来，只关心插头能插上；复用就是同一套插座标准能被无数电器使用。具体可以讲几类。
+
+- 第一，IoC 与依赖注入容器：对象不自己 new 依赖，而是由容器注入，好处是替换实现不用改业务代码，天然支持单测和复用，原理是控制反转加依赖注入。
+- 第二，消息队列：生产者和消费者通过 topic 解耦，双方不感知对方存在，还能做削峰填谷和异步化，代价是引入了最终一致性和运维复杂度。
+- 第三，策略模式与插件化：把变化的算法抽象成接口，运行时按配置选择实现，比如支付渠道、导出格式、埋点上报；React 和 Vue 的插件机制也是这个思路。
+- 第四，中间件与洋葱模型：把横切关注点（日志、鉴权、限流、错误处理）串成可组合的管道，每个中间件只关心一件事，Koa、Express、Redux 中间件都是这个模式。
+- 第五，前端层面：React 的 Context 解决跨层 props 钻取，自定义 Hook 和组合式函数把状态逻辑从组件里抽出来复用，控制反转的组件（支持 render props 或插槽）让父组件决定渲染内容。
+- 第六，适配器与防腐层：外部系统变化时不直接改业务代码，而是通过适配器转换，比如把不同支付网关统一成同一个接口。落到自己项目里，我在低代码平台就做过类似设计：渲染引擎只依赖组件描述协议，具体组件通过注册表挂载，新增物料不用改引擎；数据源通过统一的适配层对接，切换接口协议只改一处。
 
 **常见追问**：那过度解耦会有什么代价？你什么时候会选择不过早抽象？
 
@@ -2108,7 +2832,12 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-以 React 为例，虚拟 DOM 树不是每次浏览器事件或任意变量变化都会更新，而是由状态变化加调度驱动。第一，触发更新的入口有几种：类组件调用 setState 或 forceUpdate；函数组件调用 useState 或 useReducer 的 dispatch；父组件重新渲染导致子组件 props 变化；Context 的值变化导致消费组件更新；外部状态库（Redux、MobX、Zustand）通知订阅组件更新。第二，调度阶段：更新会被放进调度器队列，React 会为更新分配优先级（比如离散的点击事件优先级高于过渡更新），在并发模式下高优先级更新可以打断低优先级的渲染，还会做批处理，把同一事件回调里的多次 setState 合并成一次渲染，React 18 之后自动批处理扩展到定时器和 Promise 回调里。第三，render 阶段：React 从根节点开始重新执行受影响的组件函数，得到新的 React Element 树，也就是新的虚拟 DOM，然后与上一次的树做协调 diff，通过 type 和 key 判断节点是复用、更新还是新建删除，这一步是纯计算、不产生副作用、可以中断。第四，commit 阶段：把 diff 结果一次性写入真实 DOM，包括属性更新、节点增删移动，然后按顺序执行副作用清理与回调，比如 useLayoutEffect 在浏览器绘制前同步执行、useEffect 在绘制后异步执行。需要说明的是，render 不等于重建整棵树：只要父组件状态变了，React 默认会递归渲染子组件，所以要用 React.memo、useMemo、useCallback 控制传播范围；Vue 则是依赖级精确更新，只有读取过该数据的组件会重新渲染。
+以 React 为例，虚拟 DOM 树不是每次浏览器事件或任意变量变化都会更新，而是由状态变化加调度驱动。
+
+- 第一，触发更新的入口有几种：类组件调用 setState 或 forceUpdate；函数组件调用 useState 或 useReducer 的 dispatch；父组件重新渲染导致子组件 props 变化；Context 的值变化导致消费组件更新；外部状态库（Redux、MobX、Zustand）通知订阅组件更新。
+- 第二，调度阶段：更新会被放进调度器队列，React 会为更新分配优先级（比如离散的点击事件优先级高于过渡更新），在并发模式下高优先级更新可以打断低优先级的渲染，还会做批处理，把同一事件回调里的多次 setState 合并成一次渲染，React 18 之后自动批处理扩展到定时器和 Promise 回调里。
+- 第三，render 阶段：React 从根节点开始重新执行受影响的组件函数，得到新的 React Element 树，也就是新的虚拟 DOM，然后与上一次的树做协调 diff，通过 type 和 key 判断节点是复用、更新还是新建删除，这一步是纯计算、不产生副作用、可以中断。
+- 第四，commit 阶段：把 diff 结果一次性写入真实 DOM，包括属性更新、节点增删移动，然后按顺序执行副作用清理与回调，比如 useLayoutEffect 在浏览器绘制前同步执行、useEffect 在绘制后异步执行。需要说明的是，render 不等于重建整棵树：只要父组件状态变了，React 默认会递归渲染子组件，所以要用 React.memo、useMemo、useCallback 控制传播范围；Vue 则是依赖级精确更新，只有读取过该数据的组件会重新渲染。
 
 **常见追问**：那 React 的批处理在什么情况下会失效？
 
@@ -2128,7 +2857,13 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-有版本，而且不是简单的 npm 语义化版本，而是三层协同。第一层，组件包版本（Package Version）：每个自定义组件作为一个可发布的资源包，有类似 1.2.3 的语义化版本，它描述组件代码、依赖和元数据描述文件的整体快照，主要供开发者和平台治理使用。第二层，组件实例版本（Revision Version）：同一组件在资源中心里每次保存或发布产生一个不可变的 revision，比如 rev 为 17，它是真正被页面引用的东西。第三层，页面引用版本：低代码页面里的每个组件节点记录它引用的是哪个具体 revision，而不是最新版，这一点非常关键。为什么要这样设计？因为低代码平台最怕的场景是：某个基础组件升级了一次，结果几百个线上页面同时出问题。引用不可变 revision 就能保证老页面永远是老行为，升级必须是显式操作，由页面所有者决定何时升级到新版本，并且升级过程可以预览差异、可以灰度、可以回滚。版本元数据上要记录几样东西：依赖的运行时版本和第三方库版本、组件的 props 描述与 Schema（属性面板要用它渲染）、变更类型（是否破坏性）、以及迁移说明或 codemod。治理上还有配套机制：废弃标记（deprecated）让新页面不能用但老页面还能跑、使用率统计帮助决策下线、版本对比工具展示 API 与渲染差异。只有做了这一套，企业才敢在平台上沉淀大量页面。
+有版本，而且不是简单的 npm 语义化版本，而是三层协同。第一层，组件包版本（Package Version）：每个自定义组件作为一个可发布的资源包，有类似 1.2.3 的语义化版本，它描述组件代码、依赖和元数据描述文件的整体快照，主要供开发者和平台治理使用。第二层，组件实例版本（Revision Version）：同一组件在资源中心里每次保存或发布产生一个不可变的 revision，比如 rev 为 17，它是真正被页面引用的东西。
+
+第三层，页面引用版本：低代码页面里的每个组件节点记录它引用的是哪个具体 revision，而不是最新版，这一点非常关键。为什么要这样设计？因为低代码平台最怕的场景是：某个基础组件升级了一次，结果几百个线上页面同时出问题。引用不可变 revision 就能保证老页面永远是老行为，升级必须是显式操作，由页面所有者决定何时升级到新版本，并且升级过程可以预览差异、可以灰度、可以回滚。
+
+版本元数据上要记录几样东西：依赖的运行时版本和第三方库版本、组件的 props 描述与 Schema（属性面板要用它渲染）、变更类型（是否破坏性）、以及迁移说明或 codemod。治理上还有配套机制：废弃标记（deprecated）让新页面不能用但老页面还能跑、使用率统计帮助决策下线、版本对比工具展示 API 与渲染差异。
+
+只有做了这一套，企业才敢在平台上沉淀大量页面。
 
 **常见追问**：那如果某个老 revision 有严重 bug 需要强制升级所有引用页面，你会怎么做？
 
@@ -2148,7 +2883,21 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-先拆概念。组件版本指同一组件在代码和构建产物层面存在 v1、v2、v3 多个实现，渲染时通过版本号、灰度开关、AB 实验或微前端路由决定加载哪一份代码。组件内部数据指组件运行时产生的 state、props、context、全局 store、localStorage、IndexedDB、服务端 session 等。为什么数据通常不区分版本？因为数据是运行时概念，而版本是构建和发布概念，同一份数据 schema 往往被多个版本共享，如果按版本隔离，会导致同一业务对象在不同版本下有两份状态，出现数据不一致。所以默认情况下，数据是按实例或全局共享的，这就带来两个风险：一是结构兼容性问题，v2 期望的字段 v1 不认识，或者语义变了，导致老版本渲染异常甚至报错；二是状态污染，不同版本共享同一份 store，改名、改类型会引起联动异常。因此正确的做法是显式设计隔离策略，常见有四种：第一，按实例隔离，每个组件实例独立持有状态，这是最自然的，跨实例不共享；第二，按版本加命名空间，把持久化数据或 store 的 key 加上版本前缀，比如 userForm.v2，代价是数据迁移要处理；第三，做数据 schema 版本与迁移函数，在读取旧数据时升级到当前结构，写入时统一为新结构，这是长期方案；第四，如果确实需要版本间独立，就用独立的 store 实例或 iframe 隔离，避免互相影响。结论是：组件代码可以多版本共存，但数据要做统一契约，靠 schema 版本而不是组件版本来管理，这样才能在不破坏老版本的前提下平滑演进。
+先拆概念。组件版本指同一组件在代码和构建产物层面存在 v1、v2、v3 多个实现，渲染时通过版本号、灰度开关、AB 实验或微前端路由决定加载哪一份代码。组件内部数据指组件运行时产生的 state、props、context、全局 store、localStorage、IndexedDB、服务端 session 等。
+
+为什么数据通常不区分版本？因为数据是运行时概念，而版本是构建和发布概念，同一份数据 schema 往往被多个版本共享，如果按版本隔离，会导致同一业务对象在不同版本下有两份状态，出现数据不一致。
+
+所以默认情况下，数据是按实例或全局共享的，这就带来两个风险：
+
+- 一是结构兼容性问题，v2 期望的字段 v1 不认识，或者语义变了，导致老版本渲染异常甚至报错；
+- 二是状态污染，不同版本共享同一份 store，改名、改类型会引起联动异常。
+
+因此正确的做法是显式设计隔离策略，常见有四种：
+
+- 第一，按实例隔离，每个组件实例独立持有状态，这是最自然的，跨实例不共享；
+- 第二，按版本加命名空间，把持久化数据或 store 的 key 加上版本前缀，比如 userForm.v2，代价是数据迁移要处理；
+- 第三，做数据 schema 版本与迁移函数，在读取旧数据时升级到当前结构，写入时统一为新结构，这是长期方案；
+- 第四，如果确实需要版本间独立，就用独立的 store 实例或 iframe 隔离，避免互相影响。结论是：组件代码可以多版本共存，但数据要做统一契约，靠 schema 版本而不是组件版本来管理，这样才能在不破坏老版本的前提下平滑演进。
 
 **常见追问**：那数据 schema 升级时，历史数据怎么迁移？在线迁移还是懒迁移？
 
@@ -2168,7 +2917,14 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-可以把它类比成 Word 的编辑视图和打印预览：内容源是同一份，但呈现目标不同。差异主要有四层。第一，数据层面：编辑态通常绑定可变模型，比如富文本的 AST 或 JSON、表单的值加 onChange 回调，改动会立即写回 Schema；预览态绑定的是渲染结果或只读快照，不允许修改，或者修改后只影响临时状态。所以常见做法是维护单一数据源，编辑态改模型，预览态由同一份模型派生渲染，避免两份数据不同步。第二，交互与 DOM 结构：编辑态需要选中框、拖拽手柄、悬浮工具栏、占位提示、拖动时的对齐参考线、以及点击空白区域的取消选中，DOM 上会多出大量辅助节点，这些节点在预览态必须不存在，否则会影响布局和样式；预览态还要让事件真正生效，比如按钮点击要执行配置的动作，而编辑态点击是选中组件。第三，样式与隔离：编辑态需要给组件加辅助样式和调试性边框，还可能要覆盖组件的自适应行为（比如给一个固定高度方便拖拽），预览态则要完全按真实环境渲染，包括媒体查询和响应式；如果两者共用同一个 DOM，辅助样式容易污染真实样式，所以很多平台用 iframe 或独立渲染器来隔离。第四，性能与能力：编辑态因为要支持频繁拖拽和属性修改，需要做局部更新和虚拟化；预览态可以走更高效的静态渲染甚至服务端渲染。工程上为了保证一致性，最好的做法是同一个渲染引擎加一个 mode 参数，通过上下文控制是否启用编辑增强，而不是写两套渲染逻辑，否则很容易出现编辑态好好的、预览态样式错位的问题。
+可以把它类比成 Word 的编辑视图和打印预览：内容源是同一份，但呈现目标不同。差异主要有四层。
+
+- 第一，数据层面：编辑态通常绑定可变模型，比如富文本的 AST 或 JSON、表单的值加 onChange 回调，改动会立即写回 Schema；预览态绑定的是渲染结果或只读快照，不允许修改，或者修改后只影响临时状态。所以常见做法是维护单一数据源，编辑态改模型，预览态由同一份模型派生渲染，避免两份数据不同步。
+- 第二，交互与 DOM 结构：编辑态需要选中框、拖拽手柄、悬浮工具栏、占位提示、拖动时的对齐参考线、以及点击空白区域的取消选中，DOM 上会多出大量辅助节点，这些节点在预览态必须不存在，否则会影响布局和样式；预览态还要让事件真正生效，比如按钮点击要执行配置的动作，而编辑态点击是选中组件。
+- 第三，样式与隔离：编辑态需要给组件加辅助样式和调试性边框，还可能要覆盖组件的自适应行为（比如给一个固定高度方便拖拽），预览态则要完全按真实环境渲染，包括媒体查询和响应式；如果两者共用同一个 DOM，辅助样式容易污染真实样式，所以很多平台用 iframe 或独立渲染器来隔离。
+- 第四，性能与能力：编辑态因为要支持频繁拖拽和属性修改，需要做局部更新和虚拟化；预览态可以走更高效的静态渲染甚至服务端渲染。
+
+工程上为了保证一致性，最好的做法是同一个渲染引擎加一个 mode 参数，通过上下文控制是否启用编辑增强，而不是写两套渲染逻辑，否则很容易出现编辑态好好的、预览态样式错位的问题。
 
 **常见追问**：那预览态和真实线上运行的差异怎么保证最小？
 
@@ -2188,7 +2944,15 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-可视化编辑器的画布渲染方案主要有三类。第一，iframe 渲染：画布是一个独立的 iframe，内部加载一份运行时页面，编辑器通过 postMessage 与 iframe 通信。拖拽时编辑器把 Schema 发给 iframe，iframe 内部用同一套渲染器渲染成真实 DOM。优点是天然隔离，样式和 JS 作用域不会互相污染，还能完整模拟真实页面环境（媒体查询、响应式、第三方库、甚至 SSR 环境），预览和真实线上一致性最好；缺点是通信是异步的需要序列化，编辑器和画布之间做选中、悬浮、拖拽高亮这类高频交互时延迟明显，调试也更麻烦，同时要考虑 iframe 内的滚动、缩放、坐标换算和跨域问题。第二，同文档直接渲染：把组件直接渲染在编辑器的主文档里，用绝对定位摆放在画布容器中。优点是实现简单、交互直接、性能好、选中和拖拽都容易做；缺点是样式容易互相污染，业务组件的全局样式、z-index、transform 可能影响编辑器 UI，编辑器的辅助样式也可能影响组件，所以通常要给画布加 CSS 作用域或 Shadow DOM 隔离，并且要小心组件里对 window、document 的依赖。第三，Canvas 或虚拟渲染：只把结果绘制出来，性能好、隔离彻底，但组件必须是可序列化的描述且不支持真实交互，工作量很大，一般只用于纯展示型设计器。实际工程里常见的是混合方案：编辑态用同文档渲染加作用域隔离保证交互体验，预览态和最终运行用 iframe 保证一致性；或者干脆全流程用 iframe，把高频交互也走 postMessage 加批量合并优化。选型主要看三点：对样式隔离的要求、对编辑交互性能的要求、以及对预览一致性的要求。
+可视化编辑器的画布渲染方案主要有三类。
+
+- 第一，iframe 渲染：画布是一个独立的 iframe，内部加载一份运行时页面，编辑器通过 postMessage 与 iframe 通信。拖拽时编辑器把 Schema 发给 iframe，iframe 内部用同一套渲染器渲染成真实 DOM。优点是天然隔离，样式和 JS 作用域不会互相污染，还能完整模拟真实页面环境（媒体查询、响应式、第三方库、甚至 SSR 环境），预览和真实线上一致性最好；缺点是通信是异步的需要序列化，编辑器和画布之间做选中、悬浮、拖拽高亮这类高频交互时延迟明显，调试也更麻烦，同时要考虑 iframe 内的滚动、缩放、坐标换算和跨域问题。
+- 第二，同文档直接渲染：把组件直接渲染在编辑器的主文档里，用绝对定位摆放在画布容器中。优点是实现简单、交互直接、性能好、选中和拖拽都容易做；缺点是样式容易互相污染，业务组件的全局样式、z-index、transform 可能影响编辑器 UI，编辑器的辅助样式也可能影响组件，所以通常要给画布加 CSS 作用域或 Shadow DOM 隔离，并且要小心组件里对 window、document 的依赖。
+- 第三，Canvas 或虚拟渲染：只把结果绘制出来，性能好、隔离彻底，但组件必须是可序列化的描述且不支持真实交互，工作量很大，一般只用于纯展示型设计器。
+
+实际工程里常见的是混合方案：编辑态用同文档渲染加作用域隔离保证交互体验，预览态和最终运行用 iframe 保证一致性；或者干脆全流程用 iframe，把高频交互也走 postMessage 加批量合并优化。
+
+选型主要看三点：对样式隔离的要求、对编辑交互性能的要求、以及对预览一致性的要求。
 
 **常见追问**：那用 iframe 时，拖拽和选中的坐标怎么和主文档对齐？
 
@@ -2208,7 +2972,14 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-脚手架本质是项目生成器加工程化最佳实践的封装，通常以 CLI 形式提供，比如 create-react-app、create-vite，或者公司内部的 create-xxx-lib。对于专门对外发布的组件库脚手架，目标不是生成业务应用，而是生成一个可发布到 npm 的组件库工程，所以它会预置几样东西。第一，目录结构：src/components 放组件，src/index.ts 作为统一出口，docs 或 examples 放示例，tests 放测试，还可能按组件分目录存放组件源码、样式、单测和文档。第二，构建配置：用 Vite 库模式、Rollup 或 tsup 打包，同时输出 ESM、CJS 和 UMD 三种格式，生成类型声明文件（d.ts），配置 external 把 react、vue 等框架依赖排除，配置 sideEffects 支持 tree-shaking，样式单独抽出 CSS 或支持按需引入。第三，文档与调试：集成 Storybook 或自研文档站，支持组件预览、属性表和可交互示例，本地开发时有热更新和 demo 页面。第四，质量保障：ESLint、Prettier、Stylelint、commitlint，单元测试用 Vitest 加 Testing Library，可选视觉回归和可访问性扫描，以及 CI 流程。第五，发布能力：配置 changesets 或 standard-version 管理版本和 changelog，支持预发布版本，配好 npm 或私有源的发布脚本和权限校验。第六，使用体验：生成项目时用交互式问答选择框架、包管理器、是否要 TypeScript、是否需要文档站，并输出一份 README 和贡献指南。它的价值在于把团队踩过的坑固化下来，让新组件库几分钟就能起起来，且规范一致。
+脚手架本质是项目生成器加工程化最佳实践的封装，通常以 CLI 形式提供，比如 create-react-app、create-vite，或者公司内部的 create-xxx-lib。对于专门对外发布的组件库脚手架，目标不是生成业务应用，而是生成一个可发布到 npm 的组件库工程，所以它会预置几样东西。
+
+- 第一，目录结构：src/components 放组件，src/index.ts 作为统一出口，docs 或 examples 放示例，tests 放测试，还可能按组件分目录存放组件源码、样式、单测和文档。
+- 第二，构建配置：用 Vite 库模式、Rollup 或 tsup 打包，同时输出 ESM、CJS 和 UMD 三种格式，生成类型声明文件（d.ts），配置 external 把 react、vue 等框架依赖排除，配置 sideEffects 支持 tree-shaking，样式单独抽出 CSS 或支持按需引入。
+- 第三，文档与调试：集成 Storybook 或自研文档站，支持组件预览、属性表和可交互示例，本地开发时有热更新和 demo 页面。
+- 第四，质量保障：ESLint、Prettier、Stylelint、commitlint，单元测试用 Vitest 加 Testing Library，可选视觉回归和可访问性扫描，以及 CI 流程。
+- 第五，发布能力：配置 changesets 或 standard-version 管理版本和 changelog，支持预发布版本，配好 npm 或私有源的发布脚本和权限校验。
+- 第六，使用体验：生成项目时用交互式问答选择框架、包管理器、是否要 TypeScript、是否需要文档站，并输出一份 README 和贡献指南。它的价值在于把团队踩过的坑固化下来，让新组件库几分钟就能起起来，且规范一致。
 
 **常见追问**：那你觉得脚手架和模板仓库（starter repo）有什么区别？
 
@@ -2228,7 +2999,19 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-在低代码和搭建平台体系里，组件开发一般分两层。第一层是组件源码工程：用 React 或 Vue 写组件源码，含逻辑、样式和依赖。第二层是构建产物包：通过 Vite、Rollup 或 Webpack 打包成低代码平台可消费的产物，通常包含四部分：一是编译后的 JS 产物，常见 UMD 格式便于浏览器用 script 直接加载，或者 ESM 格式便于按需引入；二是样式产物，CSS 单独抽出或通过运行时注入；三是类型声明，方便平台和用户做类型检查；四是组件元数据或描述文件，也就是 manifest 或 schema，声明组件名、props 列表及类型与默认值、事件、插槽、以及用于属性面板的 Setter 描述。低代码平台消费的正是这份产物包，而不是源码，原因是平台要在运行时动态加载组件、按描述文件自动生成属性配置面板、并做 Schema 校验。所以有几个工程要求：第一，产物必须是自包含且可运行时注册的，通常暴露一个注册函数或通过全局变量挂载；第二，框架依赖（比如 react、vue）要作为 external 不打包进去，由平台提供并共享，避免多份副本导致 hooks 报错或体积膨胀；第三，要兼容平台的运行时版本，产物里最好声明 peerDependencies 和最低运行时版本；第四，样式要做命名空间或作用域隔离，避免多个物料的样式互相覆盖。有些平台也支持直接上传源码或走 npm 包，但本质都是同一套描述加产物的契约。
+在低代码和搭建平台体系里，组件开发一般分两层。第一层是组件源码工程：用 React 或 Vue 写组件源码，含逻辑、样式和依赖。第二层是构建产物包：通过 Vite、Rollup 或 Webpack 打包成低代码平台可消费的产物，通常包含四部分：
+
+- 一是编译后的 JS 产物，常见 UMD 格式便于浏览器用 script 直接加载，或者 ESM 格式便于按需引入；
+- 二是样式产物，CSS 单独抽出或通过运行时注入；
+- 三是类型声明，方便平台和用户做类型检查；
+- 四是组件元数据或描述文件，也就是 manifest 或 schema，声明组件名、props 列表及类型与默认值、事件、插槽、以及用于属性面板的 Setter 描述。低代码平台消费的正是这份产物包，而不是源码，原因是平台要在运行时动态加载组件、按描述文件自动生成属性配置面板、并做 Schema 校验。
+
+所以有几个工程要求：
+
+- 第一，产物必须是自包含且可运行时注册的，通常暴露一个注册函数或通过全局变量挂载；
+- 第二，框架依赖（比如 react、vue）要作为 external 不打包进去，由平台提供并共享，避免多份副本导致 hooks 报错或体积膨胀；
+- 第三，要兼容平台的运行时版本，产物里最好声明 peerDependencies 和最低运行时版本；
+- 第四，样式要做命名空间或作用域隔离，避免多个物料的样式互相覆盖。有些平台也支持直接上传源码或走 npm 包，但本质都是同一套描述加产物的契约。
 
 **常见追问**：那如果两个物料依赖的第三方库版本冲突，你怎么处理？
 
@@ -2248,7 +3031,13 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-在 React 和 Vue 里，组件更新通常指重新执行渲染逻辑并可能更新 DOM。触发条件可以归纳为五类。第一，自身状态变化：React 里调用 setState 或 useState 的 setter、useReducer 的 dispatch，Vue 里修改响应式数据（data、ref、reactive）。第二，父组件重新渲染：父组件更新时默认会递归渲染子组件，即使子组件的 props 完全没变。React 可以用 React.memo 做浅比较、用 shouldComponentUpdate 或 PureComponent 手动控制；Vue 则因为依赖精确收集，父组件重渲染时子组件只有在依赖变化时才更新，还可以用 v-once 和 v-memo 进一步优化。第三，上下文或依赖变化：React 中 Context 的值变化会让所有消费组件更新（即使只用了其中一个字段），所以要拆分 Context 或用选择器库；Vue 中任何被模板或计算属性读取过的响应式数据变化都会触发对应组件的更新。第四，强制更新：React 的 forceUpdate，或者故意改一个 state 计数来触发刷新；Vue 里不常见，因为数据驱动是自动的。第五，外部驱动：外部状态库（Redux、MobX、Zustand）通知订阅组件，或者路由、事件总线、全局 store 变化引起更新。理解触发条件是性能优化的基础：React 里主要是缩小更新传播范围（memo、拆分组件、状态下沉），Vue 里主要是避免在模板里读取不必要的响应式数据、用 shallowRef 处理大对象。另外要注意更新是异步批量的，同一事件里的多次状态修改只会导致一次渲染。
+在 React 和 Vue 里，组件更新通常指重新执行渲染逻辑并可能更新 DOM。触发条件可以归纳为五类。
+
+- 第一，自身状态变化：React 里调用 setState 或 useState 的 setter、useReducer 的 dispatch，Vue 里修改响应式数据（data、ref、reactive）。
+- 第二，父组件重新渲染：父组件更新时默认会递归渲染子组件，即使子组件的 props 完全没变。React 可以用 React.memo 做浅比较、用 shouldComponentUpdate 或 PureComponent 手动控制；Vue 则因为依赖精确收集，父组件重渲染时子组件只有在依赖变化时才更新，还可以用 v-once 和 v-memo 进一步优化。
+- 第三，上下文或依赖变化：React 中 Context 的值变化会让所有消费组件更新（即使只用了其中一个字段），所以要拆分 Context 或用选择器库；Vue 中任何被模板或计算属性读取过的响应式数据变化都会触发对应组件的更新。
+- 第四，强制更新：React 的 forceUpdate，或者故意改一个 state 计数来触发刷新；Vue 里不常见，因为数据驱动是自动的。
+- 第五，外部驱动：外部状态库（Redux、MobX、Zustand）通知订阅组件，或者路由、事件总线、全局 store 变化引起更新。理解触发条件是性能优化的基础：React 里主要是缩小更新传播范围（memo、拆分组件、状态下沉），Vue 里主要是避免在模板里读取不必要的响应式数据、用 shallowRef 处理大对象。另外要注意更新是异步批量的，同一事件里的多次状态修改只会导致一次渲染。
 
 **常见追问**：那 React.memo 为什么有时候看起来没生效？
 
@@ -2268,7 +3057,12 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-这里的生成 DOM 结构本质就是 SSR 的目标：让浏览器拿到的响应体本身就是完整的 HTML 标签结构，浏览器解析 HTML 时自然构建出 DOM 树，不需要等 JS 执行就能看到首屏内容。服务端要做几步。第一，路由匹配：根据请求 URL 找到对应页面或组件，通常用框架的路由在服务端做静态匹配（比如 Vue Router 的服务端匹配或 React Router 的静态路由）。第二，数据预取：在渲染之前把页面依赖的数据取好，包括接口调用、数据库查询和缓存读取，否则渲染出来的是空状态。这一步要注意按每个请求独立创建应用实例和 store，绝不能把状态存在模块级全局变量里，否则并发请求会互相污染。第三，组件渲染：用框架的 SSR 能力把组件树转成字符串，React 用 renderToString 或更高效的 renderToPipeableStream，Vue 用 renderToString 或 renderToNodeStream。渲染过程中会执行组件的初始化逻辑，但浏览器专有 API（window、document）不可用，需要做同构兼容或只在挂载后执行。第四，产出响应并注入状态：把渲染出的 HTML 拼进模板，同时把预取的数据序列化后通过 script 标签注入页面（要注意 XSS 转义），供客户端 hydration 时复用，避免客户端再请求一次造成不一致。此外还有几个工程要点：hydration 要求服务端和客户端渲染结果一致，否则会警告并退化成客户端渲染；服务端要加缓存（页面级或组件级）和降级策略，避免渲染失败导致整站 500；还要考虑流式渲染提升首字节时间、以及错误边界在服务端的行为。
+这里的生成 DOM 结构本质就是 SSR 的目标：让浏览器拿到的响应体本身就是完整的 HTML 标签结构，浏览器解析 HTML 时自然构建出 DOM 树，不需要等 JS 执行就能看到首屏内容。服务端要做几步。
+
+- 第一，路由匹配：根据请求 URL 找到对应页面或组件，通常用框架的路由在服务端做静态匹配（比如 Vue Router 的服务端匹配或 React Router 的静态路由）。
+- 第二，数据预取：在渲染之前把页面依赖的数据取好，包括接口调用、数据库查询和缓存读取，否则渲染出来的是空状态。这一步要注意按每个请求独立创建应用实例和 store，绝不能把状态存在模块级全局变量里，否则并发请求会互相污染。
+- 第三，组件渲染：用框架的 SSR 能力把组件树转成字符串，React 用 renderToString 或更高效的 renderToPipeableStream，Vue 用 renderToString 或 renderToNodeStream。渲染过程中会执行组件的初始化逻辑，但浏览器专有 API（window、document）不可用，需要做同构兼容或只在挂载后执行。
+- 第四，产出响应并注入状态：把渲染出的 HTML 拼进模板，同时把预取的数据序列化后通过 script 标签注入页面（要注意 XSS 转义），供客户端 hydration 时复用，避免客户端再请求一次造成不一致。此外还有几个工程要点：hydration 要求服务端和客户端渲染结果一致，否则会警告并退化成客户端渲染；服务端要加缓存（页面级或组件级）和降级策略，避免渲染失败导致整站 500；还要考虑流式渲染提升首字节时间、以及错误边界在服务端的行为。
 
 **常见追问**：那 SSR 时接口很慢，怎么避免拖垮首屏？
 
@@ -2288,7 +3082,16 @@ JS 用标记清除做垃圾回收：从根（全局对象、调用栈、闭包�
 
 **参考回答**：
 
-Node.js 不是一门语言，而是基于 Chrome V8 引擎的 JavaScript 运行时。它和 Java、Go、Python 等传统服务端方案相比，优点主要体现在几方面。第一，非阻塞 I/O 加事件循环：传统多线程模型（比如早期 Java 的一请求一线程）每个连接占一个线程，线程上下文切换和内存开销大；Node 用单线程事件循环处理大量并发连接，I/O 操作（网络、文件、数据库）交给 libuv 线程池或操作系统的异步机制，完成后通过回调或 Promise 继续处理，所以做 API 网关、BFF、实时推送这类 I/O 密集型场景时，用更少的资源就能获得更高的吞吐。第二，前后端统一技术栈：前后端都用 JavaScript 和 TypeScript，类型定义、校验逻辑、工具函数可以共享，SSR 和同构渲染天然可行，团队人力和协作成本更低，这也是 BFF 模式流行的重要原因。第三，生态与开发效率：npm 是最大的包生态，框架和工具链迭代快，启动快、部署简单，适合快速迭代的业务。第四，语言特性上，异步编程模型配合 async/await 写起来接近同步代码，流式处理（Stream）非常适合大文件、日志和 SSE 这类场景。当然也要讲局限：因为主线程只有一条，CPU 密集型任务（加密、图像处理、大数据计算）会阻塞整个事件循环，需要放到 Worker 线程、子进程或独立服务里；单进程无法利用多核，生产环境要用 cluster 或 PM2 起多实例加负载均衡；另外回调时代留下的错误处理习惯和内存调优也要注意。所以结论是：Node 适合 I/O 密集、高并发、需要快速迭代和统一技术栈的场景，不适合重计算场景。
+Node.js 不是一门语言，而是基于 Chrome V8 引擎的 JavaScript 运行时。
+
+它和 Java、Go、Python 等传统服务端方案相比，优点主要体现在几方面。
+
+- 第一，非阻塞 I/O 加事件循环：传统多线程模型（比如早期 Java 的一请求一线程）每个连接占一个线程，线程上下文切换和内存开销大；Node 用单线程事件循环处理大量并发连接，I/O 操作（网络、文件、数据库）交给 libuv 线程池或操作系统的异步机制，完成后通过回调或 Promise 继续处理，所以做 API 网关、BFF、实时推送这类 I/O 密集型场景时，用更少的资源就能获得更高的吞吐。
+- 第二，前后端统一技术栈：前后端都用 JavaScript 和 TypeScript，类型定义、校验逻辑、工具函数可以共享，SSR 和同构渲染天然可行，团队人力和协作成本更低，这也是 BFF 模式流行的重要原因。
+- 第三，生态与开发效率：npm 是最大的包生态，框架和工具链迭代快，启动快、部署简单，适合快速迭代的业务。
+- 第四，语言特性上，异步编程模型配合 async/await 写起来接近同步代码，流式处理（Stream）非常适合大文件、日志和 SSE 这类场景。当然也要讲局限：因为主线程只有一条，CPU 密集型任务（加密、图像处理、大数据计算）会阻塞整个事件循环，需要放到 Worker 线程、子进程或独立服务里；单进程无法利用多核，生产环境要用 cluster 或 PM2 起多实例加负载均衡；另外回调时代留下的错误处理习惯和内存调优也要注意。
+
+所以结论是：Node 适合 I/O 密集、高并发、需要快速迭代和统一技术栈的场景，不适合重计算场景。
 
 **常见追问**：那什么情况下你不会选 Node？会选什么？
 
@@ -2308,7 +3111,12 @@ Node.js 不是一门语言，而是基于 Chrome V8 引擎的 JavaScript 运行�
 
 **参考回答**：
 
-组件版本管理要解决三个问题：谁依赖谁、依赖哪个版本、如何安全升级。第一，版本号规范：主流用语义化版本 SemVer，格式是 MAJOR.MINOR.PATCH。MAJOR 表示不兼容的破坏性变更，MINOR 表示向后兼容的新功能，PATCH 表示向后兼容的缺陷修复。类比就是 MAJOR 像换锁所有钥匙都要重配，MINOR 像加新房间不影响原来的，PATCH 像修漏水。预发布版本用 dash 加标识，比如 1.2.3-alpha.1，构建元数据用加号。第二，依赖声明与解析：在 package.json 里用 ^ 允许 MINOR 和 PATCH 升级、用 ~ 只允许 PATCH 升级、用精确版本完全锁定、或者用范围表达式；同时要有 lock 文件（package-lock.json、pnpm-lock.yaml、yarn.lock）锁定整棵依赖树，保证 CI 和不同机器安装结果一致；monorepo 里用 workspace 协议让包之间互相引用本地源码，并配合 pnpm 或 lerna、nx、turbo 做统一的版本发布。第三，发布流程：用 changesets 或 standard-version 根据变更记录自动升版本、生成 changelog、打 tag 并发布到 npm 或私有源；发布要经过 CI 的 lint、构建、测试校验，破坏性变更必须写迁移指南，必要时提供 codemod。第四，升级策略：依赖尽量少而精，用 Dependabot 或 renovate 定期升级并靠测试兜底；跨 MAJOR 升级先在分支验证；对下游影响大的库可以用多版本共存（npm alias）过渡，但同一页面同时加载两个版本的 React 会出问题，所以要谨慎。对低代码物料还要额外记录 revision 和页面引用，保证老页面不被升级破坏。
+组件版本管理要解决三个问题：谁依赖谁、依赖哪个版本、如何安全升级。
+
+- 第一，版本号规范：主流用语义化版本 SemVer，格式是 MAJOR.MINOR.PATCH。MAJOR 表示不兼容的破坏性变更，MINOR 表示向后兼容的新功能，PATCH 表示向后兼容的缺陷修复。类比就是 MAJOR 像换锁所有钥匙都要重配，MINOR 像加新房间不影响原来的，PATCH 像修漏水。预发布版本用 dash 加标识，比如 1.2.3-alpha.1，构建元数据用加号。
+- 第二，依赖声明与解析：在 package.json 里用 ^ 允许 MINOR 和 PATCH 升级、用 ~ 只允许 PATCH 升级、用精确版本完全锁定、或者用范围表达式；同时要有 lock 文件（package-lock.json、pnpm-lock.yaml、yarn.lock）锁定整棵依赖树，保证 CI 和不同机器安装结果一致；monorepo 里用 workspace 协议让包之间互相引用本地源码，并配合 pnpm 或 lerna、nx、turbo 做统一的版本发布。
+- 第三，发布流程：用 changesets 或 standard-version 根据变更记录自动升版本、生成 changelog、打 tag 并发布到 npm 或私有源；发布要经过 CI 的 lint、构建、测试校验，破坏性变更必须写迁移指南，必要时提供 codemod。
+- 第四，升级策略：依赖尽量少而精，用 Dependabot 或 renovate 定期升级并靠测试兜底；跨 MAJOR 升级先在分支验证；对下游影响大的库可以用多版本共存（npm alias）过渡，但同一页面同时加载两个版本的 React 会出问题，所以要谨慎。对低代码物料还要额外记录 revision 和页面引用，保证老页面不被升级破坏。
 
 **常见追问**：那 semver 的 ^ 和 ~ 有什么区别？生产依赖你会怎么选？
 
@@ -2328,7 +3136,17 @@ Node.js 不是一门语言，而是基于 Chrome V8 引擎的 JavaScript 运行�
 
 **参考回答**：
 
-Webpack 本质是模块打包器：从入口递归分析依赖，用 loader 把非 JS 资源转成模块，用 plugin 介入编译生命周期，最终输出浏览器可运行的 bundle。脚手架（CRA、Vue CLI、Next 等）已经内置了一套通用配置，覆盖了转译、CSS 处理、热更新、代码分割这些常见场景，所以一般来说确实不需要专门配置。但默认配置面向通用场景，一旦业务有特殊诉求就必须定制，常见原因有五类。第一，构建性能：项目大了之后冷启动和增量构建变慢，需要优化，比如用 cache 持久化缓存、用 thread-loader 或 esbuild-loader 做并行转译、把 loader 的 include 限定范围减少匹配、用 resolve.modules 和 alias 减少解析开销，我们当时把构建时间从五分钟压到一分钟左右。第二，产物优化：默认分包策略不一定适合业务，需要自定义 splitChunks 做公共依赖提取和按路由分包、控制 runtimeChunk、用 contenthash 做长期缓存、配 externals 把大依赖走 CDN，并用体积门禁防止劣化。第三，多环境差异：开发、测试、预发、生产环境在接口地址、Source Map 策略、压缩强度、是否开启 CDN、是否注入埋点上都不一样，需要用 define 和配置合并来管理，还要区分 devtool 策略避免生产环境泄漏源码。第四，特殊资源与兼容性：比如处理 WebAssembly、自定义字体、Worker、旧浏览器兼容、按 browserslist 精细控制 polyfill，或者需要写自己的 loader 处理公司内部的模板格式。第五，团队规范与集成：集成代码检查、产物上报、部署清单生成、微前端子应用打包等，这些通常要写 plugin。总之，能用脚手架约定和官方插件解决就不会自己写复杂配置，只有在确有收益时才定制，并且把它文档化，避免成为没人敢动的黑盒。
+Webpack 本质是模块打包器：从入口递归分析依赖，用 loader 把非 JS 资源转成模块，用 plugin 介入编译生命周期，最终输出浏览器可运行的 bundle。脚手架（CRA、Vue CLI、Next 等）已经内置了一套通用配置，覆盖了转译、CSS 处理、热更新、代码分割这些常见场景，所以一般来说确实不需要专门配置。
+
+但默认配置面向通用场景，一旦业务有特殊诉求就必须定制，常见原因有五类。
+
+- 第一，构建性能：项目大了之后冷启动和增量构建变慢，需要优化，比如用 cache 持久化缓存、用 thread-loader 或 esbuild-loader 做并行转译、把 loader 的 include 限定范围减少匹配、用 resolve.modules 和 alias 减少解析开销，我们当时把构建时间从五分钟压到一分钟左右。
+- 第二，产物优化：默认分包策略不一定适合业务，需要自定义 splitChunks 做公共依赖提取和按路由分包、控制 runtimeChunk、用 contenthash 做长期缓存、配 externals 把大依赖走 CDN，并用体积门禁防止劣化。
+- 第三，多环境差异：开发、测试、预发、生产环境在接口地址、Source Map 策略、压缩强度、是否开启 CDN、是否注入埋点上都不一样，需要用 define 和配置合并来管理，还要区分 devtool 策略避免生产环境泄漏源码。
+- 第四，特殊资源与兼容性：比如处理 WebAssembly、自定义字体、Worker、旧浏览器兼容、按 browserslist 精细控制 polyfill，或者需要写自己的 loader 处理公司内部的模板格式。
+- 第五，团队规范与集成：集成代码检查、产物上报、部署清单生成、微前端子应用打包等，这些通常要写 plugin。
+
+总之，能用脚手架约定和官方插件解决就不会自己写复杂配置，只有在确有收益时才定制，并且把它文档化，避免成为没人敢动的黑盒。
 
 **常见追问**：那你怎么衡量这些定制真的有效？会看哪些指标？
 
@@ -2348,7 +3166,12 @@ Webpack 本质是模块打包器：从入口递归分析依赖，用 loader 把�
 
 **参考回答**：
 
-webpack 的核心思想是：不管源码是 CommonJS 还是 ESM，最终都会被转换成 webpack 自己的模块系统。第一，ESM 的处理：ESM 是静态的，import 和 export 在编译阶段就能确定依赖关系，webpack 用 acorn 解析 AST，识别 import 声明和 export 声明，把每个模块变成一个函数，依赖通过 __webpack_require__ 调用。因为静态可分析，webpack 能做 tree-shaking，只保留被用到的导出，并用标记记录哪些导出是未使用的从而在压缩阶段删除；要真正生效还需要 mode 为 production（内部设 usedExports 和 minimize）、以及包声明 sideEffects 为 false 告诉工具可以安全删除。第二，CommonJS 的处理：CJS 是动态的，require 可以在条件分支里、可以拼接字符串，导出也可能是运行时挂到 module.exports 上的，所以 webpack 无法静态确定全部依赖，只能把整个模块包装成一个函数，用 __webpack_require__ 在运行时加载和执行，依赖关系通过包装函数里的 require 调用收集（这也是为什么 CJS 的 tree-shaking 效果差，通常整包都被保留）。第三，统一的模块系统：无论是 ESM 还是 CJS，最终都被包装成 webpack 内部模块对象的函数，包含 module、exports、require 参数，模块加载有缓存（已加载的模块直接返回 exports），依赖管理由 __webpack_require__ 实现，这样就能统一处理循环依赖、动态导入和懒加载。第四，互操作：ESM 里 import 一个 CJS 模块时，默认导出会被映射到 module.exports，命名导出靠静态分析尝试识别，识别不到就只能在运行时取值，这也是为什么有些库必须用 import lib from 而不是具名导入；反过来 CJS require 一个 ESM 包在原生环境会报错，但 webpack 做了兼容处理。要获得最好的 tree-shaking 效果，推荐库作者直接提供 ESM 产物并在 package.json 里正确声明 module、exports 和 sideEffects。
+webpack 的核心思想是：不管源码是 CommonJS 还是 ESM，最终都会被转换成 webpack 自己的模块系统。
+
+- 第一，ESM 的处理：ESM 是静态的，import 和 export 在编译阶段就能确定依赖关系，webpack 用 acorn 解析 AST，识别 import 声明和 export 声明，把每个模块变成一个函数，依赖通过 __webpack_require__ 调用。因为静态可分析，webpack 能做 tree-shaking，只保留被用到的导出，并用标记记录哪些导出是未使用的从而在压缩阶段删除；要真正生效还需要 mode 为 production（内部设 usedExports 和 minimize）、以及包声明 sideEffects 为 false 告诉工具可以安全删除。
+- 第二，CommonJS 的处理：CJS 是动态的，require 可以在条件分支里、可以拼接字符串，导出也可能是运行时挂到 module.exports 上的，所以 webpack 无法静态确定全部依赖，只能把整个模块包装成一个函数，用 __webpack_require__ 在运行时加载和执行，依赖关系通过包装函数里的 require 调用收集（这也是为什么 CJS 的 tree-shaking 效果差，通常整包都被保留）。
+- 第三，统一的模块系统：无论是 ESM 还是 CJS，最终都被包装成 webpack 内部模块对象的函数，包含 module、exports、require 参数，模块加载有缓存（已加载的模块直接返回 exports），依赖管理由 __webpack_require__ 实现，这样就能统一处理循环依赖、动态导入和懒加载。
+- 第四，互操作：ESM 里 import 一个 CJS 模块时，默认导出会被映射到 module.exports，命名导出靠静态分析尝试识别，识别不到就只能在运行时取值，这也是为什么有些库必须用 import lib from 而不是具名导入；反过来 CJS require 一个 ESM 包在原生环境会报错，但 webpack 做了兼容处理。要获得最好的 tree-shaking 效果，推荐库作者直接提供 ESM 产物并在 package.json 里正确声明 module、exports 和 sideEffects。
 
 **常见追问**：那为什么有些库配置了 sideEffects 为 false 反而出问题？
 
@@ -2368,7 +3191,13 @@ webpack 的核心思想是：不管源码是 CommonJS 还是 ESM，最终都会�
 
 **参考回答**：
 
-核心是理解浏览器的关键渲染路径以及各资源对 HTML 解析、DOM 与 CSSOM 构建、渲染树生成的影响。第一，HTML 资源：作为主文档，解析器从上到下扫描，遇到不同标签触发不同行为。第二，CSS 资源：通过 link 或 style 引入的样式表不阻塞 HTML 解析，DOM 可以继续构建，但它阻塞渲染，因为浏览器必须等 CSSOM 构建完成才能生成渲染树，否则会出现无样式内容闪烁（FOUC）；同时 CSS 还会阻塞其后脚本的执行，因为脚本可能读取样式信息，所以浏览器会等 CSSOM 就绪再执行脚本。另外 @import 会形成串行请求瀑布，比 link 慢，生产环境不推荐。第三，JS 资源：普通 script 会阻塞 HTML 解析和渲染，浏览器必须暂停解析去下载并执行脚本，所以关键脚本应内联或前置预加载，非关键脚本用 defer 或 async。defer 是下载不阻塞解析、在文档解析完成后按顺序执行；async 是下载完立刻执行、顺序不确定；type 为 module 的脚本默认具有 defer 行为。还要注意脚本里如果读写了会引起同步布局的属性，会强制刷新渲染队列，进一步拖慢。第四，图片、字体、媒体资源：图片不阻塞解析和渲染，异步加载完成后才占位（所以没写宽高会导致布局偏移）；字体默认会阻塞文本渲染约三秒，可以用 font-display 的 swap 或 optional 缓解；video 和 iframe 通常懒加载。第五，其他资源：fetch 和 XHR 完全异步，不影响关键路径；Web Worker 在独立线程运行不阻塞主线程。整体优化思路是：把关键路径缩短，即内联关键 CSS、预加载关键资源、延后非关键脚本、给媒体资源预留尺寸。
+核心是理解浏览器的关键渲染路径以及各资源对 HTML 解析、DOM 与 CSSOM 构建、渲染树生成的影响。
+
+- 第一，HTML 资源：作为主文档，解析器从上到下扫描，遇到不同标签触发不同行为。
+- 第二，CSS 资源：通过 link 或 style 引入的样式表不阻塞 HTML 解析，DOM 可以继续构建，但它阻塞渲染，因为浏览器必须等 CSSOM 构建完成才能生成渲染树，否则会出现无样式内容闪烁（FOUC）；同时 CSS 还会阻塞其后脚本的执行，因为脚本可能读取样式信息，所以浏览器会等 CSSOM 就绪再执行脚本。另外 @import 会形成串行请求瀑布，比 link 慢，生产环境不推荐。
+- 第三，JS 资源：普通 script 会阻塞 HTML 解析和渲染，浏览器必须暂停解析去下载并执行脚本，所以关键脚本应内联或前置预加载，非关键脚本用 defer 或 async。defer 是下载不阻塞解析、在文档解析完成后按顺序执行；async 是下载完立刻执行、顺序不确定；type 为 module 的脚本默认具有 defer 行为。还要注意脚本里如果读写了会引起同步布局的属性，会强制刷新渲染队列，进一步拖慢。
+- 第四，图片、字体、媒体资源：图片不阻塞解析和渲染，异步加载完成后才占位（所以没写宽高会导致布局偏移）；字体默认会阻塞文本渲染约三秒，可以用 font-display 的 swap 或 optional 缓解；video 和 iframe 通常懒加载。
+- 第五，其他资源：fetch 和 XHR 完全异步，不影响关键路径；Web Worker 在独立线程运行不阻塞主线程。整体优化思路是：把关键路径缩短，即内联关键 CSS、预加载关键资源、延后非关键脚本、给媒体资源预留尺寸。
 
 **常见追问**：那为什么 CSS 会阻塞后面的 JS 执行？
 
@@ -2388,7 +3217,13 @@ webpack 的核心思想是：不管源码是 CommonJS 还是 ESM，最终都会�
 
 **参考回答**：
 
-可以把 HTML 解析类比成读一篇文章并画出一棵家谱树，整体分几步。第一，字节流到字符流：浏览器先根据 HTTP 响应头的字符集或文档里的 meta charset 确定编码（比如 UTF-8），把原始字节解码成字符。第二，字符流到 Token：HTML 解析器是状态机式的词法分析器，逐个字符扫描，识别出开始标签、属性、文本、注释、结束标签和 DOCTYPE 等 Token，比如一个带 class 的 div 会产出开始标签 Token、文本 Token、结束标签 Token。第三，Token 到节点并建树：语法分析阶段维护一个打开元素栈，遇到开始标签就创建元素节点、把它压栈并挂到当前节点下，遇到结束标签就出栈，这样自然形成嵌套结构；属性在创建节点时设置，文本节点直接追加。第四，容错处理：HTML 是宽容的语言，解析器内置了一套错误恢复规则，比如缺少结束标签会自动补全、某些标签会隐式闭合前一个标签（比如 p 遇到新的 p 会自动闭合）、表格里缺失的 tbody 会自动创建、标签嵌套错误会做重新关联，所以即使 HTML 写得不规范也能构建出一棵确定的 DOM 树。第五，脚本与解析交互：遇到没有 async 或 defer 的 script 会暂停解析，先下载并执行脚本（如果脚本里用 document.write 还会向文档流插入内容并影响后续解析），执行完再继续，这也是脚本位置影响首屏的原因。最终产出是以 document 为根节点、包含元素、文本、注释等节点的 DOM 树，CSSOM 构建和渲染树生成在另外的流程里完成。
+可以把 HTML 解析类比成读一篇文章并画出一棵家谱树，整体分几步。
+
+- 第一，字节流到字符流：浏览器先根据 HTTP 响应头的字符集或文档里的 meta charset 确定编码（比如 UTF-8），把原始字节解码成字符。
+- 第二，字符流到 Token：HTML 解析器是状态机式的词法分析器，逐个字符扫描，识别出开始标签、属性、文本、注释、结束标签和 DOCTYPE 等 Token，比如一个带 class 的 div 会产出开始标签 Token、文本 Token、结束标签 Token。
+- 第三，Token 到节点并建树：语法分析阶段维护一个打开元素栈，遇到开始标签就创建元素节点、把它压栈并挂到当前节点下，遇到结束标签就出栈，这样自然形成嵌套结构；属性在创建节点时设置，文本节点直接追加。
+- 第四，容错处理：HTML 是宽容的语言，解析器内置了一套错误恢复规则，比如缺少结束标签会自动补全、某些标签会隐式闭合前一个标签（比如 p 遇到新的 p 会自动闭合）、表格里缺失的 tbody 会自动创建、标签嵌套错误会做重新关联，所以即使 HTML 写得不规范也能构建出一棵确定的 DOM 树。
+- 第五，脚本与解析交互：遇到没有 async 或 defer 的 script 会暂停解析，先下载并执行脚本（如果脚本里用 document.write 还会向文档流插入内容并影响后续解析），执行完再继续，这也是脚本位置影响首屏的原因。最终产出是以 document 为根节点、包含元素、文本、注释等节点的 DOM 树，CSSOM 构建和渲染树生成在另外的流程里完成。
 
 **常见追问**：那 document.write 为什么被认为危险？它会怎么影响解析？
 
@@ -2408,7 +3243,14 @@ webpack 的核心思想是：不管源码是 CommonJS 还是 ESM，最终都会�
 
 **参考回答**：
 
-可以类比成盖房子：HTML 是毛坯结构，CSS 是装修图纸，JS 是水电改造工人。第一，HTML 解析成 DOM：浏览器用 HTML 解析器逐字节扫描（词法分析加建树），遇到开始标签、结束标签、文本、注释就生成节点，按嵌套关系挂成一棵树，也就是 DOM 树。它是增量流式的，边下载边解析，并且容错能力强，会自动补全缺失标签。第二，CSS 解析成 CSSOM：CSS 解析器解析样式表规则生成 CSSOM 树，它和 DOM 结构一一对应但只保留样式信息。CSSOM 构建阻塞渲染，因为浏览器必须知道每个元素最终样式才能生成渲染树，否则会闪无样式内容。第三，JS 的解析和执行由 JS 引擎（比如 V8）负责，流程是先解析源码生成 AST，再编译成字节码执行，热点代码由 JIT 编译成机器码优化。JS 的执行会阻塞 DOM 解析，因为脚本可能修改文档结构，所以普通 script 会暂停 HTML 解析直到下载并执行完。第四，三者的相互阻塞关系是关键：JS 阻塞 DOM 解析；CSSOM 阻塞其后脚本的执行，因为脚本可能读取样式；渲染树生成必须等 DOM 和 CSSOM 都就绪。所以优化思路是缩短关键路径：内联关键 CSS、给媒体资源预留尺寸、非关键脚本加 defer 或 async、避免在首屏脚本里读写布局属性。
+可以类比成盖房子：HTML 是毛坯结构，CSS 是装修图纸，JS 是水电改造工人。
+
+- 第一，HTML 解析成 DOM：浏览器用 HTML 解析器逐字节扫描（词法分析加建树），遇到开始标签、结束标签、文本、注释就生成节点，按嵌套关系挂成一棵树，也就是 DOM 树。它是增量流式的，边下载边解析，并且容错能力强，会自动补全缺失标签。
+- 第二，CSS 解析成 CSSOM：CSS 解析器解析样式表规则生成 CSSOM 树，它和 DOM 结构一一对应但只保留样式信息。CSSOM 构建阻塞渲染，因为浏览器必须知道每个元素最终样式才能生成渲染树，否则会闪无样式内容。
+- 第三，JS 的解析和执行由 JS 引擎（比如 V8）负责，流程是先解析源码生成 AST，再编译成字节码执行，热点代码由 JIT 编译成机器码优化。JS 的执行会阻塞 DOM 解析，因为脚本可能修改文档结构，所以普通 script 会暂停 HTML 解析直到下载并执行完。
+- 第四，三者的相互阻塞关系是关键：JS 阻塞 DOM 解析；CSSOM 阻塞其后脚本的执行，因为脚本可能读取样式；渲染树生成必须等 DOM 和 CSSOM 都就绪。
+
+所以优化思路是缩短关键路径：内联关键 CSS、给媒体资源预留尺寸、非关键脚本加 defer 或 async、避免在首屏脚本里读写布局属性。
 
 **常见追问**：那为什么 CSSOM 会阻塞 JS 执行，而不是 JS 阻塞 CSSOM？
 
@@ -2428,7 +3270,15 @@ webpack 的核心思想是：不管源码是 CommonJS 还是 ESM，最终都会�
 
 **参考回答**：
 
-tree shaking 本质是死代码消除，前提是模块依赖关系必须在编译期静态可分析。ES Module 的 import 和 export 是静态声明：不能放在 if 里、不能动态拼接、导入导出名在语法解析阶段就确定了，所以打包器可以构建完整的依赖图并判断某个导出是否被引用，未被引用的就不打包进去。CommonJS 的 require 和 module.exports 是运行时行为，导出对象可以动态增删、require 可以条件调用和拼接路径，打包器无法可靠判断，所以 tree-shaking 效果很差，通常整包保留。webpack 的实现分两步：先给每个模块的导出打上 used 和 unused 标记（由 optimization.usedExports 开启），再由压缩器（Terser 或 SWC）在压缩阶段把未使用的声明删掉，所以生产环境必须开启 minimize，否则只标记不删除。还有几个必要条件：一是包的 package.json 要声明 sideEffects，告诉 webpack 哪些文件有副作用，声明为 false 表示所有模块都可安全删除未使用部分，但如果有全局样式注入、polyfill 或注册逻辑却误标为 false，就会出现功能丢失，这是非常常见的坑；二是代码不能存在跨模块的副作用依赖；三是依赖最好提供 ESM 产物（配 module 或 exports 字段），否则 webpack 拿到 CJS 版本就无从静态分析。另外 scope hoisting 把多个模块合并到一个作用域，也能配合删除无用代码。
+tree shaking 本质是死代码消除，前提是模块依赖关系必须在编译期静态可分析。ES Module 的 import 和 export 是静态声明：不能放在 if 里、不能动态拼接、导入导出名在语法解析阶段就确定了，所以打包器可以构建完整的依赖图并判断某个导出是否被引用，未被引用的就不打包进去。
+
+CommonJS 的 require 和 module.exports 是运行时行为，导出对象可以动态增删、require 可以条件调用和拼接路径，打包器无法可靠判断，所以 tree-shaking 效果很差，通常整包保留。webpack 的实现分两步：先给每个模块的导出打上 used 和 unused 标记（由 optimization.usedExports 开启），再由压缩器（Terser 或 SWC）在压缩阶段把未使用的声明删掉，所以生产环境必须开启 minimize，否则只标记不删除。
+
+还有几个必要条件：
+
+- 一是包的 package.json 要声明 sideEffects，告诉 webpack 哪些文件有副作用，声明为 false 表示所有模块都可安全删除未使用部分，但如果有全局样式注入、polyfill 或注册逻辑却误标为 false，就会出现功能丢失，这是非常常见的坑；
+- 二是代码不能存在跨模块的副作用依赖；
+- 三是依赖最好提供 ESM 产物（配 module 或 exports 字段），否则 webpack 拿到 CJS 版本就无从静态分析。另外 scope hoisting 把多个模块合并到一个作用域，也能配合删除无用代码。
 
 **常见追问**：那为什么有的库明明配了 sideEffects 为 false，功能还是丢了？
 
@@ -2448,7 +3298,23 @@ tree shaking 本质是死代码消除，前提是模块依赖关系必须在编�
 
 **参考回答**：
 
-XSS 本质是攻击者把恶意脚本注入页面，让它在其他用户浏览器里以该站点身份执行，分存储型（恶意内容存进数据库）、反射型（请求参数直接回显）和 DOM 型（前端 JS 把不可信数据写进 DOM）三类。防御必须前后端协同。只交给前端不行：前端代码可被绕过（直接构造请求、用 curl、禁用 JS），而且后端模板渲染、日志回显、第三方接口数据前端覆盖不到。只交给后端也不行：后端无法控制前端如何拼接 DOM，返回安全 JSON 但前端用 innerHTML 写入照样中招。后端该做的：一是输入校验与过滤，做长度、类型、格式的白名单校验；二是输出编码，这是最重要的一环，要按上下文选择编码方式（HTML 实体编码、属性编码、JS 字符串编码、URL 编码），并且必须在输出时编码而不是存储时编码，否则会反复编码污染数据；三是 Cookie 加 HttpOnly、Secure 和 SameSite，让脚本读不到会话凭证；四是配置 CSP，用 nonce 或 hash 限制内联脚本、禁止 eval、只允许白名单域加载资源，这是纵深防御的关键；五是富文本走服务端白名单过滤。前端该做的：一是严禁把不可信数据交给 innerHTML、outerHTML、document.write、insertAdjacentHTML，改用 textContent 或框架的安全绑定；二是 v-html 和 dangerouslySetInnerHTML 只在数据已净化时使用；三是避免 eval、new Function、setTimeout 传字符串，避免把数据拼进 href 或 src（防 javascript 协议和 data 协议）；四是 Markdown 和富文本渲染前用 DOMPurify 做客户端净化做双重保险；五是校验跳转参数防开放重定向。
+XSS 本质是攻击者把恶意脚本注入页面，让它在其他用户浏览器里以该站点身份执行，分存储型（恶意内容存进数据库）、反射型（请求参数直接回显）和 DOM 型（前端 JS 把不可信数据写进 DOM）三类。防御必须前后端协同。只交给前端不行：前端代码可被绕过（直接构造请求、用 curl、禁用 JS），而且后端模板渲染、日志回显、第三方接口数据前端覆盖不到。
+
+只交给后端也不行：后端无法控制前端如何拼接 DOM，返回安全 JSON 但前端用 innerHTML 写入照样中招。后端该做的：
+
+- 一是输入校验与过滤，做长度、类型、格式的白名单校验；
+- 二是输出编码，这是最重要的一环，要按上下文选择编码方式（HTML 实体编码、属性编码、JS 字符串编码、URL 编码），并且必须在输出时编码而不是存储时编码，否则会反复编码污染数据；
+- 三是 Cookie 加 HttpOnly、Secure 和 SameSite，让脚本读不到会话凭证；
+- 四是配置 CSP，用 nonce 或 hash 限制内联脚本、禁止 eval、只允许白名单域加载资源，这是纵深防御的关键；
+- 五是富文本走服务端白名单过滤。
+
+前端该做的：
+
+- 一是严禁把不可信数据交给 innerHTML、outerHTML、document.write、insertAdjacentHTML，改用 textContent 或框架的安全绑定；
+- 二是 v-html 和 dangerouslySetInnerHTML 只在数据已净化时使用；
+- 三是避免 eval、new Function、setTimeout 传字符串，避免把数据拼进 href 或 src（防 javascript 协议和 data 协议）；
+- 四是 Markdown 和富文本渲染前用 DOMPurify 做客户端净化做双重保险；
+- 五是校验跳转参数防开放重定向。
 
 **常见追问**：那 CSP 应该怎么配才既安全又不影响业务？
 
@@ -2468,7 +3334,11 @@ XSS 本质是攻击者把恶意脚本注入页面，让它在其他用户浏览�
 
 **参考回答**：
 
-两者看起来相似的根本原因是 VuePress 本身就是用 Vue 生态开发的静态网站生成器，而且 Vue.js 官方文档站长期使用 VuePress 构建（后来升级为 VitePress），同一套技术栈加上同一批维护者，风格、交互和组件自然很像。通俗类比就是：Vue.js 是一套乐高积木，VuePress 是用这套积木搭出来的文档展示模板，用同一套积木搭的两个展示台当然长得像。原理上，VuePress 是静态站点生成器：把 Markdown 在构建时编译成 Vue 组件，再预渲染成静态 HTML，同时给每个页面生成对应 JS 做客户端激活，既保证首屏速度和 SEO，又保留 SPA 的交互体验；它的默认主题提供导航栏、侧边栏、搜索、代码高亮、自动生成目录等文档站常用能力，而 Vue 官方文档就是基于这套默认主题定制的，所以视觉高度一致。演进上，VuePress 基于 Webpack，构建和冷启动较慢，后来作者用 Vite 重写为 VitePress，速度大幅提升，也支持更好的 Markdown 与组件能力，现在 Vue.js 和 Vite 等官方文档都迁到了 VitePress。类似的还有 Docusaurus（React 生态）、Rspress、Astro 等，都是同一个思路：用组件框架加 Markdown 做文档站。
+两者看起来相似的根本原因是 VuePress 本身就是用 Vue 生态开发的静态网站生成器，而且 Vue.js 官方文档站长期使用 VuePress 构建（后来升级为 VitePress），同一套技术栈加上同一批维护者，风格、交互和组件自然很像。
+
+通俗类比就是：Vue.js 是一套乐高积木，VuePress 是用这套积木搭出来的文档展示模板，用同一套积木搭的两个展示台当然长得像。原理上，VuePress 是静态站点生成器：把 Markdown 在构建时编译成 Vue 组件，再预渲染成静态 HTML，同时给每个页面生成对应 JS 做客户端激活，既保证首屏速度和 SEO，又保留 SPA 的交互体验；它的默认主题提供导航栏、侧边栏、搜索、代码高亮、自动生成目录等文档站常用能力，而 Vue 官方文档就是基于这套默认主题定制的，所以视觉高度一致。
+
+演进上，VuePress 基于 Webpack，构建和冷启动较慢，后来作者用 Vite 重写为 VitePress，速度大幅提升，也支持更好的 Markdown 与组件能力，现在 Vue.js 和 Vite 等官方文档都迁到了 VitePress。类似的还有 Docusaurus（React 生态）、Rspress、Astro 等，都是同一个思路：用组件框架加 Markdown 做文档站。
 
 **常见追问**：那 SSG 和 SSR 的区别是什么？文档站为什么更适合 SSG？
 
@@ -2488,7 +3358,11 @@ XSS 本质是攻击者把恶意脚本注入页面，让它在其他用户浏览�
 
 **参考回答**：
 
-先澄清概念：Tailwind 的原子类设计哲学是一个类只做一件事，比如 font-bold 只改 font-weight，text-lg 只改 font-size。好处是组合自由、无歧义、可预测，代价是同一套排版组合要重复写很多次。如果确实想用一个类名同时控制字体粗细和字号，有三种主流做法。第一，用 @layer components 加 @apply，最贴近原生写法：在 CSS 里定义一个语义化类，比如 .text-title 内部用 @apply 组合 font-bold 和 text-2xl，之后模板里只写 .text-title 即可。要注意 @layer components 的优先级低于 utilities，所以后面还能用原子类覆盖它。第二，扩展 theme 配置：在 tailwind.config 的 theme.extend 里定义 fontSize 或 fontWeight 的语义化键，比如把标题字号命名成 title，然后就能用 text-title，但这种方式一次只能管一个属性维度。第三，写自定义插件：在 plugin 里用 addComponents 或 addUtilities 批量注册组合类，适合要做设计系统、需要成组产出字号与字重的场景，还可以配合 CSS 变量让主题可切换。另外更推荐的方向是别把排版语义散落在类名里，而是抽出业务层的组件类或封装成 Vue、React 组件，比如一个 Title 组件内部固定 @apply 的排版，这样既能一个类名达到目的，又不会让模板里堆满组合类，改设计时也只需改一处。
+先澄清概念：Tailwind 的原子类设计哲学是一个类只做一件事，比如 font-bold 只改 font-weight，text-lg 只改 font-size。好处是组合自由、无歧义、可预测，代价是同一套排版组合要重复写很多次。如果确实想用一个类名同时控制字体粗细和字号，有三种主流做法。
+
+- 第一，用 @layer components 加 @apply，最贴近原生写法：在 CSS 里定义一个语义化类，比如 .text-title 内部用 @apply 组合 font-bold 和 text-2xl，之后模板里只写 .text-title 即可。要注意 @layer components 的优先级低于 utilities，所以后面还能用原子类覆盖它。
+- 第二，扩展 theme 配置：在 tailwind.config 的 theme.extend 里定义 fontSize 或 fontWeight 的语义化键，比如把标题字号命名成 title，然后就能用 text-title，但这种方式一次只能管一个属性维度。
+- 第三，写自定义插件：在 plugin 里用 addComponents 或 addUtilities 批量注册组合类，适合要做设计系统、需要成组产出字号与字重的场景，还可以配合 CSS 变量让主题可切换。另外更推荐的方向是别把排版语义散落在类名里，而是抽出业务层的组件类或封装成 Vue、React 组件，比如一个 Title 组件内部固定 @apply 的排版，这样既能一个类名达到目的，又不会让模板里堆满组合类，改设计时也只需改一处。
 
 **常见追问**：那 Tailwind 里 @apply 和直接写 CSS 属性有什么区别？什么时候不该用 @apply？
 
@@ -2508,7 +3382,15 @@ XSS 本质是攻击者把恶意脚本注入页面，让它在其他用户浏览�
 
 **参考回答**：
 
-两者定位不同：esbuild 是工具链中的高速引擎，webpack 是可编程的构建平台。第一，实现语言与性能：esbuild 用 Go 编写并编译成原生机器码，大量使用并行化和内存共享，解析、转译、压缩都极快，官方基准通常比 webpack 快十到一百倍；webpack 用 JS 编写，运行在 Node 单线程上，虽然有 thread-loader 和持久化缓存等优化，但整体受 JS 执行和插件链路拖累。第二，架构与扩展：webpack 核心是 loader 链和插件钩子，允许在编译各阶段干预，能做非常复杂的定制；esbuild 的插件 API 相对有限且不支持完整的 AST 变换生态，很多 webpack 才能做的事它做不了。第三，能力覆盖：esbuild 原生支持 TS、JSX、压缩、Source Map、代码分割和按需加载，但 CSS 处理、HTML 处理、复杂 polyfill 和浏览器兼容降级的能力弱一些；webpack 通过 loader 和 plugin 能覆盖几乎所有前端资源与场景。第四，产物与优化：webpack 有成熟的 tree-shaking、splitChunks 分包、scope hoisting，esbuild 的 tree-shaking 也不错但在 CJS 互操作和复杂副作用判断上略逊。第五，选型：新项目或对速度要求高的场景（比如 Vite 的开发态预构建和代码压缩、tsup 打包库）优先用 esbuild 或基于它的工具；需要复杂构建定制、微前端、老项目兼容时还是 webpack 更稳。实际工程里两者经常组合：Vite 开发用 esbuild 转译、生产用 Rollup 打包，而 Next.js 也把 esbuild 用在校验和压缩环节。另外 SWC 和 Rspack 也是同一思路的替代方案，Rspack 用 Rust 重写并尽量兼容 webpack 配置。
+两者定位不同：esbuild 是工具链中的高速引擎，webpack 是可编程的构建平台。
+
+- 第一，实现语言与性能：esbuild 用 Go 编写并编译成原生机器码，大量使用并行化和内存共享，解析、转译、压缩都极快，官方基准通常比 webpack 快十到一百倍；webpack 用 JS 编写，运行在 Node 单线程上，虽然有 thread-loader 和持久化缓存等优化，但整体受 JS 执行和插件链路拖累。
+- 第二，架构与扩展：webpack 核心是 loader 链和插件钩子，允许在编译各阶段干预，能做非常复杂的定制；esbuild 的插件 API 相对有限且不支持完整的 AST 变换生态，很多 webpack 才能做的事它做不了。
+- 第三，能力覆盖：esbuild 原生支持 TS、JSX、压缩、Source Map、代码分割和按需加载，但 CSS 处理、HTML 处理、复杂 polyfill 和浏览器兼容降级的能力弱一些；webpack 通过 loader 和 plugin 能覆盖几乎所有前端资源与场景。
+- 第四，产物与优化：webpack 有成熟的 tree-shaking、splitChunks 分包、scope hoisting，esbuild 的 tree-shaking 也不错但在 CJS 互操作和复杂副作用判断上略逊。
+- 第五，选型：新项目或对速度要求高的场景（比如 Vite 的开发态预构建和代码压缩、tsup 打包库）优先用 esbuild 或基于它的工具；需要复杂构建定制、微前端、老项目兼容时还是 webpack 更稳。
+
+实际工程里两者经常组合：Vite 开发用 esbuild 转译、生产用 Rollup 打包，而 Next.js 也把 esbuild 用在校验和压缩环节。另外 SWC 和 Rspack 也是同一思路的替代方案，Rspack 用 Rust 重写并尽量兼容 webpack 配置。
 
 **常见追问**：那如果团队想从 webpack 迁到基于 esbuild 的方案，你会怎么评估风险？
 
@@ -2528,7 +3410,18 @@ XSS 本质是攻击者把恶意脚本注入页面，让它在其他用户浏览�
 
 **参考回答**：
 
-先明确业务特征：开福是瞬时高并发、结果非先到先得、用户只关心最终有没有中。这意味着前端不需要保证请求顺序，也不需要实时精确展示排名，只需要做到三点：让用户点得动不卡死、请求尽量少而均匀、结果最终能正确回显。具体优化分四层。第一层，首屏与资源：活动页静态化，HTML、CSS、JS、图片全部走 CDN，接口数据用骨架屏加本地缓存先渲染，避免白屏；倒计时用服务端时间戳校准（防止用户改本地时间），本地定时器只做展示。第二层，请求节奏控制：开始前按钮置灰加倒计时，到点才可点；点击后立即禁用按钮并加防抖，防止重复提交；对同一用户做请求去重，避免多标签页重复发起；把多个小接口合并成一个聚合接口，减少请求数和连接开销。第三层，削峰与降级：如果预期瞬时 QPS 极高，可以在前端做随机延迟或分批放行，把请求打散，但要注意不能让用户感知到明显延迟；同时准备降级方案，比如后端限流时直接返回排队中，前端展示排队动画并用轮询或长连接拿结果，而不是让用户疯狂重试；非核心内容（抽奖规则、榜单、广告）懒加载或直接降级去掉。第四层，乐观反馈与最终一致：因为结果不确定，可以采用乐观 UI，点击后立刻展示抽奖动画和期待态，同时发请求，用轮询或 SSE 拿最终结果，拿到后再切换成中奖或未中奖；失败或超时要有明确提示和重试入口，并且用幂等请求 id 保证重复请求不会重复扣次数。整体思路是把后端强一致的压力转移到前端的体验层，用更少的请求和更可控的节奏换取稳定体验。
+先明确业务特征：开福是瞬时高并发、结果非先到先得、用户只关心最终有没有中。这意味着前端不需要保证请求顺序，也不需要实时精确展示排名，只需要做到三点：让用户点得动不卡死、请求尽量少而均匀、结果最终能正确回显。具体优化分四层。第一层，首屏与资源：活动页静态化，HTML、CSS、JS、图片全部走 CDN，接口数据用骨架屏加本地缓存先渲染，避免白屏；倒计时用服务端时间戳校准（防止用户改本地时间），本地定时器只做展示。
+
+- 第二层，请求节奏控制：开始前按钮置灰加倒计时，到点才可点；
+- 点击后立即禁用按钮并加防抖，防止重复提交；
+- 对同一用户做请求去重，避免多标签页重复发起；
+- 把多个小接口合并成一个聚合接口，减少请求数和连接开销。
+
+- 第三层，削峰与降级：如果预期瞬时 QPS 极高，可以在前端做随机延迟或分批放行，把请求打散，但要注意不能让用户感知到明显延迟；
+- 同时准备降级方案，比如后端限流时直接返回排队中，前端展示排队动画并用轮询或长连接拿结果，而不是让用户疯狂重试；
+- 非核心内容（抽奖规则、榜单、广告）懒加载或直接降级去掉。
+
+第四层，乐观反馈与最终一致：因为结果不确定，可以采用乐观 UI，点击后立刻展示抽奖动画和期待态，同时发请求，用轮询或 SSE 拿最终结果，拿到后再切换成中奖或未中奖；失败或超时要有明确提示和重试入口，并且用幂等请求 id 保证重复请求不会重复扣次数。整体思路是把后端强一致的压力转移到前端的体验层，用更少的请求和更可控的节奏换取稳定体验。
 
 **常见追问**：那如果用户网络很差，请求发出去很久没回来，前端怎么处理？
 
@@ -2548,7 +3441,16 @@ XSS 本质是攻击者把恶意脚本注入页面，让它在其他用户浏览�
 
 **参考回答**：
 
-常见方案分三类。第一，DOM 截图类，比如 html2canvas、html-to-image。原理是遍历目标 DOM 树，读取每个节点的样式（getComputedStyle）、位置（getBoundingClientRect）和内容，然后在 Canvas 上按顺序重绘：背景色、边框、圆角用 Canvas 的矩形和路径 API；文字用 fillText 并按 font、letter-spacing 设置；图片要先把 img 加载成 Image 对象再 drawImage；最后用 canvas.toDataURL 导出图片。优点是能复用现有 DOM 和样式，开发成本低；缺点是它并不是真正的截图，而是模拟重绘，所以对部分 CSS（复杂渐变、滤镜、伪元素、Shadow DOM、WebGL 内容、iframe）支持不全，容易出现还原度问题，而且跨域图片会污染 Canvas 导致导出失败，需要配 CORS 或走服务端代理。第二，序列化 SVG 再转图片，比如 dom-to-image。原理是把 DOM 序列化成 SVG 的 foreignObject，再通过 Image 加载 SVG 画到 Canvas 上。保真度通常比 html2canvas 好，但 Safari 对 foreignObject 的限制较多，也依赖内联样式。第三，声明式绘制，比如 satori。它接收一个类 JSX 的样式对象，用 Yoga 做布局计算，直接生成 SVG，再转成 PNG。优点是渲染结果确定、不依赖浏览器 DOM、适合服务端生成，但要求用它的样式子集，不支持任意 CSS。工程上还要注意几个坑：字体必须显式加载并等 document.fonts.ready，否则文字会回退；图片必须等 onload；高分屏要用 devicePixelRatio 放大 Canvas 保证清晰；海报里如果要放二维码，通常用 Canvas 或 SVG 生成后再合成。
+常见方案分三类。
+
+- 第一，DOM 截图类，比如 html2canvas、html-to-image。原理是遍历目标 DOM 树，读取每个节点的样式（getComputedStyle）、位置（getBoundingClientRect）和内容，然后在 Canvas 上按顺序重绘：背景色、边框、圆角用 Canvas 的矩形和路径 API；文字用 fillText 并按 font、letter-spacing 设置；图片要先把 img 加载成 Image 对象再 drawImage；最后用 canvas.toDataURL 导出图片。优点是能复用现有 DOM 和样式，开发成本低；缺点是它并不是真正的截图，而是模拟重绘，所以对部分 CSS（复杂渐变、滤镜、伪元素、Shadow DOM、WebGL 内容、iframe）支持不全，容易出现还原度问题，而且跨域图片会污染 Canvas 导致导出失败，需要配 CORS 或走服务端代理。
+- 第二，序列化 SVG 再转图片，比如 dom-to-image。原理是把 DOM 序列化成 SVG 的 foreignObject，再通过 Image 加载 SVG 画到 Canvas 上。保真度通常比 html2canvas 好，但 Safari 对 foreignObject 的限制较多，也依赖内联样式。
+- 第三，声明式绘制，比如 satori。它接收一个类 JSX 的样式对象，用 Yoga 做布局计算，直接生成 SVG，再转成 PNG。优点是渲染结果确定、不依赖浏览器 DOM、适合服务端生成，但要求用它的样式子集，不支持任意 CSS。
+
+- 工程上还要注意几个坑：字体必须显式加载并等 document.fonts.ready，否则文字会回退；
+- 图片必须等 onload；
+- 高分屏要用 devicePixelRatio 放大 Canvas 保证清晰；
+- 海报里如果要放二维码，通常用 Canvas 或 SVG 生成后再合成。
 
 **常见追问**：那海报里如果要有用户头像（跨域图片），你怎么保证能导出？
 
@@ -2568,7 +3470,20 @@ XSS 本质是攻击者把恶意脚本注入页面，让它在其他用户浏览�
 
 **参考回答**：
 
-很多人把 Tailwind 想象成一个巨大的 CSS 文件，其实不是。第一，原理：Tailwind 的预设样式本质是一套规则生成器（utility 生成器），不是预先写好的完整 CSS。早期 v1、v2 会先生成一个很大的候选文件再用 PurgeCSS 删除，从 v3 开始默认启用 JIT，构建时扫描 content 配置里指定的源码文件，只为你真正写出来的类名生成对应 CSS。第二，类比：它像按需点菜的厨房，菜单上有一千道菜，但你点了三道，端上桌和洗碗的只有三道。第三，体积实测：一个正常项目最终 CSS 通常只有几 KB 到几十 KB，压缩加 gzip 后往往更小，比手写 CSS 加一堆工具类还小，而且不存在随预设类增长而膨胀的问题。第四，代价与注意事项：一是构建时要正确配置 content（包括模板文件、组件文件、甚至动态生成的类名所在文件），否则扫描不到就不会生成；二是绝对不要动态拼接类名，比如用字符串拼出 text 加变量的颜色，JIT 无法识别，要改成完整类名的映射表（用对象映射比字符串拼接安全）；三是需要 safelist 保留某些运行时才出现的类；四是如果引入第三方库的 HTML 模板，要把它加入 content 扫描范围；五是 Tailwind 的 preflight 会重置默认样式，接入老项目时要注意副作用。总结就是：Tailwind 的包体积由你实际使用的类决定，设计上就是为生产环境优化的，不会因为预设多而变大。
+很多人把 Tailwind 想象成一个巨大的 CSS 文件，其实不是。
+
+- 第一，原理：Tailwind 的预设样式本质是一套规则生成器（utility 生成器），不是预先写好的完整 CSS。早期 v1、v2 会先生成一个很大的候选文件再用 PurgeCSS 删除，从 v3 开始默认启用 JIT，构建时扫描 content 配置里指定的源码文件，只为你真正写出来的类名生成对应 CSS。
+- 第二，类比：它像按需点菜的厨房，菜单上有一千道菜，但你点了三道，端上桌和洗碗的只有三道。
+- 第三，体积实测：一个正常项目最终 CSS 通常只有几 KB 到几十 KB，压缩加 gzip 后往往更小，比手写 CSS 加一堆工具类还小，而且不存在随预设类增长而膨胀的问题。
+- 第四，代价与注意事项：
+
+- 一是构建时要正确配置 content（包括模板文件、组件文件、甚至动态生成的类名所在文件），否则扫描不到就不会生成；
+- 二是绝对不要动态拼接类名，比如用字符串拼出 text 加变量的颜色，JIT 无法识别，要改成完整类名的映射表（用对象映射比字符串拼接安全）；
+- 三是需要 safelist 保留某些运行时才出现的类；
+- 四是如果引入第三方库的 HTML 模板，要把它加入 content 扫描范围；
+- 五是 Tailwind 的 preflight 会重置默认样式，接入老项目时要注意副作用。
+
+总结就是：Tailwind 的包体积由你实际使用的类决定，设计上就是为生产环境优化的，不会因为预设多而变大。
 
 **常见追问**：那如果类名是后端返回的动态颜色，你怎么处理才不会被 JIT 漏掉？
 
@@ -2588,7 +3503,13 @@ XSS 本质是攻击者把恶意脚本注入页面，让它在其他用户浏览�
 
 **参考回答**：
 
-前端性能优化不能只背手段，要先建立度量、定位、优化、回归的闭环。第一，度量：用 Lighthouse、WebPageTest、Chrome Performance 做实验室分析，用 web-vitals 库做 RUM 采集真实用户指标，核心是 Core Web Vitals——LCP 最大内容绘制目标小于 2.5 秒、INP 交互到下次绘制目标小于 200 毫秒、CLS 布局偏移目标小于 0.1；实验室数据用于定位，RUM 用于验证真实收益。第二，加载阶段优化：缩短关键渲染路径，内联关键 CSS、把非关键 CSS 异步加载、脚本加 defer 或 async；资源层面做压缩（Brotli 或 Gzip）、图片用 WebP 或 AVIF 加响应式尺寸和懒加载、字体子集化并配 font-display；网络层面用 CDN、HTTP2 或 HTTP3、开启缓存策略（强缓存加 contenthash）、preload 关键资源、dns-prefetch 和 preconnect 提前建连；体积层面做代码分割、按路由懒加载、tree-shaking、第三方库按需引入并用体积门禁防劣化。第三，渲染阶段优化：减少重排重绘，避免布局抖动（批量读写、不用会触发强制同步布局的属性）；动画只用 transform 和 opacity，必要时提升为合成层；长列表用虚拟滚动，长任务拆分（时间切片、requestIdleCallback）；用 content-visibility 和 contain 做渲染隔离。第四，运行时优化：接口合并与缓存、请求去重与并发控制、防抖节流控制高频事件、Web Worker 处理计算密集任务；内存方面避免泄漏，及时清理定时器、监听器和缓存。第五，闭环：把指标接入监控和告警，每次优化都用数据验证收益，并把预算写进 CI 防止回退。
+前端性能优化不能只背手段，要先建立度量、定位、优化、回归的闭环。
+
+- 第一，度量：用 Lighthouse、WebPageTest、Chrome Performance 做实验室分析，用 web-vitals 库做 RUM 采集真实用户指标，核心是 Core Web Vitals——LCP 最大内容绘制目标小于 2.5 秒、INP 交互到下次绘制目标小于 200 毫秒、CLS 布局偏移目标小于 0.1；实验室数据用于定位，RUM 用于验证真实收益。
+- 第二，加载阶段优化：缩短关键渲染路径，内联关键 CSS、把非关键 CSS 异步加载、脚本加 defer 或 async；资源层面做压缩（Brotli 或 Gzip）、图片用 WebP 或 AVIF 加响应式尺寸和懒加载、字体子集化并配 font-display；网络层面用 CDN、HTTP2 或 HTTP3、开启缓存策略（强缓存加 contenthash）、preload 关键资源、dns-prefetch 和 preconnect 提前建连；体积层面做代码分割、按路由懒加载、tree-shaking、第三方库按需引入并用体积门禁防劣化。
+- 第三，渲染阶段优化：减少重排重绘，避免布局抖动（批量读写、不用会触发强制同步布局的属性）；动画只用 transform 和 opacity，必要时提升为合成层；长列表用虚拟滚动，长任务拆分（时间切片、requestIdleCallback）；用 content-visibility 和 contain 做渲染隔离。
+- 第四，运行时优化：接口合并与缓存、请求去重与并发控制、防抖节流控制高频事件、Web Worker 处理计算密集任务；内存方面避免泄漏，及时清理定时器、监听器和缓存。
+- 第五，闭环：把指标接入监控和告警，每次优化都用数据验证收益，并把预算写进 CI 防止回退。
 
 **常见追问**：那如果 LCP 很差，你会按什么顺序排查？
 
@@ -2608,7 +3529,29 @@ XSS 本质是攻击者把恶意脚本注入页面，让它在其他用户浏览�
 
 **参考回答**：
 
-前端性能指标可以按用户旅程分成三类。第一类，加载阶段：TTFB 是首字节时间，反映网络加服务端响应，包含 DNS、TCP、TLS、请求排队和后端处理，是后端和网络问题的第一指标；FP 是首次绘制，浏览器开始渲染任何像素；FCP 是首次内容绘制，出现文本或图片等实际内容，通常目标小于 1.8 秒；LCP 是最大内容绘制，指视口内最大元素渲染完成的时间，是首屏体验的核心指标，目标小于 2.5 秒。第二类，交互阶段：TTI 是可交互时间，页面主线程空闲可以稳定响应交互；TBT 是总阻塞时间，统计 FCP 到 TTI 之间主线程被长任务阻塞的时长，是实验室里衡量交互性的重要指标；FID 是首次输入延迟，衡量用户第一次交互到响应的时间，目标小于 100 毫秒，但只覆盖首次交互；INP 是交互到下次绘制，覆盖整个页面生命周期内所有交互的响应延迟，取高百分位，已经取代 FID 成为 Core Web Vitals 之一，目标小于 200 毫秒。第三类，视觉稳定性：CLS 是累积布局偏移，衡量元素意外移动的程度，目标小于 0.1。除 Core Web Vitals 外还有几个常用指标：FPS 和长任务（Long Task）反映流畅度；资源相关指标如页面总字节数、请求数、首屏图片大小；内存方面看 JS 堆大小和是否持续增长。采集方式分两种：实验室数据用 Lighthouse、WebPageTest 和 Chrome Performance 面板，适合定位和对比；真实用户数据用 PerformanceObserver 加 web-vitals 库上报到监控平台，适合验证真实收益，因为不同设备、网络和地域差异很大，只看实验室数据容易误判。实际做优化时我会用实验室数据定位瓶颈，再用 RUM 指标分位数（P75、P95）确认收益。
+前端性能指标可以按用户旅程分成三类。
+
+- 第一类，加载阶段：TTFB 是首字节时间，反映网络加服务端响应，包含 DNS、TCP、TLS、请求排队和后端处理，是后端和网络问题的第一指标；
+- FP 是首次绘制，浏览器开始渲染任何像素；
+- FCP 是首次内容绘制，出现文本或图片等实际内容，通常目标小于 1.8 秒；
+- LCP 是最大内容绘制，指视口内最大元素渲染完成的时间，是首屏体验的核心指标，目标小于 2.5 秒。
+
+- 第二类，交互阶段：TTI 是可交互时间，页面主线程空闲可以稳定响应交互；
+- TBT 是总阻塞时间，统计 FCP 到 TTI 之间主线程被长任务阻塞的时长，是实验室里衡量交互性的重要指标；
+- FID 是首次输入延迟，衡量用户第一次交互到响应的时间，目标小于 100 毫秒，但只覆盖首次交互；
+- INP 是交互到下次绘制，覆盖整个页面生命周期内所有交互的响应延迟，取高百分位，已经取代 FID 成为 Core Web Vitals 之一，目标小于 200 毫秒。
+
+第三类，视觉稳定性：CLS 是累积布局偏移，衡量元素意外移动的程度，目标小于 0.1。
+
+除 Core Web Vitals 外还有几个常用指标：
+
+- FPS 和长任务（Long Task）反映流畅度；
+- 资源相关指标如页面总字节数、请求数、首屏图片大小；
+- 内存方面看 JS 堆大小和是否持续增长。
+
+采集方式分两种：实验室数据用 Lighthouse、WebPageTest 和 Chrome Performance 面板，适合定位和对比；真实用户数据用 PerformanceObserver 加 web-vitals 库上报到监控平台，适合验证真实收益，因为不同设备、网络和地域差异很大，只看实验室数据容易误判。
+
+实际做优化时我会用实验室数据定位瓶颈，再用 RUM 指标分位数（P75、P95）确认收益。
 
 **常见追问**：那 INP 为什么比 FID 更能反映真实交互体验？
 
@@ -2628,7 +3571,18 @@ XSS 本质是攻击者把恶意脚本注入页面，让它在其他用户浏览�
 
 **参考回答**：
 
-答案是可以。Portal（比如 ReactDOM.createPortal）的作用是把子节点渲染到父组件 DOM 层级之外的某个容器里，比如 document.body，它解决的是视觉和层叠上下文问题（弹窗、下拉菜单、Tooltip 需要脱离父级的 overflow 和 z-index 限制），而不是逻辑父子关系问题。关键点是：React 的事件系统并不是把 onClick 直接绑在每个真实 DOM 节点上，而是统一委托到根容器（React 17 之前委托到 document，之后委托到根容器），事件触发时 React 根据真实 DOM 找到对应的 Fiber 节点，再沿着 React 组件树（而不是 DOM 树）向上收集监听器并依次调用。因为 Portal 只改变了 DOM 挂载位置，组件树里的父子关系没变，所以事件仍然按组件树冒泡，父组件的 onClick 能被触发。这一点和原生 DOM 事件不同：如果不经过框架，把子节点 appendChild 到 body 下，它的原生点击事件就会沿 body 的 DOM 祖先冒泡，而不会通知原来的 React 父组件。实践中要注意几个点：一是如果想阻止事件冒泡，在 Portal 内部用 stopPropagation 同样有效，因为 React 是在自己的合成事件层处理的；二是 Portal 内部的元素不受父组件 CSS 作用域和 overflow 影响，但也不继承某些布局上下文（比如 transform 创建的定位参照），需要自己处理定位；三是在 Vue 中对应的是 Teleport，事件同样按组件树冒泡；四是多个 Portal 叠加时要注意 z-index 和事件穿透问题。
+答案是可以。Portal（比如 ReactDOM.createPortal）的作用是把子节点渲染到父组件 DOM 层级之外的某个容器里，比如 document.body，它解决的是视觉和层叠上下文问题（弹窗、下拉菜单、Tooltip 需要脱离父级的 overflow 和 z-index 限制），而不是逻辑父子关系问题。
+
+关键点是：React 的事件系统并不是把 onClick 直接绑在每个真实 DOM 节点上，而是统一委托到根容器（React 17 之前委托到 document，之后委托到根容器），事件触发时 React 根据真实 DOM 找到对应的 Fiber 节点，再沿着 React 组件树（而不是 DOM 树）向上收集监听器并依次调用。
+
+因为 Portal 只改变了 DOM 挂载位置，组件树里的父子关系没变，所以事件仍然按组件树冒泡，父组件的 onClick 能被触发。这一点和原生 DOM 事件不同：如果不经过框架，把子节点 appendChild 到 body 下，它的原生点击事件就会沿 body 的 DOM 祖先冒泡，而不会通知原来的 React 父组件。
+
+实践中要注意几个点：
+
+- 一是如果想阻止事件冒泡，在 Portal 内部用 stopPropagation 同样有效，因为 React 是在自己的合成事件层处理的；
+- 二是 Portal 内部的元素不受父组件 CSS 作用域和 overflow 影响，但也不继承某些布局上下文（比如 transform 创建的定位参照），需要自己处理定位；
+- 三是在 Vue 中对应的是 Teleport，事件同样按组件树冒泡；
+- 四是多个 Portal 叠加时要注意 z-index 和事件穿透问题。
 
 **常见追问**：那如果我想让 Portal 里的事件不冒泡到父组件，应该怎么做？
 
@@ -2648,7 +3602,20 @@ XSS 本质是攻击者把恶意脚本注入页面，让它在其他用户浏览�
 
 **参考回答**：
 
-闭包是指一个函数可以记住并访问它被创建时所处的词法作用域，即使这个函数在该作用域之外执行。原理上，JS 采用词法作用域（静态作用域），函数在定义时就已经确定了它能访问哪些变量，而不是在调用时决定。当内部函数引用了外部函数的变量，并且这个内部函数被返回或传递到外部作用域时，外部函数的执行上下文虽然已经出栈，但它的变量对象或环境记录不会被回收，因为内部函数的作用域链仍然引用它，于是形成闭包。通俗类比：闭包就像你搬出老家时带走了一个背包，背包里装着老家的东西，你在新地方也能用。典型用途有几种：一是封装私有变量，用立即执行函数或工厂函数把状态藏在闭包里，只暴露读写方法，实现类似私有成员的效果；二是函数工厂，比如 makeCounter 每次调用返回一个独立的计数器；三是函数式编程里的柯里化和偏函数应用；四是日常工程里的防抖、节流、缓存和记忆化，它们都依赖闭包保存定时器 id 或缓存表；五是模块化，早期用立即执行函数加闭包实现模块作用域。闭包的副作用主要有两类：一是内存泄漏，闭包长期存活会一直持有外部大对象，如果挂在事件监听、定时器或全局注册表上就可能无法回收，解决办法是不再需要时解除引用、清理定时器；二是经典的循环变量陷阱，用 var 声明循环变量时所有闭包共享同一个变量，输出都是最终值，改用 let（每次迭代创建独立绑定）或用立即执行函数传参即可解决。
+闭包是指一个函数可以记住并访问它被创建时所处的词法作用域，即使这个函数在该作用域之外执行。原理上，JS 采用词法作用域（静态作用域），函数在定义时就已经确定了它能访问哪些变量，而不是在调用时决定。当内部函数引用了外部函数的变量，并且这个内部函数被返回或传递到外部作用域时，外部函数的执行上下文虽然已经出栈，但它的变量对象或环境记录不会被回收，因为内部函数的作用域链仍然引用它，于是形成闭包。
+
+通俗类比：闭包就像你搬出老家时带走了一个背包，背包里装着老家的东西，你在新地方也能用。典型用途有几种：
+
+- 一是封装私有变量，用立即执行函数或工厂函数把状态藏在闭包里，只暴露读写方法，实现类似私有成员的效果；
+- 二是函数工厂，比如 makeCounter 每次调用返回一个独立的计数器；
+- 三是函数式编程里的柯里化和偏函数应用；
+- 四是日常工程里的防抖、节流、缓存和记忆化，它们都依赖闭包保存定时器 id 或缓存表；
+- 五是模块化，早期用立即执行函数加闭包实现模块作用域。
+
+闭包的副作用主要有两类：
+
+- 一是内存泄漏，闭包长期存活会一直持有外部大对象，如果挂在事件监听、定时器或全局注册表上就可能无法回收，解决办法是不再需要时解除引用、清理定时器；
+- 二是经典的循环变量陷阱，用 var 声明循环变量时所有闭包共享同一个变量，输出都是最终值，改用 let（每次迭代创建独立绑定）或用立即执行函数传参即可解决。
 
 **常见追问**：那 onMounted 里注册的定时器用了闭包引用大对象，你会怎么排查和修复？
 
@@ -2668,7 +3635,14 @@ XSS 本质是攻击者把恶意脚本注入页面，让它在其他用户浏览�
 
 **参考回答**：
 
-Vue 组件通信遵循数据向下流、事件向上冒的单向数据流原则，具体方式按场景选。第一，父传子用 props：父组件在子组件标签上绑定属性，子组件用 props 声明接收，props 是只读的，子组件直接改会触发警告；如果要处理传入值，应该用局部 data 或 computed 派生。第二，子传父用自定义事件：子组件通过 emit 触发事件并携带数据（Vue3 用 defineEmits 声明），父组件用对应的事件监听接收并更新自己的状态。第三，双向绑定用 v-model：本质是 prop 加事件的语法糖，Vue3 支持多个 v-model 参数（如 v-model:title），Vue2 里还可以用 .sync 修饰符更新多个属性。第四，直接访问组件实例：父组件用模板 ref 拿到子组件实例并调用其暴露的方法（Vue3 需要子组件用 defineExpose 显式暴露）；子组件可以用 $parent 访问父组件、用 $children 或 $refs 访问子组件，但这些是应急手段，会让组件之间强耦合，不利于复用和测试。第五，跨层级通信用 provide 和 inject：祖先组件提供数据或方法，后代组件注入使用，适合主题、国际化、表单上下文这类场景；要注意注入的响应式数据如果要能改，应该提供修改方法或提供 ref，且避免把 provide 当成全局 store 滥用。第六，任意组件通信用集中式状态管理（Pinia、Vuex）或事件总线：Pinia 是 Vue3 推荐方案；事件总线在 Vue3 里官方移除了 $on 和 $emit，需要自己用 mitt 这类库或 EventBus 实例实现，但大量使用会让数据流难以追踪，所以要慎用。选型原则是能用 props 和事件解决就不上全局状态，跨层级多再考虑 provide 或 Pinia。
+Vue 组件通信遵循数据向下流、事件向上冒的单向数据流原则，具体方式按场景选。
+
+- 第一，父传子用 props：父组件在子组件标签上绑定属性，子组件用 props 声明接收，props 是只读的，子组件直接改会触发警告；如果要处理传入值，应该用局部 data 或 computed 派生。
+- 第二，子传父用自定义事件：子组件通过 emit 触发事件并携带数据（Vue3 用 defineEmits 声明），父组件用对应的事件监听接收并更新自己的状态。
+- 第三，双向绑定用 v-model：本质是 prop 加事件的语法糖，Vue3 支持多个 v-model 参数（如 v-model:title），Vue2 里还可以用 .sync 修饰符更新多个属性。
+- 第四，直接访问组件实例：父组件用模板 ref 拿到子组件实例并调用其暴露的方法（Vue3 需要子组件用 defineExpose 显式暴露）；子组件可以用 $parent 访问父组件、用 $children 或 $refs 访问子组件，但这些是应急手段，会让组件之间强耦合，不利于复用和测试。第五，跨层级通信用 provide 和 inject：祖先组件提供数据或方法，后代组件注入使用，适合主题、国际化、表单上下文这类场景；要注意注入的响应式数据如果要能改，应该提供修改方法或提供 ref，且避免把 provide 当成全局 store 滥用。第六，任意组件通信用集中式状态管理（Pinia、Vuex）或事件总线：Pinia 是 Vue3 推荐方案；事件总线在 Vue3 里官方移除了 $on 和 $emit，需要自己用 mitt 这类库或 EventBus 实例实现，但大量使用会让数据流难以追踪，所以要慎用。
+
+选型原则是能用 props 和事件解决就不上全局状态，跨层级多再考虑 provide 或 Pinia。
 
 **常见追问**：那如果父组件需要直接调用子组件的方法，你会怎么做？
 
@@ -2688,7 +3662,13 @@ Vue 组件通信遵循数据向下流、事件向上冒的单向数据流原则�
 
 **参考回答**：
 
-JS 中 this 是函数调用时确定的执行上下文，不是定义时确定的，只有箭头函数例外。要把 this 绑定到新对象上，常见方式有几种。第一，call 和 apply：立即调用并指定 this，区别只是传参形式，call 逐个传参，apply 接收数组；它们的第一个参数就是 this 的绑定对象，传 null 或 undefined 在非严格模式下会指向全局对象，严格模式下是 undefined。第二，bind：返回一个 this 被永久绑定的新函数，不立即执行，而且支持预置参数（偏函数），绑定后的 this 无法再被 call 改变；这对绑定过 this 的函数非常重要，实际手写 bind 的思路是返回一个函数，内部用 apply 调用原函数并传入绑定的 this 和合并后的参数，还要处理用 new 调用返回的新函数的情况（此时 this 应该指向新实例而不是绑定的对象）。第三，new 运算符：用 new 调用构造函数时 this 指向新创建的实例对象，这一规则的优先级高于显式绑定。第四，箭头函数：没有自己的 this，它捕获定义时外层作用域的 this，且不能用 call、apply、bind 改变，适合在回调里保持 this，比如定时器、事件回调、数组方法回调。第五，闭包保存 this：老写法是 const self = this，现在一般都改用箭头函数。另外要记住优先级：new 高于显式绑定（bind），显式绑定高于隐式绑定（obj.fn()），隐式绑定高于默认绑定；实际工程里最常见的问题是回调函数丢失 this，用箭头函数或提前 bind 就能解决。
+JS 中 this 是函数调用时确定的执行上下文，不是定义时确定的，只有箭头函数例外。要把 this 绑定到新对象上，常见方式有几种。
+
+- 第一，call 和 apply：立即调用并指定 this，区别只是传参形式，call 逐个传参，apply 接收数组；它们的第一个参数就是 this 的绑定对象，传 null 或 undefined 在非严格模式下会指向全局对象，严格模式下是 undefined。
+- 第二，bind：返回一个 this 被永久绑定的新函数，不立即执行，而且支持预置参数（偏函数），绑定后的 this 无法再被 call 改变；这对绑定过 this 的函数非常重要，实际手写 bind 的思路是返回一个函数，内部用 apply 调用原函数并传入绑定的 this 和合并后的参数，还要处理用 new 调用返回的新函数的情况（此时 this 应该指向新实例而不是绑定的对象）。
+- 第三，new 运算符：用 new 调用构造函数时 this 指向新创建的实例对象，这一规则的优先级高于显式绑定。
+- 第四，箭头函数：没有自己的 this，它捕获定义时外层作用域的 this，且不能用 call、apply、bind 改变，适合在回调里保持 this，比如定时器、事件回调、数组方法回调。
+- 第五，闭包保存 this：老写法是 const self = this，现在一般都改用箭头函数。另外要记住优先级：new 高于显式绑定（bind），显式绑定高于隐式绑定（obj.fn()），隐式绑定高于默认绑定；实际工程里最常见的问题是回调函数丢失 this，用箭头函数或提前 bind 就能解决。
 
 **常见追问**：那 bind 绑定过的函数再用 new 调用，this 指向谁？为什么？
 
@@ -2708,7 +3688,15 @@ JS 中 this 是函数调用时确定的执行上下文，不是定义时确定�
 
 **参考回答**：
 
-Vuex 是专为 Vue 设计的集中式状态管理架构，它把多个组件共享的状态抽取到一个全局 store 里，任何组件都能通过 this.$store 访问，从而解决兄弟组件和深层嵌套组件之间传参繁琐的问题。核心概念有五个：一是 state，单一状态树，存储数据源，类似组件里的 data；二是 getter，对 state 的派生数据，类似计算属性且带缓存；三是 mutation，唯一修改 state 的方法，必须是同步函数，通过 commit 调用，这样设计是为了让每次变更都可追踪，DevTools 能记录日志并支持时间旅行调试；四是 action，处理异步逻辑，通过 dispatch 触发，内部异步完成后 commit mutation；五是 module，把 store 拆成模块以解决单一 store 膨胀问题，配合 namespaced 避免命名冲突。使用时组件里用 mapState、mapGetters、mapMutations、mapActions 减少样板代码，读数据放 computed，改数据走 commit，异步走 dispatch。原理上 Vuex 把 state 放进一个 Vue 实例的 data 中，借助 Vue 的响应式系统让依赖 state 的组件自动更新，这也是为什么 mutation 里改 state 能触发视图刷新。适用场景是多个组件需要读写同一份状态、且状态需要集中调试或持久化；如果只是父子通信则不该上 Vuex，否则会把简单问题复杂化。Vue3 新项目现在更推荐 Pinia：它没有 mutation、API 更简洁、TypeScript 支持更好、支持组合式写法且不需要嵌套 modules。
+Vuex 是专为 Vue 设计的集中式状态管理架构，它把多个组件共享的状态抽取到一个全局 store 里，任何组件都能通过 this.$store 访问，从而解决兄弟组件和深层嵌套组件之间传参繁琐的问题。核心概念有五个：
+
+- 一是 state，单一状态树，存储数据源，类似组件里的 data；
+- 二是 getter，对 state 的派生数据，类似计算属性且带缓存；
+- 三是 mutation，唯一修改 state 的方法，必须是同步函数，通过 commit 调用，这样设计是为了让每次变更都可追踪，DevTools 能记录日志并支持时间旅行调试；
+- 四是 action，处理异步逻辑，通过 dispatch 触发，内部异步完成后 commit mutation；
+- 五是 module，把 store 拆成模块以解决单一 store 膨胀问题，配合 namespaced 避免命名冲突。使用时组件里用 mapState、mapGetters、mapMutations、mapActions 减少样板代码，读数据放 computed，改数据走 commit，异步走 dispatch。原理上 Vuex 把 state 放进一个 Vue 实例的 data 中，借助 Vue 的响应式系统让依赖 state 的组件自动更新，这也是为什么 mutation 里改 state 能触发视图刷新。
+
+适用场景是多个组件需要读写同一份状态、且状态需要集中调试或持久化；如果只是父子通信则不该上 Vuex，否则会把简单问题复杂化。Vue3 新项目现在更推荐 Pinia：它没有 mutation、API 更简洁、TypeScript 支持更好、支持组合式写法且不需要嵌套 modules。
 
 **常见追问**：那 mutation 为什么必须同步？如果在里面写异步会怎样？
 
@@ -2728,7 +3716,18 @@ Vuex 是专为 Vue 设计的集中式状态管理架构，它把多个组件共�
 
 **参考回答**：
 
-双向绑定指数据变化自动更新视图，视图输入自动更新数据。Vue 中常用 v-model 实现，但它只是语法糖：在表单元素上，Vue2 会编译成 value 属性绑定加 input 事件监听，Vue3 默认编译成 modelValue 加 update:modelValue 事件，而且不同表单元素会选用不同的属性与事件（checkbox 用 checked 和 change，select 用 value 和 change）。组件上的 v-model 同样是 prop 加事件的组合。原理分两条链路。第一条，模型到视图：Vue2 用 Object.defineProperty 递归把 data 属性转成 getter/setter，getter 里收集依赖（Watcher），setter 里通知更新，组件重新渲染生成新的虚拟 DOM 并 patch；Vue3 改用 Proxy 代理整个对象，在 get 里 track 收集、在 set 里 trigger 通知，是惰性递归且能监听属性增删和数组索引。第二条，视图到模型：表单元素的输入事件被监听，事件回调把 event.target.value 写回数据，进而触发响应式更新，形成闭环。所以双向绑定的本质是数据劫持加发布订阅的响应式系统，再加上 DOM 事件监听，两者配合才叫双向。要理解几个细节：为什么在输入框里能实时改数据，是因为 input 事件；为什么 Vue2 监听不到对象新增属性和数组下标，是因为 defineProperty 的限制，需要 Vue.set；Vue3 用 Proxy 后这个问题消失；另外自定义组件的 v-model 需要子组件正确声明 prop 并 emit 对应事件才能生效。
+双向绑定指数据变化自动更新视图，视图输入自动更新数据。Vue 中常用 v-model 实现，但它只是语法糖：在表单元素上，Vue2 会编译成 value 属性绑定加 input 事件监听，Vue3 默认编译成 modelValue 加 update:modelValue 事件，而且不同表单元素会选用不同的属性与事件（checkbox 用 checked 和 change，select 用 value 和 change）。
+
+组件上的 v-model 同样是 prop 加事件的组合。原理分两条链路。第一条，模型到视图：Vue2 用 Object.defineProperty 递归把 data 属性转成 getter/setter，getter 里收集依赖（Watcher），setter 里通知更新，组件重新渲染生成新的虚拟 DOM 并 patch；Vue3 改用 Proxy 代理整个对象，在 get 里 track 收集、在 set 里 trigger 通知，是惰性递归且能监听属性增删和数组索引。
+
+第二条，视图到模型：表单元素的输入事件被监听，事件回调把 event.target.value 写回数据，进而触发响应式更新，形成闭环。
+
+所以双向绑定的本质是数据劫持加发布订阅的响应式系统，再加上 DOM 事件监听，两者配合才叫双向。
+
+- 要理解几个细节：为什么在输入框里能实时改数据，是因为 input 事件；
+- 为什么 Vue2 监听不到对象新增属性和数组下标，是因为 defineProperty 的限制，需要 Vue.set；
+- Vue3 用 Proxy 后这个问题消失；
+- 另外自定义组件的 v-model 需要子组件正确声明 prop 并 emit 对应事件才能生效。
 
 **常见追问**：那 Vue2 里为什么改数组下标视图不更新？怎么解决？
 
@@ -2748,7 +3747,11 @@ Vuex 是专为 Vue 设计的集中式状态管理架构，它把多个组件共�
 
 **参考回答**：
 
-Virtual DOM 本质是用 JS 对象描述真实 DOM 的轻量副本。状态变化时框架生成新的 VNode 树，与旧树做 diff 算出最小更新集合，再批量 patch 到真实 DOM。核心原理是三条启发式假设，把传统树编辑距离的 O(n³) 降到 O(n)：第一，只做同层比较，不跨层级移动，如果节点跨层了就直接删除旧节点、在新位置重建，而不是移动，因为跨层移动的代价远大于重建；第二，类型不同直接替换，比如 div 变成 span 或者组件类型变了，就整棵子树销毁重建，不再深入比较；第三，用 key 标识节点身份，同层列表里通过 key 判断哪些节点可以复用，从而减少 DOM 操作。diff 的具体流程是：对比新旧 VNode 的 type 和 key，相同则复用真实 DOM 并递归比较属性与子节点，不同则替换；子节点列表的处理是重点，Vue2 用双端比较（新旧各设首尾指针，比较四种组合，都不命中则用旧节点 key 建 map 查找），Vue3 用前后缀同步加剩余部分求最长递增子序列，LIS 上的节点保持不变，其他节点按需移动或新建，DOM 移动次数更少；React 用单指针从左到右比较加 map 查找，并用 Fiber 支持可中断渲染。key 的作用是告诉框架节点的稳定身份，所以在列表增删和排序场景必须用稳定唯一的业务 id；用数组下标做 key 在插入和删除时会导致节点错位复用，典型现象是输入框内容或组件内部状态串到别的行。另外 React 里 key 还用于判断组件是否需要重建，改变 key 会强制卸载重建，这也是一些场景下故意改 key 来重置组件状态的手法。
+Virtual DOM 本质是用 JS 对象描述真实 DOM 的轻量副本。状态变化时框架生成新的 VNode 树，与旧树做 diff 算出最小更新集合，再批量 patch 到真实 DOM。核心原理是三条启发式假设，把传统树编辑距离的 O(n³) 降到 O(n)：
+
+- 第一，只做同层比较，不跨层级移动，如果节点跨层了就直接删除旧节点、在新位置重建，而不是移动，因为跨层移动的代价远大于重建；
+- 第二，类型不同直接替换，比如 div 变成 span 或者组件类型变了，就整棵子树销毁重建，不再深入比较；
+- 第三，用 key 标识节点身份，同层列表里通过 key 判断哪些节点可以复用，从而减少 DOM 操作。diff 的具体流程是：对比新旧 VNode 的 type 和 key，相同则复用真实 DOM 并递归比较属性与子节点，不同则替换；子节点列表的处理是重点，Vue2 用双端比较（新旧各设首尾指针，比较四种组合，都不命中则用旧节点 key 建 map 查找），Vue3 用前后缀同步加剩余部分求最长递增子序列，LIS 上的节点保持不变，其他节点按需移动或新建，DOM 移动次数更少；React 用单指针从左到右比较加 map 查找，并用 Fiber 支持可中断渲染。key 的作用是告诉框架节点的稳定身份，所以在列表增删和排序场景必须用稳定唯一的业务 id；用数组下标做 key 在插入和删除时会导致节点错位复用，典型现象是输入框内容或组件内部状态串到别的行。另外 React 里 key 还用于判断组件是否需要重建，改变 key 会强制卸载重建，这也是一些场景下故意改 key 来重置组件状态的手法。
 
 **常见追问**：那为什么用数组下标做 key 会出问题？举个具体场景。
 
@@ -2768,7 +3771,16 @@ Virtual DOM 本质是用 JS 对象描述真实 DOM 的轻量副本。状态变�
 
 **参考回答**：
 
-在 Vue 中组件是可复用的，如果 data 直接写成对象，比如写成带有 count 字段的对象字面量，那么所有使用该组件的实例都会引用同一个对象。当某个实例修改 count 时，其他实例的 count 也会跟着变，因为它们是同一个内存地址，这显然不是组件化想要的效果。写成函数后，Vue 在创建每个组件实例时会调用这个函数，函数返回一个全新的对象，因此每个实例拿到的是独立的数据副本。通俗类比：对象像一份公共的草稿纸，所有人都在上面写会互相干扰；函数像一台复印机，每个实例来的时候复印一份新的，各写各的。举例来说，一个计数器组件被渲染三次，如果 data 是对象，点其中一个数字加一，三个会同时变；写成函数返回对象后各点各的互不影响。那为什么根实例 new Vue 的 data 可以写成对象？因为根实例在整个应用里只会创建一个，不存在多实例共享的问题，Vue 内部会做兼容处理；但从 Vue3 的 createApp 开始统一要求 data 是函数，语义更一致。还有两个补充点：一是 data 函数不能是箭头函数，因为箭头函数没有自己的 this，拿不到组件实例，Vue 会报错；二是如果确实需要多实例共享同一份数据，应该用 Vuex 或 Pinia 这类集中式状态管理，而不是共享 data，否则状态来源难以追踪。
+在 Vue 中组件是可复用的，如果 data 直接写成对象，比如写成带有 count 字段的对象字面量，那么所有使用该组件的实例都会引用同一个对象。当某个实例修改 count 时，其他实例的 count 也会跟着变，因为它们是同一个内存地址，这显然不是组件化想要的效果。写成函数后，Vue 在创建每个组件实例时会调用这个函数，函数返回一个全新的对象，因此每个实例拿到的是独立的数据副本。
+
+通俗类比：对象像一份公共的草稿纸，所有人都在上面写会互相干扰；函数像一台复印机，每个实例来的时候复印一份新的，各写各的。
+
+举例来说，一个计数器组件被渲染三次，如果 data 是对象，点其中一个数字加一，三个会同时变；写成函数返回对象后各点各的互不影响。那为什么根实例 new Vue 的 data 可以写成对象？因为根实例在整个应用里只会创建一个，不存在多实例共享的问题，Vue 内部会做兼容处理；但从 Vue3 的 createApp 开始统一要求 data 是函数，语义更一致。
+
+还有两个补充点：
+
+- 一是 data 函数不能是箭头函数，因为箭头函数没有自己的 this，拿不到组件实例，Vue 会报错；
+- 二是如果确实需要多实例共享同一份数据，应该用 Vuex 或 Pinia 这类集中式状态管理，而不是共享 data，否则状态来源难以追踪。
 
 **常见追问**：那如果两个组件确实需要共享同一份可变数据，你会怎么做？
 
@@ -2788,7 +3800,10 @@ Virtual DOM 本质是用 JS 对象描述真实 DOM 的轻量副本。状态变�
 
 **参考回答**：
 
-scrollTop 表示一个元素的内容在垂直方向被卷上去、也就是滚出可视区域上方的像素值，通俗说就是滚动条往下拉了多少。它只对可滚动元素有意义：当元素内容高度超过自身高度且 overflow 允许滚动时，scrollTop 才会大于零。获取方式分两种。第一，获取整个页面的滚动距离：标准模式（文档有 DOCTYPE）下用 document.documentElement.scrollTop，怪异模式或旧版 WebKit 下用 document.body.scrollTop，所以兼容写法是两个相加或取其中非零的那个，比如写成 documentElement.scrollTop 或 body.scrollTop 的或运算取非零值；更现代的写法直接用 window.scrollY（等价于 window.pageYOffset），语义更清晰且没有兼容问题，水平方向对应 scrollLeft 和 window.scrollX。第二，获取元素内部滚动距离：直接用 element.scrollTop，前提是元素本身可滚动（overflow 为 auto、scroll 或 overlay 且内容超出）；如果是滚动容器内部还有多个元素，要注意取的是真正滚动的那个祖先节点。另外几个相关点：scrollTop 是可写属性，赋值就能滚动到指定位置；还可以配合 scrollTo、scrollBy、scrollIntoView 使用，scrollTo 支持行为参数实现平滑滚动；读取 scrollTop 会触发强制同步布局，所以在滚动事件里频繁读取要先合并读写顺序，最好用 requestAnimationFrame 节流。如果只是要判断某个元素是否进入视口，用 getBoundingClientRect 或 IntersectionObserver 比算 scrollTop 更准确也更省性能。
+scrollTop 表示一个元素的内容在垂直方向被卷上去、也就是滚出可视区域上方的像素值，通俗说就是滚动条往下拉了多少。它只对可滚动元素有意义：当元素内容高度超过自身高度且 overflow 允许滚动时，scrollTop 才会大于零。获取方式分两种。
+
+- 第一，获取整个页面的滚动距离：标准模式（文档有 DOCTYPE）下用 document.documentElement.scrollTop，怪异模式或旧版 WebKit 下用 document.body.scrollTop，所以兼容写法是两个相加或取其中非零的那个，比如写成 documentElement.scrollTop 或 body.scrollTop 的或运算取非零值；更现代的写法直接用 window.scrollY（等价于 window.pageYOffset），语义更清晰且没有兼容问题，水平方向对应 scrollLeft 和 window.scrollX。
+- 第二，获取元素内部滚动距离：直接用 element.scrollTop，前提是元素本身可滚动（overflow 为 auto、scroll 或 overlay 且内容超出）；如果是滚动容器内部还有多个元素，要注意取的是真正滚动的那个祖先节点。另外几个相关点：scrollTop 是可写属性，赋值就能滚动到指定位置；还可以配合 scrollTo、scrollBy、scrollIntoView 使用，scrollTo 支持行为参数实现平滑滚动；读取 scrollTop 会触发强制同步布局，所以在滚动事件里频繁读取要先合并读写顺序，最好用 requestAnimationFrame 节流。如果只是要判断某个元素是否进入视口，用 getBoundingClientRect 或 IntersectionObserver 比算 scrollTop 更准确也更省性能。
 
 **常见追问**：那为什么在滚动事件里频繁读 scrollTop 会卡？你怎么优化？
 
@@ -2808,7 +3823,13 @@ scrollTop 表示一个元素的内容在垂直方向被卷上去、也就是滚�
 
 **参考回答**：
 
-在 Hybrid 架构里，WebView 是 JS 和 Native 的中间人，JS 不能直接调用 Native 方法，必须借助 WebView 暴露的通信通道。常见实现有三类。第一，URL Scheme 拦截：JS 发起一个特殊协议的请求，比如把 location.href 设成一个自定义协议，Native 的 WebView 在 Android 的 shouldOverrideUrlLoading 或 iOS 的 decidePolicyForNavigationAction 里拦截并解析参数，执行对应功能；优点是兼容性最好，几乎所有 WebView 都支持；缺点是参数长度有限、频繁跳转会有性能问题、且 location 跳转可能打断当前页面状态，所以也有用隐藏 iframe 发请求的变体。第二，注入全局对象：Android 用 addJavascriptInterface 把 Java 对象挂到 window 上，JS 直接调用其方法；iOS 用 WKWebView 的 userContentController 加 addScriptMessageHandler，JS 通过 window.webkit.messageHandlers 发消息。优点是调用直观、能直接传参；缺点是要注意安全，Android 在 4.2 之前有通过反射调用任意系统方法的漏洞，所以只能暴露必要方法并加权限校验。第三，JSCore 直连或更现代的方案：iOS 的 JavaScriptCore 可以双向调用，Flutter 的 JS 通道、微信小程序的 JSBridge 都是类似封装。因为是异步通信，回调需要机制：每次调用生成唯一 callbackId，JS 把回调存在 map 里，Native 执行完成后通过统一的回调入口（比如触发一个约定的事件或调用全局的 invokeCallback）把结果按 callbackId 回传，同时要处理超时、失败和多次回调。工程上还要注意：统一封装成 JSBridge 模块而不是业务里散落调用、区分 iOS 和 Android 的实现、处理 WebView 未注入时的降级、以及安全上校验来源和参数、避免任意页面调用敏感接口。
+在 Hybrid 架构里，WebView 是 JS 和 Native 的中间人，JS 不能直接调用 Native 方法，必须借助 WebView 暴露的通信通道。常见实现有三类。
+
+- 第一，URL Scheme 拦截：JS 发起一个特殊协议的请求，比如把 location.href 设成一个自定义协议，Native 的 WebView 在 Android 的 shouldOverrideUrlLoading 或 iOS 的 decidePolicyForNavigationAction 里拦截并解析参数，执行对应功能；优点是兼容性最好，几乎所有 WebView 都支持；缺点是参数长度有限、频繁跳转会有性能问题、且 location 跳转可能打断当前页面状态，所以也有用隐藏 iframe 发请求的变体。
+- 第二，注入全局对象：Android 用 addJavascriptInterface 把 Java 对象挂到 window 上，JS 直接调用其方法；iOS 用 WKWebView 的 userContentController 加 addScriptMessageHandler，JS 通过 window.webkit.messageHandlers 发消息。优点是调用直观、能直接传参；缺点是要注意安全，Android 在 4.2 之前有通过反射调用任意系统方法的漏洞，所以只能暴露必要方法并加权限校验。
+- 第三，JSCore 直连或更现代的方案：iOS 的 JavaScriptCore 可以双向调用，Flutter 的 JS 通道、微信小程序的 JSBridge 都是类似封装。因为是异步通信，回调需要机制：每次调用生成唯一 callbackId，JS 把回调存在 map 里，Native 执行完成后通过统一的回调入口（比如触发一个约定的事件或调用全局的 invokeCallback）把结果按 callbackId 回传，同时要处理超时、失败和多次回调。
+
+工程上还要注意：统一封装成 JSBridge 模块而不是业务里散落调用、区分 iOS 和 Android 的实现、处理 WebView 未注入时的降级、以及安全上校验来源和参数、避免任意页面调用敏感接口。
 
 **常见追问**：那 JS 调用 Native 是同步还是异步？为什么要这样设计？
 
@@ -2828,7 +3849,12 @@ scrollTop 表示一个元素的内容在垂直方向被卷上去、也就是滚�
 
 **参考回答**：
 
-先讲为什么 JS 没有多重继承：JS 的对象模型是原型链，每个对象只有一个内部原型，所以一个构造函数或类只能有一条原型链，天然是单继承。要模拟多重继承，有几种方案。第一，用 call 或 apply 借用构造函数，也叫伪多重继承：在子类构造函数里依次调用多个父类构造函数，把父类的实例属性复制到子类实例上；它的局限是只能继承实例属性，父类原型上的方法不会被继承，而且如果父类构造函数有重复属性会互相覆盖，还需要注意 this 的传递。第二，原型混入（mixin）：把多个对象的属性和方法拷贝到子类的 prototype 上，用循环或 Object.assign 实现，这样能同时继承多个来源的方法；缺点是同名方法会互相覆盖、属性来源不清晰、无法用 instanceof 准确判断来源，而且只做浅拷贝。第三，组合方案：既有借用构造函数复制实例属性，又有原型混入继承方法，这就是早期最接近多重继承的写法。第四，ES6 class 的写法：class 只能 extends 一个父类，但可以用 mixin 函数（接收父类返回子类的函数）串联，比如用 SubClass = MixinA(MixinB(Base)) 的形式层层包装，这样既能链式保留原型，又能组合多个能力来源，也是 Vue 和 React 生态里常用的写法（比如给组件混入生命周期能力）。工程实践上要注意：多重继承虽然听起来强大，但会让继承关系难以理解和维护，出现菱形继承这类冲突问题，所以更推荐用组合而非继承，也就是把能力拆成独立的函数或对象，通过组合调用实现复用，这也是现代前端更推崇自定义 Hook 和组合式函数的原因。
+先讲为什么 JS 没有多重继承：JS 的对象模型是原型链，每个对象只有一个内部原型，所以一个构造函数或类只能有一条原型链，天然是单继承。要模拟多重继承，有几种方案。
+
+- 第一，用 call 或 apply 借用构造函数，也叫伪多重继承：在子类构造函数里依次调用多个父类构造函数，把父类的实例属性复制到子类实例上；它的局限是只能继承实例属性，父类原型上的方法不会被继承，而且如果父类构造函数有重复属性会互相覆盖，还需要注意 this 的传递。
+- 第二，原型混入（mixin）：把多个对象的属性和方法拷贝到子类的 prototype 上，用循环或 Object.assign 实现，这样能同时继承多个来源的方法；缺点是同名方法会互相覆盖、属性来源不清晰、无法用 instanceof 准确判断来源，而且只做浅拷贝。
+- 第三，组合方案：既有借用构造函数复制实例属性，又有原型混入继承方法，这就是早期最接近多重继承的写法。
+- 第四，ES6 class 的写法：class 只能 extends 一个父类，但可以用 mixin 函数（接收父类返回子类的函数）串联，比如用 SubClass = MixinA(MixinB(Base)) 的形式层层包装，这样既能链式保留原型，又能组合多个能力来源，也是 Vue 和 React 生态里常用的写法（比如给组件混入生命周期能力）。工程实践上要注意：多重继承虽然听起来强大，但会让继承关系难以理解和维护，出现菱形继承这类冲突问题，所以更推荐用组合而非继承，也就是把能力拆成独立的函数或对象，通过组合调用实现复用，这也是现代前端更推崇自定义 Hook 和组合式函数的原因。
 
 **常见追问**：那 mixin 模式和组合模式相比，你更推荐哪个？为什么？
 
@@ -2848,7 +3874,11 @@ scrollTop 表示一个元素的内容在垂直方向被卷上去、也就是滚�
 
 **参考回答**：
 
-Vue2 监听数据变化的核心分三步。第一，数据劫持：用 Object.defineProperty 递归遍历 data 对象，对每个属性定义 get 和 set，把属性变成响应式的，读取时触发 getter，修改时触发 setter；对象会递归处理，数组因为 defineProperty 无法监听索引赋值，Vue 重写了 push、pop、shift、unshift、splice、sort、reverse 七个方法并在其中手动触发更新，同时对数组元素为对象的情况也做递归劫持。第二，依赖收集：每个属性对应一个 Dep（依赖管理器），getter 里把当前正在求值的 Watcher 通过 dep.depend() 收集进自己的订阅者列表；Watcher 有三类，渲染 Watcher、计算属性 Watcher 和用户 Watcher（watch），渲染时执行 render 函数访问到的所有响应式数据都会把渲染 Watcher 收集为自己依赖，所以渲染 Watcher 就知道自己依赖了哪些数据。第三，派发更新：setter 里比较新旧值，如果变了就调用 dep.notify()，遍历订阅者列表，让每个 Watcher 执行更新；渲染 Watcher 重新执行 render 生成新的 VNode，再与旧 VNode 做 diff 并 patch 到真实 DOM；同时更新会被推入调度队列做异步批量处理，同一轮里的多次修改只渲染一次。整个过程本质是数据劫持加发布订阅模式的组合。Vue3 换成了 Proxy 加 effect 依赖系统，在 get 里 track 收集、在 set 里 trigger 通知，能直接监听属性增删和数组索引，惰性递归也提升了初始化性能。
+Vue2 监听数据变化的核心分三步。
+
+- 第一，数据劫持：用 Object.defineProperty 递归遍历 data 对象，对每个属性定义 get 和 set，把属性变成响应式的，读取时触发 getter，修改时触发 setter；对象会递归处理，数组因为 defineProperty 无法监听索引赋值，Vue 重写了 push、pop、shift、unshift、splice、sort、reverse 七个方法并在其中手动触发更新，同时对数组元素为对象的情况也做递归劫持。
+- 第二，依赖收集：每个属性对应一个 Dep（依赖管理器），getter 里把当前正在求值的 Watcher 通过 dep.depend() 收集进自己的订阅者列表；Watcher 有三类，渲染 Watcher、计算属性 Watcher 和用户 Watcher（watch），渲染时执行 render 函数访问到的所有响应式数据都会把渲染 Watcher 收集为自己依赖，所以渲染 Watcher 就知道自己依赖了哪些数据。
+- 第三，派发更新：setter 里比较新旧值，如果变了就调用 dep.notify()，遍历订阅者列表，让每个 Watcher 执行更新；渲染 Watcher 重新执行 render 生成新的 VNode，再与旧 VNode 做 diff 并 patch 到真实 DOM；同时更新会被推入调度队列做异步批量处理，同一轮里的多次修改只渲染一次。整个过程本质是数据劫持加发布订阅模式的组合。Vue3 换成了 Proxy 加 effect 依赖系统，在 get 里 track 收集、在 set 里 trigger 通知，能直接监听属性增删和数组索引，惰性递归也提升了初始化性能。
 
 **常见追问**：那 computed 和 watch 的 Watcher 有什么不同？计算结果为什么能缓存？
 
@@ -2868,7 +3898,13 @@ Vue2 监听数据变化的核心分三步。第一，数据劫持：用 Object.d
 
 **参考回答**：
 
-我会诚实说明我主要是在理解原理阶段，读过核心模块的关键实现，没有逐行通读全部源码。Vue2 和 Vue3 的响应式实现不同：Vue2 用 Object.defineProperty 递归把 data 的每个属性转成 getter 和 setter，getter 里收集当前正在求值的 Watcher（依赖收集），setter 里通知这些 Watcher 更新（派发更新），每个组件对应一个渲染 Watcher，数据变化时触发组件重新渲染；它监听不到属性新增删除和数组索引，所以有 Vue.set 的补丁。Vue3 改用 Proxy 代理整个对象，解决了这些盲区，并且改成 effect 加 track 和 trigger 的依赖系统，用 WeakMap 做依赖表，惰性递归让初始化更快。除响应式外，主干还包括虚拟 DOM 与 diff（同层比较、Vue2 双端比较、Vue3 最长递增子序列）、模板编译（parse、transform 优化、generate 生成 render 函数，以及静态提升和 Patch Flag）、以及调度器（异步更新队列加 nextTick 的微任务实现）。用一个具体细节证明读过：nextTick 内部维护回调数组，清空时优先用 Promise.then，不支持才降级 MutationObserver、setImmediate 和 setTimeout，这就是为什么改数据后立刻读 DOM 拿到旧值、而 nextTick 里读是新值。原理的用处很直接：知道依赖是渲染时收集的，就能理解为什么模板里没读到的数据变化不会触发更新；知道更新是批量的，就能解释为什么频繁改数据不会渲染多次。我的学习方式是读关键源码加手写 mini 版响应式和 diff，再写笔记验证理解。
+我会诚实说明我主要是在理解原理阶段，读过核心模块的关键实现，没有逐行通读全部源码。Vue2 和 Vue3 的响应式实现不同：Vue2 用 Object.defineProperty 递归把 data 的每个属性转成 getter 和 setter，getter 里收集当前正在求值的 Watcher（依赖收集），setter 里通知这些 Watcher 更新（派发更新），每个组件对应一个渲染 Watcher，数据变化时触发组件重新渲染；它监听不到属性新增删除和数组索引，所以有 Vue.set 的补丁。
+
+Vue3 改用 Proxy 代理整个对象，解决了这些盲区，并且改成 effect 加 track 和 trigger 的依赖系统，用 WeakMap 做依赖表，惰性递归让初始化更快。除响应式外，主干还包括虚拟 DOM 与 diff（同层比较、Vue2 双端比较、Vue3 最长递增子序列）、模板编译（parse、transform 优化、generate 生成 render 函数，以及静态提升和 Patch Flag）、以及调度器（异步更新队列加 nextTick 的微任务实现）。
+
+用一个具体细节证明读过：nextTick 内部维护回调数组，清空时优先用 Promise.then，不支持才降级 MutationObserver、setImmediate 和 setTimeout，这就是为什么改数据后立刻读 DOM 拿到旧值、而 nextTick 里读是新值。
+
+原理的用处很直接：知道依赖是渲染时收集的，就能理解为什么模板里没读到的数据变化不会触发更新；知道更新是批量的，就能解释为什么频繁改数据不会渲染多次。我的学习方式是读关键源码加手写 mini 版响应式和 diff，再写笔记验证理解。
 
 **常见追问**：那你能简单说说 Vue3 的依赖表大概是怎么组织的吗？
 
@@ -2888,7 +3924,11 @@ Vue2 监听数据变化的核心分三步。第一，数据劫持：用 Object.d
 
 **参考回答**：
 
-webpack 本质是一个模块打包器，核心流程分三大阶段。第一，初始化：读取配置文件并合并命令行参数得到最终 options，创建 Compiler 对象（Compiler 代表一次完整构建，贯穿生命周期），注册所有 plugin，plugin 在 apply 方法里通过 tapable 往 Compiler 的钩子上挂回调，然后确定入口。第二，编译与构建，核心是依赖分析：从 entry 开始调用 compilation.addEntry，创建入口模块，解析模块源码找出其中的 import、require、动态 import 等依赖声明，把依赖相对路径解析成绝对路径，递归创建并处理依赖模块，直到整个依赖图构建完成；这一步形成 module graph，也就是谁依赖了谁。这个过程还会处理循环依赖、动态导入（它会形成一个异步边界，把后续模块挂到独立的子图上）和模块标识的生成。第三，chunk 生成与输出：webpack 会按规则把 module 组合成 chunk，chunk 的来源主要有三种——每个入口对应一个初始 chunk、每个动态 import 产生一个异步 chunk、以及 splitChunks 优化把公共依赖提取成独立 chunk；chunk 之间存在父子与加载依赖关系，运行时靠这些关系按需加载。之后进入 seal 阶段对 chunk 做优化：tree-shaking 删除未使用导出、scope hoisting 合并模块作用域、压缩、确定模块 id 和 chunk id（生产环境用确定性 id 便于缓存），再通过模板生成最终代码，最后在 emit 钩子把产物写入 output 目录并生成资源清单。理解这条主干的实用价值在于：能解释为什么动态导入会多出一个 js 文件、为什么公共依赖会被抽出来、为什么某些模块没被打进去。
+webpack 本质是一个模块打包器，核心流程分三大阶段。
+
+- 第一，初始化：读取配置文件并合并命令行参数得到最终 options，创建 Compiler 对象（Compiler 代表一次完整构建，贯穿生命周期），注册所有 plugin，plugin 在 apply 方法里通过 tapable 往 Compiler 的钩子上挂回调，然后确定入口。
+- 第二，编译与构建，核心是依赖分析：从 entry 开始调用 compilation.addEntry，创建入口模块，解析模块源码找出其中的 import、require、动态 import 等依赖声明，把依赖相对路径解析成绝对路径，递归创建并处理依赖模块，直到整个依赖图构建完成；这一步形成 module graph，也就是谁依赖了谁。这个过程还会处理循环依赖、动态导入（它会形成一个异步边界，把后续模块挂到独立的子图上）和模块标识的生成。
+- 第三，chunk 生成与输出：webpack 会按规则把 module 组合成 chunk，chunk 的来源主要有三种——每个入口对应一个初始 chunk、每个动态 import 产生一个异步 chunk、以及 splitChunks 优化把公共依赖提取成独立 chunk；chunk 之间存在父子与加载依赖关系，运行时靠这些关系按需加载。之后进入 seal 阶段对 chunk 做优化：tree-shaking 删除未使用导出、scope hoisting 合并模块作用域、压缩、确定模块 id 和 chunk id（生产环境用确定性 id 便于缓存），再通过模板生成最终代码，最后在 emit 钩子把产物写入 output 目录并生成资源清单。理解这条主干的实用价值在于：能解释为什么动态导入会多出一个 js 文件、为什么公共依赖会被抽出来、为什么某些模块没被打进去。
 
 **常见追问**：那 chunk 和 bundle 是一一对应的吗？什么情况下不是？
 
@@ -2908,7 +3948,14 @@ webpack 本质是一个模块打包器，核心流程分三大阶段。第一，
 
 **参考回答**：
 
-先讲 SPA 的本质：传统多页应用像每点一道菜都要重新排队进店，每次跳转都请求新的 HTML 并整页刷新；SPA 像进店后坐在一张桌子上，服务员也就是前端路由根据你点的菜直接换盘子，整个应用只有一个 index.html，页面切换靠 History API 或 hash 改变 URL 并渲染对应组件，不向服务器请求新页面。整体链路有几块。第一，入口与构建：index.html 里只有一个挂载点和一个入口脚本，主入口创建 Vue 实例并挂载应用；工程上用 Vue CLI 封装 Webpack，负责把单文件组件和 TypeScript 转译、打包、做热更新和资源处理，生产构建时做压缩、分包、tree-shaking 和加 hash。第二，路由：用 Vue Router 注册路由表，每个路径映射到一个组件；模式上历史模式 URL 干净但需要服务端把未匹配路径回退到 index.html，hash 模式不需要服务端配置但 URL 带井号；路由组件用动态导入做懒加载，配合路由守卫做鉴权、标题设置和埋点，配合 meta 做权限和缓存控制。第三，状态与数据：跨组件共享状态用 Pinia 或 Vuex，接口层统一封装请求库加拦截器处理鉴权、错误和 loading，并按模块组织 api 目录。第四，工程配套：按领域划分目录（views、components、stores、api、router、utils），配置环境变量区分多环境，接入错误监控和埋点，配置 CI 做构建与部署，静态产物上 CDN 并对 index.html 做不缓存、对带 hash 的静态资源做长期缓存。这套组合就是典型的 Vue SPA 工程实践。
+先讲 SPA 的本质：传统多页应用像每点一道菜都要重新排队进店，每次跳转都请求新的 HTML 并整页刷新；SPA 像进店后坐在一张桌子上，服务员也就是前端路由根据你点的菜直接换盘子，整个应用只有一个 index.html，页面切换靠 History API 或 hash 改变 URL 并渲染对应组件，不向服务器请求新页面。
+
+整体链路有几块。
+
+- 第一，入口与构建：index.html 里只有一个挂载点和一个入口脚本，主入口创建 Vue 实例并挂载应用；工程上用 Vue CLI 封装 Webpack，负责把单文件组件和 TypeScript 转译、打包、做热更新和资源处理，生产构建时做压缩、分包、tree-shaking 和加 hash。
+- 第二，路由：用 Vue Router 注册路由表，每个路径映射到一个组件；模式上历史模式 URL 干净但需要服务端把未匹配路径回退到 index.html，hash 模式不需要服务端配置但 URL 带井号；路由组件用动态导入做懒加载，配合路由守卫做鉴权、标题设置和埋点，配合 meta 做权限和缓存控制。
+- 第三，状态与数据：跨组件共享状态用 Pinia 或 Vuex，接口层统一封装请求库加拦截器处理鉴权、错误和 loading，并按模块组织 api 目录。
+- 第四，工程配套：按领域划分目录（views、components、stores、api、router、utils），配置环境变量区分多环境，接入错误监控和埋点，配置 CI 做构建与部署，静态产物上 CDN 并对 index.html 做不缓存、对带 hash 的静态资源做长期缓存。这套组合就是典型的 Vue SPA 工程实践。
 
 **常见追问**：那 history 模式部署到 Nginx 要做什么配置？为什么？
 
@@ -2928,7 +3975,14 @@ webpack 本质是一个模块打包器，核心流程分三大阶段。第一，
 
 **参考回答**：
 
-典型链路是：代码提交或合并触发 CI（webhook 或轮询），拉取代码，准备 Node 环境（用 nvmrc 或 setup-node 固定版本），安装依赖（用 npm ci 而不是 npm install，保证 lockfile 严格一致、构建可复现），执行构建产出 dist，处理产物（压缩、加 contenthash、上传对象存储或 CDN），部署（静态托管、Nginx、K8s 或 Serverless），最后通知并做验证。核心要点有四个。第一，构建环境一致性：固定 Node 和包管理器版本、用 lockfile 精确安装、避免依赖本地未提交文件；把环境变量和配置按环境区分，通过 CI 的 secrets 注入，不要把密钥写在仓库里。第二，产物版本化：每次构建产出带唯一版本号或 git commit 的产物目录，不覆盖历史版本，这样才能一键回滚；静态资源用 contenthash 并长期缓存，入口 HTML 不缓存，保证用户拿到新版本。第三，部署原子性与回滚：不要直接解压覆盖正在服务的目录，而是先上传到新目录，再通过切换软链接或更新 CDN 指针原子生效，避免用户拿到半新半旧的资源；配合健康检查和冒烟测试，失败自动回滚到上一个版本。第四，质量门禁与灰度：CI 里跑 lint、类型检查、单测和构建，必要时加体积门禁；上线按灰度比例或按用户群逐步放量，观察错误率和性能指标正常后再全量。常见工具上，托管平台用 GitHub Actions、GitLab CI，自建用 Jenkins 加流水线脚本，部署目标可以是 S3 加 CloudFront、Nginx 静态目录、K8s 的 Ingress 加对象存储，或者 Vercel、Netlify 这类平台。另外要注意 CDN 缓存刷新、多环境隔离以及发布记录与通知。
+典型链路是：代码提交或合并触发 CI（webhook 或轮询），拉取代码，准备 Node 环境（用 nvmrc 或 setup-node 固定版本），安装依赖（用 npm ci 而不是 npm install，保证 lockfile 严格一致、构建可复现），执行构建产出 dist，处理产物（压缩、加 contenthash、上传对象存储或 CDN），部署（静态托管、Nginx、K8s 或 Serverless），最后通知并做验证。
+
+核心要点有四个。
+
+- 第一，构建环境一致性：固定 Node 和包管理器版本、用 lockfile 精确安装、避免依赖本地未提交文件；把环境变量和配置按环境区分，通过 CI 的 secrets 注入，不要把密钥写在仓库里。
+- 第二，产物版本化：每次构建产出带唯一版本号或 git commit 的产物目录，不覆盖历史版本，这样才能一键回滚；静态资源用 contenthash 并长期缓存，入口 HTML 不缓存，保证用户拿到新版本。
+- 第三，部署原子性与回滚：不要直接解压覆盖正在服务的目录，而是先上传到新目录，再通过切换软链接或更新 CDN 指针原子生效，避免用户拿到半新半旧的资源；配合健康检查和冒烟测试，失败自动回滚到上一个版本。
+- 第四，质量门禁与灰度：CI 里跑 lint、类型检查、单测和构建，必要时加体积门禁；上线按灰度比例或按用户群逐步放量，观察错误率和性能指标正常后再全量。常见工具上，托管平台用 GitHub Actions、GitLab CI，自建用 Jenkins 加流水线脚本，部署目标可以是 S3 加 CloudFront、Nginx 静态目录、K8s 的 Ingress 加对象存储，或者 Vercel、Netlify 这类平台。另外要注意 CDN 缓存刷新、多环境隔离以及发布记录与通知。
 
 **常见追问**：那发布后发现有严重 bug，你如何快速回滚？资源缓存怎么处理？
 
@@ -2948,7 +4002,23 @@ webpack 本质是一个模块打包器，核心流程分三大阶段。第一，
 
 **参考回答**：
 
-背景是：项目早期是 jQuery 加模板渲染的存量系统，后来逐步迁移到 Vue。迁移不是重写，而是渐进式替换，所以会存在 Vue 组件和 jQuery 插件共存的阶段。用在哪主要有三处：第一，第三方老插件，比如某些日期控件、富文本编辑器、图表库、拖拽排序、文件上传，只有 jQuery 版本或者没有可靠的 Vue 封装，短期替换成本高、收益低；第二，存量公共组件，比如全局弹窗、消息提示、表单校验、树形菜单，被多个老页面依赖，直接重写影响面太大，所以先保留；第三，与后端模板混排的页面，服务端渲染出来的一部分 HTML 需要 jQuery 做局部交互，迁移期只能共存。风险主要有三点：一是 jQuery 会操作和删除 DOM，而 Vue 也管理这部分 DOM，容易导致状态与视图不一致、报错或内存泄漏；二是 jQuery 是全局依赖，打包体积和加载顺序要处理；三是两套代码风格混在一起，新人理解成本高。治理思路上，我会做三件事：第一，隔离边界，约定 jQuery 只在特定容器或特定组件内使用，Vue 不接管那块 DOM，用 ref 拿到容器后交给插件，组件卸载时显式销毁插件实例；第二，封装适配，把 jQuery 插件包装成 Vue 组件或组合式函数，对外只暴露 props 和事件，业务方不感知 jQuery；第三，分批替换，按使用频率和维护成本排序，新页面禁止引入 jQuery，存量插件在官方或社区出现成熟替代时逐步替换，并设下线计划和在 CI 里加禁止新增引用的检查。这样能把技术债控制在可管理的范围内。
+背景是：项目早期是 jQuery 加模板渲染的存量系统，后来逐步迁移到 Vue。迁移不是重写，而是渐进式替换，所以会存在 Vue 组件和 jQuery 插件共存的阶段。用在哪主要有三处：
+
+- 第一，第三方老插件，比如某些日期控件、富文本编辑器、图表库、拖拽排序、文件上传，只有 jQuery 版本或者没有可靠的 Vue 封装，短期替换成本高、收益低；
+- 第二，存量公共组件，比如全局弹窗、消息提示、表单校验、树形菜单，被多个老页面依赖，直接重写影响面太大，所以先保留；
+- 第三，与后端模板混排的页面，服务端渲染出来的一部分 HTML 需要 jQuery 做局部交互，迁移期只能共存。
+
+风险主要有三点：
+
+- 一是 jQuery 会操作和删除 DOM，而 Vue 也管理这部分 DOM，容易导致状态与视图不一致、报错或内存泄漏；
+- 二是 jQuery 是全局依赖，打包体积和加载顺序要处理；
+- 三是两套代码风格混在一起，新人理解成本高。
+
+治理思路上，我会做三件事：
+
+- 第一，隔离边界，约定 jQuery 只在特定容器或特定组件内使用，Vue 不接管那块 DOM，用 ref 拿到容器后交给插件，组件卸载时显式销毁插件实例；
+- 第二，封装适配，把 jQuery 插件包装成 Vue 组件或组合式函数，对外只暴露 props 和事件，业务方不感知 jQuery；
+- 第三，分批替换，按使用频率和维护成本排序，新页面禁止引入 jQuery，存量插件在官方或社区出现成熟替代时逐步替换，并设下线计划和在 CI 里加禁止新增引用的检查。这样能把技术债控制在可管理的范围内。
 
 **常见追问**：那你怎么防止 Vue 管理的 DOM 被 jQuery 改坏？
 
@@ -2968,7 +4038,12 @@ webpack 本质是一个模块打包器，核心流程分三大阶段。第一，
 
 **参考回答**：
 
-移动端 CSS 兼容的核心是：用构建工具自动加厂商前缀，而不是手写前缀，同时用特性检测和渐进增强做兜底。第一，前缀方案：移动端浏览器内核碎片化严重（iOS Safari 的 WebKit、Android Chrome 的 Blink、部分国产 X5 和 UC 内核），同一属性在不同版本可能需要不同前缀。正确做法是只写标准属性，交给 PostCSS 的 Autoprefixer 根据 browserslist 的目标自动补齐前缀，browserslist 决定要兼容哪些浏览器版本，比如 iOS 版本范围、Android 版本范围和是否包含国产内核；需要时还可以用 postcss-preset-env 把未来的 CSS 语法降级。第二，特性检测与渐进增强：用 @supports 判断浏览器是否支持某属性，不支持就走降级写法，比如不支持 grid 就回退到 flex；JS 侧用能力检测而不是 UA 判断，比如判断 IntersectionObserver 是否存在再决定用观察器还是滚动监听。第三，移动端常见兼容点：视口要设置 viewport meta 并用 rem 或 vw 做适配；1px 边框在高分屏会变粗，用 transform scale 或 border-image 或 box-shadow 方案；点击有 300 毫秒延迟和点击穿透问题，现代浏览器用 viewport 加 touch-action 基本解决，老内核可用 fastclick；iOS 的橡皮筋滚动和滚动穿透要在弹窗打开时锁定 body 并处理 touchmove；iPhone 刘海屏要用 env(safe-area-inset) 做安全区适配；键盘弹起导致 fixed 定位错乱需要单独处理；字体和输入框样式在 iOS 上会自动放大或变形，要用 font-size 大于等于 16px 和 appearance 重置。第四，工程保障：用真机测试和云真机平台覆盖主流机型，接入错误监控收集兼容性报错，新特性上线做灰度。原则是先保证功能可用，再逐步增强体验。
+移动端 CSS 兼容的核心是：用构建工具自动加厂商前缀，而不是手写前缀，同时用特性检测和渐进增强做兜底。
+
+- 第一，前缀方案：移动端浏览器内核碎片化严重（iOS Safari 的 WebKit、Android Chrome 的 Blink、部分国产 X5 和 UC 内核），同一属性在不同版本可能需要不同前缀。正确做法是只写标准属性，交给 PostCSS 的 Autoprefixer 根据 browserslist 的目标自动补齐前缀，browserslist 决定要兼容哪些浏览器版本，比如 iOS 版本范围、Android 版本范围和是否包含国产内核；需要时还可以用 postcss-preset-env 把未来的 CSS 语法降级。
+- 第二，特性检测与渐进增强：用 @supports 判断浏览器是否支持某属性，不支持就走降级写法，比如不支持 grid 就回退到 flex；JS 侧用能力检测而不是 UA 判断，比如判断 IntersectionObserver 是否存在再决定用观察器还是滚动监听。
+- 第三，移动端常见兼容点：视口要设置 viewport meta 并用 rem 或 vw 做适配；1px 边框在高分屏会变粗，用 transform scale 或 border-image 或 box-shadow 方案；点击有 300 毫秒延迟和点击穿透问题，现代浏览器用 viewport 加 touch-action 基本解决，老内核可用 fastclick；iOS 的橡皮筋滚动和滚动穿透要在弹窗打开时锁定 body 并处理 touchmove；iPhone 刘海屏要用 env(safe-area-inset) 做安全区适配；键盘弹起导致 fixed 定位错乱需要单独处理；字体和输入框样式在 iOS 上会自动放大或变形，要用 font-size 大于等于 16px 和 appearance 重置。
+- 第四，工程保障：用真机测试和云真机平台覆盖主流机型，接入错误监控收集兼容性报错，新特性上线做灰度。原则是先保证功能可用，再逐步增强体验。
 
 **常见追问**：那移动端 1px 边框为什么会变粗？有哪几种解决方案？
 
@@ -2988,7 +4063,13 @@ webpack 本质是一个模块打包器，核心流程分三大阶段。第一，
 
 **参考回答**：
 
-阶乘定义为 1 到 n 的连乘，且 0 的阶乘是 1。基础实现有几种。第一，for 循环，从 2 累乘到 n，返回结果，是最直观也最省栈空间的写法，时间复杂度 O(n)、空间 O(1)。第二，递归，n 小于等于 1 时返回 1，否则返回 n 乘以 n 减一的阶乘，写法简洁但有函数调用栈开销，n 较大时会栈溢出，而且严格模式下的尾调用优化在多数浏览器并未真正实现，所以不能指望尾递归解决问题。第三，大数运算：JavaScript 的 Number 是双精度浮点，安全整数上限是 2 的 53 次方减一，而阶乘增长极快，21 的阶乘就已经超过安全整数范围，再大就会出现精度丢失得到错误结果，所以要做大阶乘必须用 BigInt，把初值写成一乘以 BigInt 形式并全程用 BigInt 运算，或者用数组模拟大数乘法。第四，记忆化：如果同一个 n 会被反复计算，可以用 Map 缓存已算出的结果，把重复计算的复杂度从 O(n) 降到 O(1)；不过单纯求一次阶乘没必要。第五，边界与健壮性：要校验输入是大于等于零的整数，负数和小数在数学上无定义（可以用 Gamma 函数扩展但一般不需要），非数字要返回错误或 NaN；还要考虑 n 很大时的时间和内存开销，必要时加步数上限或改用近似公式（斯特林公式）计算量级。面试里如果只答 for 循环，最好补上溢出和递归栈这两点，能体现你对数值边界的意识。
+阶乘定义为 1 到 n 的连乘，且 0 的阶乘是 1。基础实现有几种。
+
+- 第一，for 循环，从 2 累乘到 n，返回结果，是最直观也最省栈空间的写法，时间复杂度 O(n)、空间 O(1)。
+- 第二，递归，n 小于等于 1 时返回 1，否则返回 n 乘以 n 减一的阶乘，写法简洁但有函数调用栈开销，n 较大时会栈溢出，而且严格模式下的尾调用优化在多数浏览器并未真正实现，所以不能指望尾递归解决问题。
+- 第三，大数运算：JavaScript 的 Number 是双精度浮点，安全整数上限是 2 的 53 次方减一，而阶乘增长极快，21 的阶乘就已经超过安全整数范围，再大就会出现精度丢失得到错误结果，所以要做大阶乘必须用 BigInt，把初值写成一乘以 BigInt 形式并全程用 BigInt 运算，或者用数组模拟大数乘法。
+- 第四，记忆化：如果同一个 n 会被反复计算，可以用 Map 缓存已算出的结果，把重复计算的复杂度从 O(n) 降到 O(1)；不过单纯求一次阶乘没必要。
+- 第五，边界与健壮性：要校验输入是大于等于零的整数，负数和小数在数学上无定义（可以用 Gamma 函数扩展但一般不需要），非数字要返回错误或 NaN；还要考虑 n 很大时的时间和内存开销，必要时加步数上限或改用近似公式（斯特林公式）计算量级。面试里如果只答 for 循环，最好补上溢出和递归栈这两点，能体现你对数值边界的意识。
 
 **常见追问**：那 100 的阶乘用 Number 算结果对吗？为什么？
 
@@ -3008,7 +4089,16 @@ webpack 本质是一个模块打包器，核心流程分三大阶段。第一，
 
 **参考回答**：
 
-第一个问题，前端 JS 能不能看懂：能，而且这是主流模型的强项。因为训练语料里 JS 和 TS 占比很高，对 DOM、事件循环、Promise、React 与 Vue 生态、构建工具都相当熟悉，常见做法是让模型读源码或 AST，做代码解释、生成、重构、写单测和定位 bug。局限在于超长文件受上下文窗口限制、对私有框架或内部 DSL 需要额外喂文档、对运行时行为（比如闭包引起的内存泄漏、异步竞态）只能推理不能真跑，所以通常配合静态检查、跑测试和人工 review 来验证。第二个问题，undo 和 redo 的本质是维护一条可回放的操作历史，用两个栈或一个栈加一个指针实现。方案一，命令模式加双栈：每次操作生成一个命令对象，包含正向执行（do）和反向执行（undo）两个方法，执行新操作时压入 undo 栈并清空 redo 栈，撤销时从 undo 栈弹出命令执行其反向操作并压入 redo 栈，重做时反向操作。优点是内存占用小，只需存操作；缺点是为每个操作都要写反向逻辑，有些操作（比如删除任意列表元素）反向实现较麻烦。方案二，状态快照加双栈：每次操作后把完整状态深拷贝压入 undo 栈，撤销时从 undo 栈弹出并把当前状态压入 redo 栈，然后恢复目标快照。优点实现简单、天然支持任意操作；缺点是内存开销大，所以要配合快照上限、增量快照（只存 diff 或使用结构共享）和节流合并。工程上还需要处理几个细节：连续输入要合并成一次撤销（比如拖拽过程中的中间态不记录，松手才提交）；栈要有上限避免内存爆掉；撤销后新操作要清空 redo 栈，这是标准语义；配合快捷键 Ctrl+Z 和 Ctrl+Shift+Z，并注意焦点在输入框时要放行给浏览器原生撤销。
+第一个问题，前端 JS 能不能看懂：能，而且这是主流模型的强项。因为训练语料里 JS 和 TS 占比很高，对 DOM、事件循环、Promise、React 与 Vue 生态、构建工具都相当熟悉，常见做法是让模型读源码或 AST，做代码解释、生成、重构、写单测和定位 bug。局限在于超长文件受上下文窗口限制、对私有框架或内部 DSL 需要额外喂文档、对运行时行为（比如闭包引起的内存泄漏、异步竞态）只能推理不能真跑，所以通常配合静态检查、跑测试和人工 review 来验证。
+
+第二个问题，undo 和 redo 的本质是维护一条可回放的操作历史，用两个栈或一个栈加一个指针实现。方案一，命令模式加双栈：每次操作生成一个命令对象，包含正向执行（do）和反向执行（undo）两个方法，执行新操作时压入 undo 栈并清空 redo 栈，撤销时从 undo 栈弹出命令执行其反向操作并压入 redo 栈，重做时反向操作。
+
+优点是内存占用小，只需存操作；缺点是为每个操作都要写反向逻辑，有些操作（比如删除任意列表元素）反向实现较麻烦。方案二，状态快照加双栈：每次操作后把完整状态深拷贝压入 undo 栈，撤销时从 undo 栈弹出并把当前状态压入 redo 栈，然后恢复目标快照。优点实现简单、天然支持任意操作；缺点是内存开销大，所以要配合快照上限、增量快照（只存 diff 或使用结构共享）和节流合并。
+
+- 工程上还需要处理几个细节：连续输入要合并成一次撤销（比如拖拽过程中的中间态不记录，松手才提交）；
+- 栈要有上限避免内存爆掉；
+- 撤销后新操作要清空 redo 栈，这是标准语义；
+- 配合快捷键 Ctrl+Z 和 Ctrl+Shift+Z，并注意焦点在输入框时要放行给浏览器原生撤销。
 
 **常见追问**：那连续拖拽产生了很多中间状态，你会怎么合并成一次撤销？
 
@@ -3028,7 +4118,9 @@ webpack 本质是一个模块打包器，核心流程分三大阶段。第一，
 
 **参考回答**：
 
-forEach 用于遍历执行副作用、无返回值；map 用于映射生成新数组、返回新数组；两者本身都不改变原数组，但若回调里修改元素对象或原数组，则可能间接改变。
+- forEach 用于遍历执行副作用、无返回值；
+- map 用于映射生成新数组、返回新数组；
+- 两者本身都不改变原数组，但若回调里修改元素对象或原数组，则可能间接改变。
 
 1) 返回值：forEach 返回 undefined；map 返回一个与原数组等长的新数组，元素为回调返回值。
 2) 目的：forEach 强调“对每个元素做一件事”（副作用，如打印、累加、发请求）；map 强调“把数组转换成另一个数组”（纯映射）。
@@ -3108,7 +4200,9 @@ print(arr[0]["n"])  # 999，浅拷贝共享引用
 - 伪造：{[Symbol.toStringTag]:'Array'} 会让 toString 方法误判，Array.isArray 不会。
 - Proxy：Array.isArray(new Proxy([], {})) 返回 true，因为代理目标为数组；若代理目标非数组则 false。
 
-Python 中判断列表：isinstance(x, list) 最直接；也可 type(x) is list（不推荐，因为子类会失败）；跨类型系统可用 collections.abc.Sequence 但会包含 tuple/str 等。
+- Python 中判断列表：isinstance(x, list) 最直接；
+- 也可 type(x) is list（不推荐，因为子类会失败）；
+- 跨类型系统可用 collections.abc.Sequence 但会包含 tuple/str 等。
 
 核心代码（JS）：
 function isArray(x) {
@@ -3416,14 +4510,18 @@ print(reduce_([], lambda a,b:a+b, 0, True))          # 0
 
 空数组调用 reduce 且不传初始值会抛 TypeError；传了初始值则直接返回该初始值，回调不会执行。
 
-reduce 的语义是：用二元函数把数组元素从左到右折叠成一个值。关键规则是——当数组为空且没有提供 initialValue 时，没有可用的“起点”，因此无法产生结果，规范要求抛出 TypeError（JS 中为 'Reduce of empty array with no initial value'）。若提供了 initialValue，则累加器从该值开始，空数组直接返回它，回调一次都不执行。
+reduce 的语义是：用二元函数把数组元素从左到右折叠成一个值。关键规则是——当数组为空且没有提供 initialValue 时，没有可用的“起点”，因此无法产生结果，规范要求抛出 TypeError（JS 中为 'Reduce of empty array with no initial value'）。
+
+若提供了 initialValue，则累加器从该值开始，空数组直接返回它，回调一次都不执行。
 
 以 JavaScript 为例：
 - [].reduce((a,b)=>a+b) → TypeError
 - [].reduce((a,b)=>a+b, 0) → 0
 - [].reduce((a,b)=>a+b, 10) → 10
 
-更一般地，reduce 的迭代过程是：若给了初始值，acc=initialValue，从索引 0 开始遍历；若没给，则 acc=arr[0]，从索引 1 开始遍历。因此空数组在“没给初始值”时连 arr[0] 都取不到，只能报错。
+更一般地，reduce 的迭代过程是：若给了初始值，acc=initialValue，从索引 0 开始遍历；若没给，则 acc=arr[0]，从索引 1 开始遍历。
+
+因此空数组在“没给初始值”时连 arr[0] 都取不到，只能报错。
 
 Python 的 functools.reduce 行为一致：reduce(f, []) 抛 TypeError（'reduce() of empty iterable with no initial value'），reduce(f, [], 0) 返回 0。
 
@@ -3442,7 +4540,10 @@ def my_reduce(func, iterable, *initial):
         acc = func(acc, x)
     return acc
 
-边界 case：空数组 + 无初始值（抛错）；空数组 + 有初始值（返回初始值）；单元素数组 + 无初始值（返回该元素，回调不执行）；初始值为 undefined/null 时在 JS 中仍算“提供了初始值”，不会抛错。
+- 边界 case：空数组 + 无初始值（抛错）；
+- 空数组 + 有初始值（返回初始值）；
+- 单元素数组 + 无初始值（返回该元素，回调不执行）；
+- 初始值为 undefined/null 时在 JS 中仍算“提供了初始值”，不会抛错。
 
 **常见追问**：实际工程中怎么避免这个 TypeError？
 
@@ -3544,7 +4645,11 @@ function myForEach(arr, cb) {
 面试官问“技术栈是 Vue，你们有用 TS 吗？”通常是在确认工程背景，但题目分类已明确为“手撕算法”，因此正确策略是：先简短回答 Vue + TS 的工程实践，再主动把话题拉回算法，按“思路 -> 复杂度 -> 边界 case -> 核心代码”作答。
 
 以常见手撕题“两数之和”为例：
-思路：用哈希表记录已遍历元素的值到下标映射。遍历数组，对当前元素 x，检查 target - x 是否在哈希表中；若在，返回两个下标；否则把 x 和当前下标存入哈希表。
+思路：用哈希表记录已遍历元素的值到下标映射。
+
+- 遍历数组，对当前元素 x，检查 target - x 是否在哈希表中；
+- 若在，返回两个下标；
+- 否则把 x 和当前下标存入哈希表。
 复杂度：时间复杂度 O(n)，每个元素只访问一次；空间复杂度 O(n)，最坏需要存储 n 个元素。
 边界 case：数组为空或长度小于 2 返回空；存在重复元素如 [3,3] 要能返回 [0,1]；无解返回空；负数、0、大数均适用；不要假设数组有序。
 
@@ -3959,7 +5064,12 @@ console.log(typeOf(new Date()));  // 'date'
 
 display:none 让元素彻底从渲染树中移除、不占位且不可交互；visibility:hidden 只是让元素不可见，但仍占据布局空间、参与布局。
 
-两者都是让元素“看不见”，但作用层级不同。 1) display:none - 元素不会生成盒子（box），从渲染树（render tree）中被移除，因此不占据任何空间，后续元素会“补位”。 - 不参与布局计算，也不响应事件（点击、聚焦等）。 - 会触发重排（reflow）和重绘（repaint），因为布局变了。 - 子元素无法通过设置 display 来“复活”，因为父元素整个盒子都没了。 - 常用于：需要彻底隐藏且不占位的场景，如切换 tab 内容、条件渲染。 2) visibility:hidden - 元素仍生成盒子并参与布局，占据原来的空间，只是不可见（类似“隐身衣”）。 - 不响应鼠标事件（点击穿透到下层），但可以通过 visibility:visible 让子元素重新显示（子元素可覆盖父级）。 - 只触发重绘，不触发重排（布局不变），性能开销通常更小。 - 常用于：保留占位、避免布局抖动的隐藏，如占位隐藏、过渡动画。 通俗类比：display:none 像把家具从房间里搬走，房间空出来；visibility:hidden 像给家具盖上隐形布，家具还在原地，只是看不见。 补充：两者都会影响可访问性（屏幕阅读器通常也会忽略），但 display:none 更彻底。若只想视觉隐藏但保留可访问性，应使用 clip-path/position 等技巧，而非这两个。
+两者都是让元素“看不见”，但作用层级不同。 1) display:none - 元素不会生成盒子（box），从渲染树（render tree）中被移除，因此不占据任何空间，后续元素会“补位”。 - 不参与布局计算，也不响应事件（点击、聚焦等）。 - 会触发重排（reflow）和重绘（repaint），因为布局变了。
+
+- 子元素无法通过设置 display 来“复活”，因为父元素整个盒子都没了。
+
+- 常用于：需要彻底隐藏且不占位的场景，如切换 tab 内容、条件渲染。 2) visibility:hidden - 元素仍生成盒子并参与布局，占据原来的空间，只是不可见（类似“隐身衣”）。 - 不响应鼠标事件（点击穿透到下层），但可以通过 visibility:visible 让子元素重新显示（子元素可覆盖父级）。 - 只触发重绘，不触发重排（布局不变），性能开销通常更小。
+- 常用于：保留占位、避免布局抖动的隐藏，如占位隐藏、过渡动画。 通俗类比：display:none 像把家具从房间里搬走，房间空出来；visibility:hidden 像给家具盖上隐形布，家具还在原地，只是看不见。 补充：两者都会影响可访问性（屏幕阅读器通常也会忽略），但 display:none 更彻底。若只想视觉隐藏但保留可访问性，应使用 clip-path/position 等技巧，而非这两个。
 
 **常见追问**：如何避免「1) 误以为 visibility:hidden 不占空间——它仍占位」？ 「2) 误以为 display:none 可以被子元素 display:block 恢复——父元素盒子都没了，子元素无法显示」在真实项目中应如何规避？
 
@@ -3981,7 +5091,18 @@ display:none 让元素彻底从渲染树中移除、不占位且不可交互；v
 
 before 和 after 都是 CSS 伪元素，核心区别是插入位置：::before 在元素内容之前，::after 在元素内容之后；两者都必须配合 content 属性才生效。
 
-::before 和 ::after 是 CSS 的伪元素（pseudo-element），它们会在选中元素内部生成一个虚拟的子元素，但不会出现在 DOM 树中，也不能被 JS 直接通过 DOM API 获取。 通俗类比：把一个元素看成一个盒子，盒子里原本有“内容”。::before 相当于在内容前面塞了一张小纸条，::after 相当于在内容后面塞了一张小纸条。纸条本身不是真实 DOM 节点，但可以设置样式、显示文字、图标、做装饰。 关键点： 1. 位置不同：::before 生成在元素内容之前，::after 生成在元素内容之后。 2. 默认 display：两者默认都是 inline，但可以通过 display 改成 block、inline-block、flex 等。 3. 必须写 content：content 可以是空字符串 ''、文字、attr()、url() 等。没有 content，伪元素通常不渲染。 4. 语法：现代标准推荐双冒号 ::before / ::after，用来区分伪元素和伪类；单冒号 :before / :after 是 CSS2 的旧写法，浏览器仍兼容。 5. 适用场景：清除浮动、画装饰性图标、加分隔线、做 tooltip 小三角、给链接加外部图标、做计数器、实现某些布局效果等。 6. 不适用场景：伪元素内容不适合承载重要语义信息，因为屏幕阅读器和搜索引擎不一定能可靠读取；重要内容应放在真实 DOM 中。 例子： ```css .box::before { content: '前'; color: red; } .box::after { content: '后'; color: blue; } ``` HTML 为 `<div class="box">内容</div>` 时，视觉上会显示“前内容后”。
+::before 和 ::after 是 CSS 的伪元素（pseudo-element），它们会在选中元素内部生成一个虚拟的子元素，但不会出现在 DOM 树中，也不能被 JS 直接通过 DOM API 获取。
+
+通俗类比：把一个元素看成一个盒子，盒子里原本有“内容”。::before 相当于在内容前面塞了一张小纸条，::after 相当于在内容后面塞了一张小纸条。纸条本身不是真实 DOM 节点，但可以设置样式、显示文字、图标、做装饰。 关键点：
+
+1. 位置不同：::before 生成在元素内容之前，::after 生成在元素内容之后。
+2. 默认 display：两者默认都是 inline，但可以通过 display 改成 block、inline-block、flex 等。
+3. 必须写 content：content 可以是空字符串 ''、文字、attr()、url() 等。没有 content，伪元素通常不渲染。
+4. 语法：现代标准推荐双冒号 ::before / ::after，用来区分伪元素和伪类；单冒号 :before / :after 是 CSS2 的旧写法，浏览器仍兼容。
+5. 适用场景：清除浮动、画装饰性图标、加分隔线、做 tooltip 小三角、给链接加外部图标、做计数器、实现某些布局效果等。
+6. 不适用场景：伪元素内容不适合承载重要语义信息，因为屏幕阅读器和搜索引擎不一定能可靠读取；重要内容应放在真实 DOM 中。
+
+例子： ```css .box::before { content: '前'; color: red; } .box::after { content: '后'; color: blue; } ``` HTML 为 `<div class="box">内容</div>` 时，视觉上会显示“前内容后”。
 
 **常见追问**：如何避免「误以为 ::before 和 ::after 是伪类，其实它们是伪元素。」？ 「忘记写 content 属性，导致伪元素不显示。」在真实项目中应如何规避？
 
@@ -4003,7 +5124,13 @@ before 和 after 都是 CSS 伪元素，核心区别是插入位置：::before �
 
 vw/vh 是视口单位，1vw=视口宽度的1%，1vh=视口高度的1%，而 % 是相对父元素（或自身属性）的百分比，二者参照物完全不同。
 
-核心区别在“参照物”。 1) vw/vh：相对浏览器视口（viewport）。1vw = 视口宽度的 1%，1vh = 视口高度的 1%。例如视口 1200×800，则 1vw=12px，1vh=8px。窗口缩放时它们会跟着变，所以适合做全屏布局、随窗口自适应的字号/间距/大区块。 2) %：相对“包含块”（containing block），通常就是父元素的内容盒尺寸。width:50% 是父元素内容宽度的 50%；height:50% 只有在父元素有确定高度时才生效，否则会塌陷为 auto。padding/margin 的百分比更特殊：即使 top/bottom 也按父元素“宽度”计算。 通俗类比：vw/vh 像“屏幕这把尺子”，不管你在页面哪一层，量的都是整个窗口；% 像“父容器这把尺子”，量的是你所在盒子的父级尺寸。 3) 适用场景： - 全屏首屏、背景图、随窗口缩放的标题字号 → vw/vh。 - 栅格列宽、卡片占父容器比例、响应式内边距 → %。 4) 注意 vh 在移动端的坑：浏览器地址栏收起/展开会改变视口高度，100vh 常导致内容被遮挡或出现滚动条，可用 dvh/svh/lvh（动态/小/大视口单位）或 JS 修正。 5) 还有 vmin/vmax：取视口宽高中较小/较大者，适合保证元素在横竖屏都不溢出。
+核心区别在“参照物”。
+
+1) vw/vh：相对浏览器视口（viewport）。1vw = 视口宽度的 1%，1vh = 视口高度的 1%。例如视口 1200×800，则 1vw=12px，1vh=8px。窗口缩放时它们会跟着变，所以适合做全屏布局、随窗口自适应的字号/间距/大区块。
+2) %：相对“包含块”（containing block），通常就是父元素的内容盒尺寸。width:50% 是父元素内容宽度的 50%；height:50% 只有在父元素有确定高度时才生效，否则会塌陷为 auto。padding/margin 的百分比更特殊：即使 top/bottom 也按父元素“宽度”计算。 通俗类比：vw/vh 像“屏幕这把尺子”，不管你在页面哪一层，量的都是整个窗口；% 像“父容器这把尺子”，量的是你所在盒子的父级尺寸。
+3) 适用场景： - 全屏首屏、背景图、随窗口缩放的标题字号 → vw/vh。 - 栅格列宽、卡片占父容器比例、响应式内边距 → %。
+4) 注意 vh 在移动端的坑：浏览器地址栏收起/展开会改变视口高度，100vh 常导致内容被遮挡或出现滚动条，可用 dvh/svh/lvh（动态/小/大视口单位）或 JS 修正。
+5) 还有 vmin/vmax：取视口宽高中较小/较大者，适合保证元素在横竖屏都不溢出。
 
 **常见追问**：如何避免「1) 误以为 vw/vh 是相对父元素——这是最典型的错误」？ 「2) 以为 height:100% 总能撑满屏幕，忽略父级高度未定义时无效」在真实项目中应如何规避？
 
@@ -4025,7 +5152,17 @@ vw/vh 是视口单位，1vw=视口宽度的1%，1vh=视口高度的1%，而 % �
 
 class 是创建对象的语法糖，本质仍是基于原型链的函数，但 class 不能直接调用、不会提升、内部默认严格模式，且方法不可枚举。
 
-在 JavaScript 中，function 和 class 都能用来创建对象，但设计目的和运行时行为不同。 1. 本质关系：class 是 ES6 引入的语法糖，底层仍依赖原型链。`class A {}` 编译后等价于一个函数，`A.prototype` 上挂方法，实例通过 `__proto__` 找到原型。 2. 调用方式：普通函数可以直接调用 `Foo()`；class 必须用 `new` 调用，否则抛 `TypeError: Class constructor Foo cannot be invoked without 'new'`。 3. 提升行为：函数声明会提升，可在定义前调用；class 声明存在暂时性死区（TDZ），定义前访问会抛 `ReferenceError`。 4. 严格模式：class 内部代码自动处于严格模式，函数默认非严格模式。 5. 方法可枚举性：class 原型上的方法不可枚举（`enumerable: false`），而手动挂到 `function.prototype` 上的方法默认可枚举。 6. 继承：class 用 `extends` 和 `super`，语义更清晰；函数继承需要手动操作原型链，且 `super` 在函数中不可用。 7. 适用场景：需要清晰继承、封装、静态方法、私有字段时用 class；需要函数式编程、回调、工具函数、闭包时用 function。 通俗类比：function 像一把瑞士军刀，什么都能干；class 像一套模具，专门用来批量生产对象，规矩更多但更规范。
+在 JavaScript 中，function 和 class 都能用来创建对象，但设计目的和运行时行为不同。
+
+1. 本质关系：class 是 ES6 引入的语法糖，底层仍依赖原型链。`class A {}` 编译后等价于一个函数，`A.prototype` 上挂方法，实例通过 `__proto__` 找到原型。
+2. 调用方式：普通函数可以直接调用 `Foo()`；class 必须用 `new` 调用，否则抛 `TypeError: Class constructor Foo cannot be invoked without 'new'`。
+3. 提升行为：函数声明会提升，可在定义前调用；class 声明存在暂时性死区（TDZ），定义前访问会抛 `ReferenceError`。
+4. 严格模式：class 内部代码自动处于严格模式，函数默认非严格模式。
+5. 方法可枚举性：class 原型上的方法不可枚举（`enumerable: false`），而手动挂到 `function.prototype` 上的方法默认可枚举。
+6. 继承：class 用 `extends` 和 `super`，语义更清晰；函数继承需要手动操作原型链，且 `super` 在函数中不可用。
+7. 适用场景：需要清晰继承、封装、静态方法、私有字段时用 class；需要函数式编程、回调、工具函数、闭包时用 function。
+
+通俗类比：function 像一把瑞士军刀，什么都能干；class 像一套模具，专门用来批量生产对象，规矩更多但更规范。
 
 **常见追问**：如何避免「误以为 class 是全新的对象模型，其实仍是原型链。」？ 「误以为 class 会提升，实际存在 TDZ。」在真实项目中应如何规避？
 
@@ -4047,31 +5184,48 @@ loader：模块级转换。webpack 原生只认识 JS/JSON，遇到 import './st
 
 loader 是文件转换器，负责把非 JS 资源转成模块；plugin 是构建流程扩展器，通过钩子介入 webpack 整个生命周期。
 
-在 webpack 中，loader 和 plugin 解决的是两个不同层面的问题。 1. loader：模块级转换。webpack 原生只认识 JS/JSON，遇到 import './style.css' 或 import logo from './logo.png' 时，需要 loader 把文件内容转换成 JS 模块。loader 本质是一个函数，接收源文件内容，返回转换后的内容（或 source map）。它按规则匹配：module.rules 里 test 匹配文件，use 指定 loader 链，执行顺序从右到左、从下到上。常见例子：babel-loader 把 ES6+ 转 ES5，css-loader 把 CSS 转成 JS 模块，style-loader 把 CSS 注入 DOM，file-loader/asset modules 处理图片字体。 2. plugin：构建流程级扩展。plugin 是一个带有 apply(compiler) 方法的类/函数，通过 compiler 和 compilation 暴露的钩子（hooks）在特定时机执行逻辑。webpack 本身就是一个基于 Tapable 的发布订阅系统，plugin 可以监听如 emit、done、optimizeChunkAssets 等钩子，做打包优化、资源管理、环境变量注入等。常见例子：HtmlWebpackPlugin 生成 HTML 并自动注入 bundle，MiniCssExtractPlugin 抽离 CSS 文件，DefinePlugin 注入全局常量，CleanWebpackPlugin 清理 dist。 通俗类比：把 webpack 构建比作一条工厂流水线。loader 是流水线上的加工机器，对每个零件（文件）做打磨、翻译、压缩；plugin 是工厂里的工程师，可以改变流水线布局、增加质检环节、在成品出厂前贴标签。loader 只关心“这个文件怎么变成模块”，plugin 关心“整个构建过程怎么跑”。 适用场景：需要转换文件类型、语法降级、处理静态资源时用 loader；需要干预打包结果、注入变量、生成 HTML、压缩、分析包体积时用 plugin。
+在 webpack 中，loader 和 plugin 解决的是两个不同层面的问题。
+
+1. loader：模块级转换。webpack 原生只认识 JS/JSON，遇到 import './style.css' 或 import logo from './logo.png' 时，需要 loader 把文件内容转换成 JS 模块。loader 本质是一个函数，接收源文件内容，返回转换后的内容（或 source map）。它按规则匹配：module.rules 里 test 匹配文件，use 指定 loader 链，执行顺序从右到左、从下到上。常见例子：babel-loader 把 ES6+ 转 ES5，css-loader 把 CSS 转成 JS 模块，style-loader 把 CSS 注入 DOM，file-loader/asset modules 处理图片字体。
+2. plugin：构建流程级扩展。plugin 是一个带有 apply(compiler) 方法的类/函数，通过 compiler 和 compilation 暴露的钩子（hooks）在特定时机执行逻辑。webpack 本身就是一个基于 Tapable 的发布订阅系统，plugin 可以监听如 emit、done、optimizeChunkAssets 等钩子，做打包优化、资源管理、环境变量注入等。常见例子：HtmlWebpackPlugin 生成 HTML 并自动注入 bundle，MiniCssExtractPlugin 抽离 CSS 文件，DefinePlugin 注入全局常量，CleanWebpackPlugin 清理 dist。
+
+通俗类比：把 webpack 构建比作一条工厂流水线。loader 是流水线上的加工机器，对每个零件（文件）做打磨、翻译、压缩；plugin 是工厂里的工程师，可以改变流水线布局、增加质检环节、在成品出厂前贴标签。loader 只关心“这个文件怎么变成模块”，plugin 关心“整个构建过程怎么跑”。
+
+适用场景：需要转换文件类型、语法降级、处理静态资源时用 loader；需要干预打包结果、注入变量、生成 HTML、压缩、分析包体积时用 plugin。
 
 **常见追问**：如何避免「混淆两者职责：说“loader 也能改打包输出”或“plugin 也能转译文件”都不准确。」？ 「误以为 loader 执行顺序是从左到右（实际从右到左，pitch 相反）。」在真实项目中应如何规避？
 
 ---
 
-## 169. rem是什么？与vw,vh的区别？
+## 169. rem 与 vw、vh 分别以什么为基准，应该怎样选择？
 
 > 原题 ID：`q2437`
 
 **高频程度**：★★★
 
-**考察点**：考察对「rem是什么？与vw,vh的区别？」的掌握，重点看能否讲清：1) rem（root em）：1rem 等于根元素 <html> 的 font-size
+**考察点**：根字号与视口尺寸两种参照系，以及缩放和动态视口的边界。
 
 **回答框架**：
 
-1) rem（root em）：1rem 等于根元素 <html> 的 font-size；默认浏览器 html 字号是 16px，所以 1rem=16px；若设置 html{font-size:62.5%}，则 1rem=10px，便于把设计稿 px 换算成 rem；关键点是它只认根元素，不认父元素，因此嵌套层级不会像 em 那样层层相乘导致失控；2) vw/vh：1vw 等于视口宽度的 1%，1vh 等于视口高度的 1%；例如 375px 宽的手机上 1vw=3.75px，100vw 就是整屏宽
+1) rem 参照根字号
+2) vw/vh 参照视口
+3) 按字号缩放或视口布局选型
+4) 注意移动浏览器视口变化
 
 **参考回答**：
 
-rem 是相对于根元素 html 的 font-size 计算的长度单位，vw/vh 是相对于视口宽高的百分比单位，前者适合做整体缩放式适配，后者适合做视口比例布局。
+三种单位的关键区别是参照系，而不是谁能“自动适配所有屏幕”。
 
-1) rem（root em）：1rem 等于根元素 <html> 的 font-size。默认浏览器 html 字号是 16px，所以 1rem=16px；若设置 html{font-size:62.5%}，则 1rem=10px，便于把设计稿 px 换算成 rem。关键点是它只认根元素，不认父元素，因此嵌套层级不会像 em 那样层层相乘导致失控。 2) vw/vh：1vw 等于视口宽度的 1%，1vh 等于视口高度的 1%。例如 375px 宽的手机上 1vw=3.75px，100vw 就是整屏宽。它们直接跟视口尺寸绑定，屏幕一变就线性变化。 3) 区别与适用场景：rem 的基准是 html 字号，可以通过 JS 或媒体查询动态改 html 字号，实现“整页等比缩放”，常用于移动端 H5 适配（如 flexible 方案、postcss-pxtorem）；vw/vh 的基准是视口，天然响应式，适合做全屏高度、弹窗遮罩、按视口比例布局的元素。 4) 通俗类比：rem 像“全班统一按班主任定的身高比例排队”，班主任（html）一改，所有人一起变；vw/vh 像“按教室大小来分配位置”，教室（视口）多大，位置就按比例多大。 5) 实践：移动端常见 html{font-size: calc(100vw / 3.75)} 或 JS 设置 document.documentElement.style.fontSize = clientWidth/10 + 'px'，再配合 1rem=设计稿宽度/10 的换算。vw/vh 可直接写 width:50vw; height:100vh。
+1. **rem**：通常相对于根元素 html 的计算字号。根字号为 16px 时，1.5rem 为 24px；根字号变化后，rem 尺寸随之变化，适合文字相关的间距和可缩放尺寸。1rem 并不恒等于 16px。
+2. **vw、vh**：分别按视口宽、高的百分比计算。50vw 表示视口宽度的一半，适合直接依赖屏幕空间的布局，而不是随父元素宽度计算。
+3. **选择方式**：需要跟随根字号缩放的内容优先考虑 rem；明确依赖视口比例的尺寸使用视口单位。也可用 clamp 等设置上下限，避免窄屏过小或宽屏无限放大。
+4. **移动端边界**：浏览器工具栏会改变可见区域，100vh 不一定等于当前可见高度。需要区分小、大、动态视口单位，按布局目标选择 svh、lvh 或 dvh。
 
-**常见追问**：如何避免「1) 误以为 rem 是相对父元素 font-size，其实相对根元素 html」？ 「2) 把 em 和 rem 混为一谈，em 相对当前元素或父元素字号，会级联相乘」在真实项目中应如何规避？
+用 JavaScript 或 vw 改根字号是一种设计方案，不是 rem 本身会监听屏幕；也不能假定浏览器默认字号永远不变。
+
+**常见追问**：用户增大默认字号时，固定 px 根字号和继承用户字号的方案有什么区别？
+
+**核验资料**：[MDN CSS length](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/length)
 
 ---
 
@@ -4091,7 +5245,15 @@ rem 是相对于根元素 html 的 font-size 计算的长度单位，vw/vh 是�
 
 EventBus 本质是一个基于发布/订阅模式的事件总线：发布者把事件投递到总线，总线按事件类型/主题找到订阅者并回调，从而解耦组件通信。
 
-EventBus 的核心原理可以类比成“公司内部广播系统”：发布者不直接找接收者，而是把消息交给前台（总线），前台根据消息类型查通讯录（订阅表），再通知所有登记过的人。 典型结构包括： 1. 事件 Event：被传递的数据对象，通常包含 type/topic 和 payload。 2. 订阅者 Subscriber：注册对某类事件感兴趣的回调函数或对象方法。 3. 订阅表 Registry：常见结构是 Map<EventType, List<Handler>>，key 是事件类型或主题，value 是处理器列表。 4. 发布 publish/emit：根据事件类型从订阅表取出处理器列表，依次调用。 5. 取消订阅 unsubscribe/off：从对应列表中移除处理器，避免内存泄漏。 以 Android EventBus 为例：注册时通过反射扫描 @Subscribe 注解方法，按 threadMode 和事件类型建立订阅关系；发布时 post(event) 根据事件类查找订阅者，再按 ThreadMode 决定在哪个线程执行：POSTING 在当前线程直接调用，MAIN 切主线程，BACKGROUND/ASYNC 走线程池或后台线程。 以 JavaScript EventEmitter 为例：on(event, listener) 把 listener 存入 events[event] 数组；emit(event, ...args) 遍历数组调用；once 包装成只执行一次后自动 off；removeListener 删除。 适用场景：模块/组件间解耦、跨页面通信、插件系统、消息通知、状态变更广播。 不适用场景：强一致事务、需要严格顺序和可靠投递、复杂路由和持久化，这些更适合消息队列如 Kafka/RabbitMQ。
+EventBus 的核心原理可以类比成“公司内部广播系统”：发布者不直接找接收者，而是把消息交给前台（总线），前台根据消息类型查通讯录（订阅表），再通知所有登记过的人。 典型结构包括：
+
+1. 事件 Event：被传递的数据对象，通常包含 type/topic 和 payload。
+2. 订阅者 Subscriber：注册对某类事件感兴趣的回调函数或对象方法。
+3. 订阅表 Registry：常见结构是 Map<EventType, List<Handler>>，key 是事件类型或主题，value 是处理器列表。
+4. 发布 publish/emit：根据事件类型从订阅表取出处理器列表，依次调用。
+5. 取消订阅 unsubscribe/off：从对应列表中移除处理器，避免内存泄漏。 以 Android EventBus 为例：注册时通过反射扫描 @Subscribe 注解方法，按 threadMode 和事件类型建立订阅关系；发布时 post(event) 根据事件类查找订阅者，再按 ThreadMode 决定在哪个线程执行：POSTING 在当前线程直接调用，MAIN 切主线程，BACKGROUND/ASYNC 走线程池或后台线程。 以 JavaScript EventEmitter 为例：on(event, listener) 把 listener 存入 events[event] 数组；emit(event, ...args) 遍历数组调用；once 包装成只执行一次后自动 off；removeListener 删除。
+
+适用场景：模块/组件间解耦、跨页面通信、插件系统、消息通知、状态变更广播。 不适用场景：强一致事务、需要严格顺序和可靠投递、复杂路由和持久化，这些更适合消息队列如 Kafka/RabbitMQ。
 
 **常见追问**：如何避免「把 EventBus 等同于消息队列：EventBus 通常是进程内、内存态、无持久化、无 ACK，不保证可靠投递。」？ 「忘记取消订阅导致内存泄漏和重复回调。」在真实项目中应如何规避？
 
@@ -4113,7 +5275,22 @@ EventBus 的核心原理可以类比成“公司内部广播系统”：发布�
 
 updateChildren 是 Vue 虚拟 DOM diff 的核心函数，通过双端比较（头头、尾尾、头尾、尾头）加 key 映射，尽量复用旧节点，减少移动和创建，从而高效更新子节点列表。
 
-updateChildren 出现在 Vue 2 的 patch 过程中，当新旧虚拟节点的 tag 相同且都有 children 时，会调用它来对比两组子节点。它的目标不是找出最小编辑距离（那太慢），而是用启发式策略在 O(n) 时间内尽量复用节点。 核心思路是“双端比较”：维护四个指针——旧头 oldStartIdx、旧尾 oldEndIdx、新头 newStartIdx、新尾 newEndIdx。每轮循环按顺序尝试四种匹配： 1. 旧头 vs 新头：相同则 patchVnode 并双双后移； 2. 旧尾 vs 新尾：相同则 patchVnode 并双双前移； 3. 旧头 vs 新尾：相同则 patchVnode，把旧头节点移动到旧尾之后，旧头后移、新尾前移； 4. 旧尾 vs 新头：相同则 patchVnode，把旧尾节点移动到旧头之前，旧尾前移、新头后移。 如果四种都没命中，就用 key 在旧子节点中找可复用节点。Vue 2 会先建立 oldKeyToIdx 映射（key -> index），然后拿新头节点的 key 去查：找到就 patchVnode 并把该旧节点移动到旧头之前；找不到就新建节点插入到旧头之前。 循环结束后处理收尾：如果旧子节点先遍历完，说明新子节点还有剩余，就批量创建并插入；如果新子节点先遍历完，说明旧子节点有剩余，就批量删除。 通俗类比：像整理两排书架，先看两排开头、结尾是否同一本书，能对上就原地保留；对不上就按书脊编号（key）去旧排里找，找到就搬过来，找不到就买新书；最后把多出来的旧书扔掉、缺的新书补上。这样避免了整排重排。 适用场景：列表渲染、条件渲染切换、组件子节点更新等。没有 key 时，Vue 会退化为就地复用，可能导致状态错位；有稳定 key 时，双端比较能大幅减少 DOM 移动。
+updateChildren 出现在 Vue 2 的 patch 过程中，当新旧虚拟节点的 tag 相同且都有 children 时，会调用它来对比两组子节点。它的目标不是找出最小编辑距离（那太慢），而是用启发式策略在 O(n) 时间内尽量复用节点。 核心思路是“双端比较”：维护四个指针——旧头 oldStartIdx、旧尾 oldEndIdx、新头 newStartIdx、新尾 newEndIdx。
+
+每轮循环按顺序尝试四种匹配：
+
+1. 旧头 vs 新头：相同则 patchVnode 并双双后移；
+2. 旧尾 vs 新尾：相同则 patchVnode 并双双前移；
+3. 旧头 vs 新尾：相同则 patchVnode，把旧头节点移动到旧尾之后，旧头后移、新尾前移；
+4. 旧尾 vs 新头：相同则 patchVnode，把旧尾节点移动到旧头之前，旧尾前移、新头后移。 如果四种都没命中，就用 key 在旧子节点中找可复用节点。Vue 2 会先建立 oldKeyToIdx 映射（key -> index），然后拿新头节点的 key 去查：找到就 patchVnode 并把该旧节点移动到旧头之前；找不到就新建节点插入到旧头之前。 循环结束后处理收尾：如果旧子节点先遍历完，说明新子节点还有剩余，就批量创建并插入；如果新子节点先遍历完，说明旧子节点有剩余，就批量删除。
+
+- 通俗类比：像整理两排书架，先看两排开头、结尾是否同一本书，能对上就原地保留；
+- 对不上就按书脊编号（key）去旧排里找，找到就搬过来，找不到就买新书；
+- 最后把多出来的旧书扔掉、缺的新书补上。
+
+这样避免了整排重排。
+
+适用场景：列表渲染、条件渲染切换、组件子节点更新等。没有 key 时，Vue 会退化为就地复用，可能导致状态错位；有稳定 key 时，双端比较能大幅减少 DOM 移动。
 
 **常见追问**：如何避免「误以为 updateChildren 会计算最小编辑距离或做全局最优匹配，实际是启发式双端比较。2. 认为 key 只是给 React 用的，Vue 不需要；实际上 Vue 也依赖 key 建立映射，无 key 会退化为就地复用。3. 用 index 作为 key，在列表插入/删除/排序时会导致节点复用错位，出现输入框内容错乱等 bug。4. 混淆 Vue 2 和 Vue 3 的 diff 算法，Vue 3 已不是双端比较，而是基于最长递增子序列。5. 认为 patchVnode 一定会重新创建 DOM，实际上相同节点会复用并只更新差异属性。」？ 能否结合「源码层面：Vue 2 的 updateChildren 在 sameVnode 判断中比较 key、tag、isComment、data 是否存在、input type 等，key 相同但 tag 不同不会复用。2. 双端比较的四种命中顺序有讲究：先头头、尾尾，再头尾、尾头，能覆盖常见列表头部插入、尾部插入、反转等场景，减少移动。3. 与 React 的 diff 对比：React 只做单端从左到右比较，Vue 2 的双端比较在列表头部插入时更优；Vue 3 则改用最长递增子序列求最小移动，进一步优化。4. 没有 key 时，oldKeyToIdx 为 undefined，会走 findIdxInOld 线性查找，性能差且容易复用错节点。5. 移动节点时使用 insertBefore，若目标位置为 null 则相当于 appendChild。」进一步展开？
 
@@ -4135,7 +5312,19 @@ HTTP/1.1 默认开启持久连接，浏览器对同一域名并发复用若干�
 
 keep-alive 用于在客户端与服务器之间复用同一条 TCP 连接，避免频繁三次握手/慢启动，适用于短时间内的多次请求（如 HTTP/1.1 的持久连接、RPC 长连接、数据库连接池等）。
 
-keep-alive（连接保活/持久连接）的核心是：一次 TCP 连接建立后，不立即关闭，而是继续用于后续的请求-响应，直到空闲超时或达到最大请求数。 为什么需要：TCP 建立连接需要三次握手（1 个 RTT），关闭需要四次挥手；如果是 HTTPS 还要额外 TLS 握手（1-2 个 RTT）。此外 TCP 有慢启动，新连接初始拥塞窗口小，吞吐低。复用连接能显著降低延迟、减少 CPU 和内存开销、避免端口耗尽。 通俗类比：打电话。每次说话都重新拨号、挂断，非常费时；keep-alive 就像打通一次电话后，双方保持在线，有事直接说，说完先不挂，等一会儿没话说再挂。 适用场景： 1. HTTP/1.1 默认开启持久连接，浏览器对同一域名并发复用若干连接； 2. 反向代理（Nginx）到上游服务器的 upstream keepalive 连接池； 3. RPC 框架（gRPC/Thrift）的长连接； 4. 数据库连接池（如 HikariCP）本质也是连接复用； 5. 消息推送、IM 等需要服务端主动下发的场景，用 TCP 心跳保活。 不适用/需谨慎： - 请求频率极低（如几分钟一次），保持连接反而浪费服务端资源，可设较短 idle timeout； - 负载均衡场景下，长连接可能导致流量倾斜，需要配合连接数均衡或 L4/L7 策略； - 移动网络 NAT 超时可能悄悄断开连接，需要应用层心跳探测。 关键参数：HTTP 的 Keep-Alive: timeout=5, max=100；TCP 的 SO_KEEPALIVE 是传输层心跳，默认 2 小时，通常需调小；应用层心跳更可控。
+keep-alive（连接保活/持久连接）的核心是：一次 TCP 连接建立后，不立即关闭，而是继续用于后续的请求-响应，直到空闲超时或达到最大请求数。 为什么需要：TCP 建立连接需要三次握手（1 个 RTT），关闭需要四次挥手；如果是 HTTPS 还要额外 TLS 握手（1-2 个 RTT）。
+
+此外 TCP 有慢启动，新连接初始拥塞窗口小，吞吐低。复用连接能显著降低延迟、减少 CPU 和内存开销、避免端口耗尽。
+
+通俗类比：打电话。每次说话都重新拨号、挂断，非常费时；keep-alive 就像打通一次电话后，双方保持在线，有事直接说，说完先不挂，等一会儿没话说再挂。
+
+适用场景：
+
+1. HTTP/1.1 默认开启持久连接，浏览器对同一域名并发复用若干连接；
+2. 反向代理（Nginx）到上游服务器的 upstream keepalive 连接池；
+3. RPC 框架（gRPC/Thrift）的长连接；
+4. 数据库连接池（如 HikariCP）本质也是连接复用；
+5. 消息推送、IM 等需要服务端主动下发的场景，用 TCP 心跳保活。 不适用/需谨慎： - 请求频率极低（如几分钟一次），保持连接反而浪费服务端资源，可设较短 idle timeout； - 负载均衡场景下，长连接可能导致流量倾斜，需要配合连接数均衡或 L4/L7 策略； - 移动网络 NAT 超时可能悄悄断开连接，需要应用层心跳探测。 关键参数：HTTP 的 Keep-Alive: timeout=5, max=100；TCP 的 SO_KEEPALIVE 是传输层心跳，默认 2 小时，通常需调小；应用层心跳更可控。
 
 **常见追问**：如何避免「把 TCP keepalive 和 HTTP keep-alive 混为一谈；」？ 「认为 keep-alive 一定越快越好，忽略空闲连接占用服务端资源、可能被中间设备断开；」在真实项目中应如何规避？
 
@@ -4157,7 +5346,15 @@ keep-alive（连接保活/持久连接）的核心是：一次 TCP 连接建立�
 
 Composition API 底层通过 setup 函数、响应式系统（reactive/ref）和依赖收集机制实现逻辑复用与组合。
 
-Composition API 是 Vue 3 的核心特性，其底层实现主要依赖三个部分： 1. **setup 函数**：组件初始化时执行，返回响应式状态或渲染函数。它替代了 Options API 的 data、methods 等选项，允许开发者自由组织逻辑。 2. **响应式系统**：基于 Proxy 实现 reactive（对象）和 ref（基本类型），通过 track 收集依赖、trigger 触发更新。当组件渲染时，会访问响应式数据，从而建立依赖关系。 3. **生命周期钩子注册**：在 setup 中调用 onMounted 等函数，内部通过 currentInstance 全局变量将钩子注册到当前组件实例上。 通俗类比：Options API 像按固定菜单点菜（data、methods 分门别类），而 Composition API 像自助餐，你可以自由组合食材（逻辑），但需要自己拿盘子（setup）和加热（响应式）。 适用场景：逻辑复杂、需要跨组件复用逻辑时，Composition API 更灵活，且类型推断更好。
+Composition API 是 Vue 3 的核心特性，其底层实现主要依赖三个部分：
+
+1. **setup 函数**：组件初始化时执行，返回响应式状态或渲染函数。它替代了 Options API 的 data、methods 等选项，允许开发者自由组织逻辑。
+2. **响应式系统**：基于 Proxy 实现 reactive（对象）和 ref（基本类型），通过 track 收集依赖、trigger 触发更新。当组件渲染时，会访问响应式数据，从而建立依赖关系。
+3. **生命周期钩子注册**：在 setup 中调用 onMounted 等函数，内部通过 currentInstance 全局变量将钩子注册到当前组件实例上。
+
+通俗类比：Options API 像按固定菜单点菜（data、methods 分门别类），而 Composition API 像自助餐，你可以自由组合食材（逻辑），但需要自己拿盘子（setup）和加热（响应式）。
+
+适用场景：逻辑复杂、需要跨组件复用逻辑时，Composition API 更灵活，且类型推断更好。
 
 **常见追问**：如何避免「误以为 Composition API 是函数式编程，其实它只是逻辑组织方式，底层仍是响应式系统。」？ 「认为 setup 中不能使用 this，实际上 setup 中 this 是 undefined，但可以通过 getCurrentInstance 获取实例。」在真实项目中应如何规避？
 
@@ -4179,7 +5376,14 @@ Composition API 是 Vue 3 的核心特性，其底层实现主要依赖三个部
 
 Vuex 是内存中的响应式状态管理容器，localStorage 是浏览器持久化键值存储；前者管运行时状态，后者管跨会话数据。
 
-Vuex 和 localStorage 解决的是两个层面的问题，不能互相替代。 1. 本质与存储位置 - Vuex：Vue 官方状态管理库，状态存在 JavaScript 内存中，本质是一个全局单例的响应式对象。组件通过 store.state 读取，通过 commit/dispatch 修改，Vue 能追踪依赖并自动更新视图。 - localStorage：浏览器 Web Storage API，数据以字符串键值对形式存在磁盘上，属于同源持久化存储，页面刷新、关闭浏览器后仍然存在。 2. 响应式与数据流 - Vuex 是响应式的：state 变化会触发依赖它的组件重新渲染，并且有严格的单向数据流（View -> Actions -> Mutations -> State -> View），便于调试和时间旅行。 - localStorage 不是响应式的：直接改 localStorage 不会让 Vue 组件更新，需要手动监听 storage 事件或重新读取并赋值给响应式变量。 3. 生命周期与容量 - Vuex 随页面刷新而重置（除非配合持久化插件），容量受内存限制，通常几 MB 到几十 MB。 - localStorage 跨会话持久，容量一般约 5MB，只能存字符串，存对象需要 JSON.stringify/parse。 4. 适用场景 - Vuex：登录用户信息、购物车、主题、多组件共享的临时 UI 状态、需要响应式和严格变更追踪的数据。 - localStorage：token、用户偏好、草稿、需要刷新后仍保留且不要求实时响应的数据。 通俗类比：Vuex 像办公室白板，大家实时看到并修改，擦掉就没了；localStorage 像保险柜，东西放进去长期保存，但别人不会自动看到你放了什么。 实际项目常结合使用：用 Vuex 管理运行时状态，通过 vuex-persistedstate 等插件把部分 state 同步到 localStorage，实现刷新不丢。
+Vuex 和 localStorage 解决的是两个层面的问题，不能互相替代。 1. 本质与存储位置
+
+- Vuex：Vue 官方状态管理库，状态存在 JavaScript 内存中，本质是一个全局单例的响应式对象。组件通过 store.state 读取，通过 commit/dispatch 修改，Vue 能追踪依赖并自动更新视图。
+- localStorage：浏览器 Web Storage API，数据以字符串键值对形式存在磁盘上，属于同源持久化存储，页面刷新、关闭浏览器后仍然存在。 2. 响应式与数据流
+- Vuex 是响应式的：state 变化会触发依赖它的组件重新渲染，并且有严格的单向数据流（View -> Actions -> Mutations -> State -> View），便于调试和时间旅行。
+- localStorage 不是响应式的：直接改 localStorage 不会让 Vue 组件更新，需要手动监听 storage 事件或重新读取并赋值给响应式变量。 3. 生命周期与容量 - Vuex 随页面刷新而重置（除非配合持久化插件），容量受内存限制，通常几 MB 到几十 MB。 - localStorage 跨会话持久，容量一般约 5MB，只能存字符串，存对象需要 JSON.stringify/parse。 4. 适用场景
+- Vuex：登录用户信息、购物车、主题、多组件共享的临时 UI 状态、需要响应式和严格变更追踪的数据。
+- localStorage：token、用户偏好、草稿、需要刷新后仍保留且不要求实时响应的数据。 通俗类比：Vuex 像办公室白板，大家实时看到并修改，擦掉就没了；localStorage 像保险柜，东西放进去长期保存，但别人不会自动看到你放了什么。 实际项目常结合使用：用 Vuex 管理运行时状态，通过 vuex-persistedstate 等插件把部分 state 同步到 localStorage，实现刷新不丢。
 
 **常见追问**：如何避免「认为 Vuex 能持久化、localStorage 能自动响应式更新，混淆两者职责。」？ 「把 Vuex 当成后端数据库或跨标签页通信方案。」在真实项目中应如何规避？
 
@@ -4199,7 +5403,15 @@ Vuex 和 localStorage 解决的是两个层面的问题，不能互相替代。 
 
 **参考回答**：
 
-两者的共同点是都会让外部 JS 的下载与 HTML 解析并行进行，因此下载阶段不会阻塞解析器。区别在执行时机和执行顺序。defer 的脚本下载不阻塞解析，但要等整个文档解析完成之后、DOMContentLoaded 事件触发之前，才按脚本在文档中出现的顺序依次执行，所以它适合依赖 DOM、或者彼此之间有依赖关系的脚本，比如多个模块按顺序初始化。async 的脚本下载同样不阻塞解析，但一旦下载完成就立即执行，而 JS 执行和 HTML 解析在主线程上是互斥的，所以执行时会阻塞解析；多个 async 脚本的执行顺序完全取决于网络下载完成的先后，无法保证，因此它适合完全独立、无依赖的脚本，比如统计代码、广告、埋点。普通 script 则更差，下载和执行都会阻塞解析。用代码说明最直观：两个带 defer 的 script 会保证前一个先于后一个执行，且都在 DOMContentLoaded 之前；两个带 async 的 script 则是谁先下载完谁先跑，顺序不确定。最后两个注意事项：defer 只对外部脚本有效，内联脚本上的 defer 会被忽略；async 对内联脚本同样无效；而通过 JS 动态创建的 script 元素默认是 async 行为，如果要保证顺序需要显式把 async 设为 false 或改用其他加载方式。
+两者的共同点是都会让外部 JS 的下载与 HTML 解析并行进行，因此下载阶段不会阻塞解析器。区别在执行时机和执行顺序。defer 的脚本下载不阻塞解析，但要等整个文档解析完成之后、DOMContentLoaded 事件触发之前，才按脚本在文档中出现的顺序依次执行，所以它适合依赖 DOM、或者彼此之间有依赖关系的脚本，比如多个模块按顺序初始化。
+
+async 的脚本下载同样不阻塞解析，但一旦下载完成就立即执行，而 JS 执行和 HTML 解析在主线程上是互斥的，所以执行时会阻塞解析；多个 async 脚本的执行顺序完全取决于网络下载完成的先后，无法保证，因此它适合完全独立、无依赖的脚本，比如统计代码、广告、埋点。普通 script 则更差，下载和执行都会阻塞解析。
+
+用代码说明最直观：两个带 defer 的 script 会保证前一个先于后一个执行，且都在 DOMContentLoaded 之前；两个带 async 的 script 则是谁先下载完谁先跑，顺序不确定。
+
+- 最后两个注意事项：defer 只对外部脚本有效，内联脚本上的 defer 会被忽略；
+- async 对内联脚本同样无效；
+- 而通过 JS 动态创建的 script 元素默认是 async 行为，如果要保证顺序需要显式把 async 设为 false 或改用其他加载方式。
 
 **常见追问**：动态插入的 script 怎么保证执行顺序？为什么 async 脚本执行时会阻塞解析？
 
@@ -4219,7 +5431,18 @@ Vuex 和 localStorage 解决的是两个层面的问题，不能互相替代。 
 
 **参考回答**：
 
-MPA 多页应用以服务端路由和整页刷新为核心：浏览器请求 URL，服务端路由并渲染完整 HTML，页面间跳转触发整页加载，典型是 JSP、PHP、Django、Rails 和传统电商后台。SPA 单页应用以客户端路由和前端渲染为核心：首次加载 HTML 壳加 JS bundle，前端路由接管 URL，组件渲染后通过 fetch 调 API 取数据做局部更新，典型是 React、Vue、Angular 后台和 SaaS。取舍有六点：首屏与性能上，MPA 服务端直出通常更快，SPA 首屏需下载解析大 bundle，可用 SSR、SSG、代码分割优化；交互体验上，SPA 局部更新无白屏、支持前进后退和状态保持，MPA 每次跳转整页刷新体验割裂；SEO 上 MPA 对爬虫友好，SPA 需 SSR 或预渲染；状态共享上 SPA 内存中共享全局状态方便，MPA 依赖 URL、Cookie 或服务端 session；工程与部署上 MPA 多入口、后端模板耦合，SPA 前后端分离、CDN 静态部署但需处理路由 fallback（如 Nginx try_files，否则刷新 404）；安全上 SPA 要防 XSS、注意 token 存储与 CSRF，MPA 依赖服务端 session 和 CSRF token。选型上，复杂交互、频繁局部更新、多端复用选 SPA；内容型、SEO 敏感、页面独立、团队按页分工选 MPA。现代实践常用 Next.js、Nuxt 的 SSR/SSG 加客户端 hydration 兼顾首屏与交互。
+MPA 多页应用以服务端路由和整页刷新为核心：浏览器请求 URL，服务端路由并渲染完整 HTML，页面间跳转触发整页加载，典型是 JSP、PHP、Django、Rails 和传统电商后台。SPA 单页应用以客户端路由和前端渲染为核心：首次加载 HTML 壳加 JS bundle，前端路由接管 URL，组件渲染后通过 fetch 调 API 取数据做局部更新，典型是 React、Vue、Angular 后台和 SaaS。
+
+取舍有六点：
+
+- 首屏与性能上，MPA 服务端直出通常更快，SPA 首屏需下载解析大 bundle，可用 SSR、SSG、代码分割优化；
+- 交互体验上，SPA 局部更新无白屏、支持前进后退和状态保持，MPA 每次跳转整页刷新体验割裂；
+- SEO 上 MPA 对爬虫友好，SPA 需 SSR 或预渲染；
+- 状态共享上 SPA 内存中共享全局状态方便，MPA 依赖 URL、Cookie 或服务端 session；
+- 工程与部署上 MPA 多入口、后端模板耦合，SPA 前后端分离、CDN 静态部署但需处理路由 fallback（如 Nginx try_files，否则刷新 404）；
+- 安全上 SPA 要防 XSS、注意 token 存储与 CSRF，MPA 依赖服务端 session 和 CSRF token。
+
+选型上，复杂交互、频繁局部更新、多端复用选 SPA；内容型、SEO 敏感、页面独立、团队按页分工选 MPA。现代实践常用 Next.js、Nuxt 的 SSR/SSG 加客户端 hydration 兼顾首屏与交互。
 
 **常见追问**：SPA 首屏优化的主要手段有哪些？为什么 history 路由必须在服务端配置 fallback？
 
@@ -4239,7 +5462,15 @@ MPA 多页应用以服务端路由和整页刷新为核心：浏览器请求 URL
 
 **参考回答**：
 
-好的组件设计等于稳定清晰的对外契约加单一职责与可组合性加无障碍与可访问性加可主题化与可扩展加受控非受控双模式加完备的边界处理。以 Button 为例：第一，职责单一与语义正确，Button 只负责触发一个动作，不塞业务逻辑，底层应渲染原生 button 元素保证键盘 Enter/Space 可触发、可聚焦、被读屏识别，如果用 div 模拟必须补 role、tabindex 和键盘事件，否则是反模式。第二，对外契约，props 用 type（primary/secondary/danger/text）、size、disabled、loading、block、icon、htmlType 等枚举化命名并给默认值，事件 onClick 语义清晰且 loading 与 disabled 时阻止点击，还要把剩余属性 rest 透传给原生元素，让用户能用 aria、data、form 等原生能力，避免封装过度导致能力丢失，插槽支持图标加文字、纯图标（需 aria-label）。第三，状态完备，覆盖 default、hover、active、focus-visible、disabled、loading 以及危险态和成功态，loading 时加 aria-busy、禁用重复提交并保留宽度避免布局抖动。第四，受控与非受控，Button 通常无内部状态，但更通用的组件如 Input、Modal 要同时支持 value/defaultValue、open/defaultOpen 两种模式，这是组件库成熟度的标志。第五，可主题化，用 design token（CSS 变量）控制颜色、圆角、间距而不是硬编码，支持 className 和 style 覆盖，必要时提供多态渲染能力。第六，无障碍，对比度达标、focus 可见、图标按钮有可读名称，注意 disabled 会让元素不可聚焦，某些需要提示原因的场景用 aria-disabled 加阻止点击更友好。第七，可测试与文档，单测覆盖点击、禁用、loading 不触发，并提供 Storybook 示例。
+好的组件设计等于稳定清晰的对外契约加单一职责与可组合性加无障碍与可访问性加可主题化与可扩展加受控非受控双模式加完备的边界处理。以 Button 为例：
+
+- 第一，职责单一与语义正确，Button 只负责触发一个动作，不塞业务逻辑，底层应渲染原生 button 元素保证键盘 Enter/Space 可触发、可聚焦、被读屏识别，如果用 div 模拟必须补 role、tabindex 和键盘事件，否则是反模式。
+- 第二，对外契约，props 用 type（primary/secondary/danger/text）、size、disabled、loading、block、icon、htmlType 等枚举化命名并给默认值，事件 onClick 语义清晰且 loading 与 disabled 时阻止点击，还要把剩余属性 rest 透传给原生元素，让用户能用 aria、data、form 等原生能力，避免封装过度导致能力丢失，插槽支持图标加文字、纯图标（需 aria-label）。
+- 第三，状态完备，覆盖 default、hover、active、focus-visible、disabled、loading 以及危险态和成功态，loading 时加 aria-busy、禁用重复提交并保留宽度避免布局抖动。
+- 第四，受控与非受控，Button 通常无内部状态，但更通用的组件如 Input、Modal 要同时支持 value/defaultValue、open/defaultOpen 两种模式，这是组件库成熟度的标志。
+- 第五，可主题化，用 design token（CSS 变量）控制颜色、圆角、间距而不是硬编码，支持 className 和 style 覆盖，必要时提供多态渲染能力。
+- 第六，无障碍，对比度达标、focus 可见、图标按钮有可读名称，注意 disabled 会让元素不可聚焦，某些需要提示原因的场景用 aria-disabled 加阻止点击更友好。
+- 第七，可测试与文档，单测覆盖点击、禁用、loading 不触发，并提供 Storybook 示例。
 
 **常见追问**：forwardRef 和 rest props 透传为什么是组件库兼容原生能力的关键？什么场景该用 aria-disabled 而不是原生 disabled？
 
@@ -4259,7 +5490,20 @@ MPA 多页应用以服务端路由和整页刷新为核心：浏览器请求 URL
 
 **参考回答**：
 
-CommonJS 和 ES6 模块的主要区别：第一，加载时机不同，CommonJS 是运行时加载，require 同步执行，ES6 模块在编译时静态分析，import 会被提升到顶部。第二，导出值不同，CommonJS 导出的基本类型是值拷贝、对象是引用拷贝，模块内部变量变化不会影响已导出的基本类型值；ES6 模块导出的是值的引用即 live binding，内部变量变化会实时反映到导入方。第三，动态性不同，CommonJS 可以动态条件 require，ES6 的 import 必须静态声明，但可用 import() 动态导入。第四，循环依赖处理不同，CommonJS 可能拿到未完成的 exports 对象，ES6 通过 live binding 能访问到最终值。要让 CommonJS 模块内部变量可被外部改变，有三种方案：一是导出一个对象，把内部变量作为对象属性，外部修改属性即可生效，例如 module.exports 等于 state 对象，外部 require 后改 state.count；二是导出 getter 和 setter 函数，内部用闭包变量，外部调 setCount 改变它；三是导出函数返回内部变量的引用。原理是 CommonJS 的导出本质是 module.exports 对象，外部拿到的是这个对象的引用，如果内部变量是对象属性，外部修改会直接反映到模块内部；如果内部变量是基本类型，则无法直接通过导出改变，必须用对象包装或闭包。工程上还要注意不要直接给 exports 赋值，那会断开它与 module.exports 的引用导致导出失效。
+CommonJS 和 ES6 模块的主要区别：
+
+- 第一，加载时机不同，CommonJS 是运行时加载，require 同步执行，ES6 模块在编译时静态分析，import 会被提升到顶部。
+- 第二，导出值不同，CommonJS 导出的基本类型是值拷贝、对象是引用拷贝，模块内部变量变化不会影响已导出的基本类型值；ES6 模块导出的是值的引用即 live binding，内部变量变化会实时反映到导入方。
+- 第三，动态性不同，CommonJS 可以动态条件 require，ES6 的 import 必须静态声明，但可用 import() 动态导入。
+- 第四，循环依赖处理不同，CommonJS 可能拿到未完成的 exports 对象，ES6 通过 live binding 能访问到最终值。
+
+要让 CommonJS 模块内部变量可被外部改变，有三种方案：
+
+- 一是导出一个对象，把内部变量作为对象属性，外部修改属性即可生效，例如 module.exports 等于 state 对象，外部 require 后改 state.count；
+- 二是导出 getter 和 setter 函数，内部用闭包变量，外部调 setCount 改变它；
+- 三是导出函数返回内部变量的引用。原理是 CommonJS 的导出本质是 module.exports 对象，外部拿到的是这个对象的引用，如果内部变量是对象属性，外部修改会直接反映到模块内部；如果内部变量是基本类型，则无法直接通过导出改变，必须用对象包装或闭包。
+
+工程上还要注意不要直接给 exports 赋值，那会断开它与 module.exports 的引用导致导出失效。
 
 **常见追问**：ESM 的 live binding 在编译期是怎么实现的？Node 里 ESM 导入 CommonJS 模块会发生什么？
 
@@ -4279,7 +5523,17 @@ CommonJS 和 ES6 模块的主要区别：第一，加载时机不同，CommonJS 
 
 **参考回答**：
 
-小程序和 H5 的根本差异在运行环境与线程模型。H5 运行在浏览器内核里，JS 引擎与渲染引擎共享主线程，通过 DOM 和 CSSOM 直接操作页面，遵循 W3C 标准，任何浏览器都能跑。小程序运行在宿主 App 提供的容器中，采用双线程架构：逻辑层是独立 JS 引擎（iOS 用 JavaScriptCore，Android 用 V8），跑业务 JS，没有 DOM 和 BOM；渲染层用 WebView 或自研渲染引擎负责 WXML/WXSS 渲染，多个页面可能是多个 WebView；两层通过 Native 层（微信是 WeixinJSBridge）做消息转发，setData 本质就是一次跨线程通信，数据要序列化后传递，所以大数据量或高频调用会卡顿。视图描述上，H5 用 HTML/CSS/JS 可动态创建任意 DOM，小程序用 WXML/WXSS 是编译期模板，只能用内置组件，不能直接操作 DOM，动态性靠数据绑定加 setData 驱动。能力与权限上，H5 受同源策略、CORS、Cookie 限制，系统能力依赖浏览器 API 或 JSBridge，能力弱且碎片化；小程序通过 wx 系列 API 直接调用宿主封装的原生能力（登录、支付、扫码、蓝牙、文件），权限由宿主统一管控，但受平台审核与类目限制。数据流上，H5 可以直接改 DOM 或用响应式框架，小程序数据流是单向异步的「逻辑层 state 到 setData 到渲染层」，setData 有大小限制（约 1MB）。性能上，H5 首屏受网络和解析影响白屏明显可做 SSR，小程序有包体积限制（主包 2MB、总包 20MB 量级）需要分包加载，有冷热启动概念。取舍上，H5 跨端、生态开放、迭代免审核，小程序体验接近原生、能力丰富、有平台流量入口但封闭且平台绑定，工程上常用 Taro、uni-app 一套代码多端编译来平衡复用与体验。
+小程序和 H5 的根本差异在运行环境与线程模型。H5 运行在浏览器内核里，JS 引擎与渲染引擎共享主线程，通过 DOM 和 CSSOM 直接操作页面，遵循 W3C 标准，任何浏览器都能跑。
+
+- 小程序运行在宿主 App 提供的容器中，采用双线程架构：逻辑层是独立 JS 引擎（iOS 用 JavaScriptCore，Android 用 V8），跑业务 JS，没有 DOM 和 BOM；
+- 渲染层用 WebView 或自研渲染引擎负责 WXML/WXSS 渲染，多个页面可能是多个 WebView；
+- 两层通过 Native 层（微信是 WeixinJSBridge）做消息转发，setData 本质就是一次跨线程通信，数据要序列化后传递，所以大数据量或高频调用会卡顿。
+
+视图描述上，H5 用 HTML/CSS/JS 可动态创建任意 DOM，小程序用 WXML/WXSS 是编译期模板，只能用内置组件，不能直接操作 DOM，动态性靠数据绑定加 setData 驱动。能力与权限上，H5 受同源策略、CORS、Cookie 限制，系统能力依赖浏览器 API 或 JSBridge，能力弱且碎片化；小程序通过 wx 系列 API 直接调用宿主封装的原生能力（登录、支付、扫码、蓝牙、文件），权限由宿主统一管控，但受平台审核与类目限制。
+
+数据流上，H5 可以直接改 DOM 或用响应式框架，小程序数据流是单向异步的「逻辑层 state 到 setData 到渲染层」，setData 有大小限制（约 1MB）。性能上，H5 首屏受网络和解析影响白屏明显可做 SSR，小程序有包体积限制（主包 2MB、总包 20MB 量级）需要分包加载，有冷热启动概念。
+
+取舍上，H5 跨端、生态开放、迭代免审核，小程序体验接近原生、能力丰富、有平台流量入口但封闭且平台绑定，工程上常用 Taro、uni-app 一套代码多端编译来平衡复用与体验。
 
 **常见追问**：setData 的性能优化有哪些实践？为什么小程序不设计成单线程？
 
@@ -4301,7 +5555,34 @@ CommonJS 和 ES6 模块的主要区别：第一，加载时机不同，CommonJS 
 
 原生 H5 指不依赖框架、直接用浏览器标准 API（DOM、Fetch、Web Components、Canvas 等）开发，好处是零依赖、体积小、可控性强、兼容与生命周期完全自主；但它在复杂状态管理、跨端一致性、工程化与生态组件上明显不足，大型项目通常仍需工具库/框架。
 
-一、什么是“原生 H5” 通常指直接使用浏览器提供的标准能力：HTML/CSS/JS、DOM/BOM API、Fetch/XMLHttpRequest、Web Storage、Canvas/WebGL、Web Components、Service Worker 等，不引入 React/Vue/jQuery 这类运行时库。 二、好处（为什么用） 1. 零依赖、体积小：没有框架运行时，首屏 JS 更少，加载更快，尤其适合活动页、落地页、嵌入式页面。 2. 性能可控：没有虚拟 DOM diff、响应式代理等额外开销，能针对关键路径做极致优化（如直接操作 DOM、requestAnimationFrame）。 3. 兼容与生命周期自主：不受框架版本升级、breaking change 影响，长期维护的“老页面”更稳。 4. 学习/调试成本低：浏览器 DevTools 直接对应，报错栈清晰，不涉及框架抽象层。 5. 可移植性强：标准 API 在任何浏览器/WebView 都能跑，不绑定生态。 6. 适合渐进增强：可以在已有页面上局部增强，不必整站重写。 通俗类比：原生 H5 像自己买菜做饭，食材（标准 API）透明、成本低、想怎么做就怎么做；工具库像预制菜/中央厨房，省事、出品稳定，但要接受它的配方和包装。 三、相比开源工具库实现不了/不擅长什么 1. 复杂状态与数据流：没有响应式、依赖追踪、单向数据流，大型 SPA 的状态同步要手写，易出 bug。 2. 组件化与复用：没有组件模型、props/插槽、生命周期，UI 复用靠函数/模板字符串，工程化差。 3. 跨端一致性：React Native/Flutter/Taro 等能一套代码多端；原生 H5 只能跑在浏览器/WebView，且各端 WebView 内核差异要自己抹平。 4. 生态与轮子：路由、表单校验、国际化、图表、富文本、拖拽等成熟库能直接复用，原生要自研。 5. 工程化：脚手架、HMR、Tree-shaking、按需加载、SSR/SSG 等，框架生态更完整。 6. 团队协作与规范：框架提供约定（目录、状态、路由），多人协作更一致；纯原生容易风格分裂。 四、适用场景 - 适合原生：轻量活动页、性能敏感的首屏、SDK/埋点脚本、Web Component 微前端、需要长期稳定不升级的页面。 - 适合工具库/框架：中大型 SPA、复杂表单/状态、多端复用、团队协作、需要快速迭代的业务系统。 结论：不是“原生更好”或“框架更好”，而是按项目规模、性能要求、团队与生命周期选型；很多项目是“原生打底 + 按需引入库”的混合模式。
+**一、什么是“原生 H5”**
+
+通常指直接使用浏览器提供的标准能力：HTML/CSS/JS、DOM/BOM API、Fetch/XMLHttpRequest、Web Storage、Canvas/WebGL、Web Components、Service Worker 等，不引入 React/Vue/jQuery 这类运行时库。
+
+**二、好处（为什么用）**
+
+1. 零依赖、体积小：没有框架运行时，首屏 JS 更少，加载更快，尤其适合活动页、落地页、嵌入式页面。
+2. 性能可控：没有虚拟 DOM diff、响应式代理等额外开销，能针对关键路径做极致优化（如直接操作 DOM、requestAnimationFrame）。
+3. 兼容与生命周期自主：不受框架版本升级、breaking change 影响，长期维护的“老页面”更稳。
+4. 学习/调试成本低：浏览器 DevTools 直接对应，报错栈清晰，不涉及框架抽象层。
+5. 可移植性强：标准 API 在任何浏览器/WebView 都能跑，不绑定生态。
+6. 适合渐进增强：可以在已有页面上局部增强，不必整站重写。
+
+通俗类比：原生 H5 像自己买菜做饭，食材（标准 API）透明、成本低、想怎么做就怎么做；工具库像预制菜/中央厨房，省事、出品稳定，但要接受它的配方和包装。
+
+**三、相比开源工具库实现不了/不擅长什么**
+
+1. 复杂状态与数据流：没有响应式、依赖追踪、单向数据流，大型 SPA 的状态同步要手写，易出 bug。
+2. 组件化与复用：没有组件模型、props/插槽、生命周期，UI 复用靠函数/模板字符串，工程化差。
+3. 跨端一致性：React Native/Flutter/Taro 等能一套代码多端；原生 H5 只能跑在浏览器/WebView，且各端 WebView 内核差异要自己抹平。
+4. 生态与轮子：路由、表单校验、国际化、图表、富文本、拖拽等成熟库能直接复用，原生要自研。
+5. 工程化：脚手架、HMR、Tree-shaking、按需加载、SSR/SSG 等，框架生态更完整。
+6. 团队协作与规范：框架提供约定（目录、状态、路由），多人协作更一致；纯原生容易风格分裂。
+
+**四、适用场景**
+
+- 适合原生：轻量活动页、性能敏感的首屏、SDK/埋点脚本、Web Component 微前端、需要长期稳定不升级的页面。
+- 适合工具库/框架：中大型 SPA、复杂表单/状态、多端复用、团队协作、需要快速迭代的业务系统。 结论：不是“原生更好”或“框架更好”，而是按项目规模、性能要求、团队与生命周期选型；很多项目是“原生打底 + 按需引入库”的混合模式。
 
 **常见追问**：如何避免「绝对化说“原生性能一定比框架好”：框架在复杂列表 diff、批量更新上可能更优，原生手写不当反而更慢。」？ 「把“原生 H5”等同于“不用任何库”：实际项目常按需引入工具库，纯原生是理想态。」在真实项目中应如何规避？
 
@@ -4323,7 +5604,26 @@ CommonJS 和 ES6 模块的主要区别：第一，加载时机不同，CommonJS 
 
 async/await 是基于 Promise 的语法糖，async 函数总是返回 Promise，函数内 throw 等价于返回 rejected Promise，外层用 try/catch 或 .catch() 捕获。
 
-一、关系： 1) async 函数本质：调用 async 函数时，函数体会被同步执行到第一个 await，然后返回一个 Promise。返回值会被 Promise.resolve 包装；若抛出异常，则返回 rejected 的 Promise。 2) await 本质：await x 等价于在 Promise 上注册 then 回调，把后续代码放到微任务里执行；如果 x 不是 Promise，会被 Promise.resolve 包装。await 只能出现在 async 函数或模块顶层（ES2022 顶层 await）。 3) 因此 async/await 并没有替代 Promise，而是让 Promise 的链式 then 写法变成同步风格，错误处理从 .catch 变成 try/catch。 二、async 函数里 throw error 的捕获： 1) 在 async 函数内部用 try/catch 捕获。 2) 在调用方：因为 async 函数返回 rejected Promise，所以可以用 await + try/catch： async function f(){ throw new Error('boom') } async function main(){ try { await f() } catch(e){ console.log('caught', e.message) } } 3) 也可以用 .catch()：f().catch(e => ...)。 4) 如果既没有 await 也没有 .catch()，会产生 unhandledRejection，Node 默认可能终止进程，浏览器会报未处理的 Promise 拒绝。 三、通俗类比：Promise 像一张“未来会兑现的提货券”，async/await 像把提货券换成“排队等叫号”的写法；throw 相当于这张券最终被标记为“失败”，外层要么在 try/catch 里等叫号，要么用 .catch 处理失败通知。 四、适用场景：需要串行异步流程、条件分支、循环中按顺序 await 时，async/await 更清晰；需要并发时用 Promise.all/Promise.allSettled 配合 await，避免在循环里无脑 await 导致串行变慢。
+**一、关系：**
+
+1) async 函数本质：调用 async 函数时，函数体会被同步执行到第一个 await，然后返回一个 Promise。返回值会被 Promise.resolve 包装；若抛出异常，则返回 rejected 的 Promise。
+2) await 本质：await x 等价于在 Promise 上注册 then 回调，把后续代码放到微任务里执行；如果 x 不是 Promise，会被 Promise.resolve 包装。await 只能出现在 async 函数或模块顶层（ES2022 顶层 await）。
+3) 因此 async/await 并没有替代 Promise，而是让 Promise 的链式 then 写法变成同步风格，错误处理从 .catch 变成 try/catch。
+
+**二、async 函数里 throw error 的捕获：**
+
+1) 在 async 函数内部用 try/catch 捕获。
+2) 在调用方：因为 async 函数返回 rejected Promise，所以可以用 await + try/catch： async function f(){ throw new Error('boom') } async function main(){ try { await f() } catch(e){ console.log('caught', e.message) } }
+3) 也可以用 .catch()：f().catch(e => ...)。
+4) 如果既没有 await 也没有 .catch()，会产生 unhandledRejection，Node 默认可能终止进程，浏览器会报未处理的 Promise 拒绝。
+
+**三、通俗类比：**
+
+Promise 像一张“未来会兑现的提货券”，async/await 像把提货券换成“排队等叫号”的写法；throw 相当于这张券最终被标记为“失败”，外层要么在 try/catch 里等叫号，要么用 .catch 处理失败通知。
+
+**四、适用场景：**
+
+需要串行异步流程、条件分支、循环中按顺序 await 时，async/await 更清晰；需要并发时用 Promise.all/Promise.allSettled 配合 await，避免在循环里无脑 await 导致串行变慢。
 
 **常见追问**：如何避免「1) 误以为 async 函数是同步执行完再返回：实际上遇到 await 会暂停并返回 Promise，后续代码在微任务中恢复」？ 「2) 误以为 async 函数里 throw 会同步抛到调用方：不会，调用方必须 await 或 .catch 才能捕获」在真实项目中应如何规避？
 
@@ -4345,7 +5645,13 @@ async/await 是基于 Promise 的语法糖，async 函数总是返回 Promise，
 
 EventSource 是浏览器内置的 SSE 客户端，只支持 GET 且不能自定义请求头；fetch + ReadableStream 是更底层的通用流式方案，可发 POST、加任意头、手动解析 SSE 帧，但需要自己处理重连、事件解析和取消。
 
-两者本质都是基于 HTTP 长连接做服务端推送，区别在于抽象层级。 1) EventSource（SSE 标准客户端） - 浏览器原生 API：new EventSource(url)，自动解析 text/event-stream 格式（data:、event:、id:、retry: 字段），自动按 retry 重连，并携带 Last-Event-ID 头实现断点续传。 - 限制：只能 GET；不能自定义请求头（无法加 Authorization、X-Token 等）；不能带请求体；跨域受 CORS 限制且 withCredentials 需服务端配合；无法主动设置超时/取消（只能 close()）。 - 适用：公开的、无需鉴权头（或鉴权走 Cookie/URL 参数）的单向推送，如行情、通知、日志流。 2) fetch + ReadableStream - fetch 返回 Response.body 是一个 ReadableStream，通过 getReader() 逐块读取 Uint8Array，再用 TextDecoder 解码，按 \n\n 切分 SSE 帧，自己解析 data:/event:/id:。 - 优势：任意方法（POST/PUT）、任意请求头（Authorization、自定义 token）、可带 body、可配合 AbortController 取消、可读二进制/自定义协议（NDJSON、gRPC-Web 等）。 - 代价：重连、Last-Event-ID、retry 退避、心跳、事件分发都要自己实现；浏览器兼容性需注意（Safari 早期对 streaming fetch 支持差）。 通俗类比：EventSource 像一台“只能打对方电话、不能报自己身份”的对讲机，插上就能用、断了自动重拨；fetch+ReadableStream 像自己拿水管接水，想怎么接、加什么接头都行，但漏水了得自己修。 选型：需要鉴权头/ POST / 自定义协议 → fetch 流；只是简单公开推送且想省事 → EventSource。
+两者本质都是基于 HTTP 长连接做服务端推送，区别在于抽象层级。 1) EventSource（SSE 标准客户端）
+
+- 浏览器原生 API：new EventSource(url)，自动解析 text/event-stream 格式（data:、event:、id:、retry: 字段），自动按 retry 重连，并携带 Last-Event-ID 头实现断点续传。
+- 限制：只能 GET；不能自定义请求头（无法加 Authorization、X-Token 等）；不能带请求体；跨域受 CORS 限制且 withCredentials 需服务端配合；无法主动设置超时/取消（只能 close()）。
+- 适用：公开的、无需鉴权头（或鉴权走 Cookie/URL 参数）的单向推送，如行情、通知、日志流。 2) fetch + ReadableStream - fetch 返回 Response.body 是一个 ReadableStream，通过 getReader() 逐块读取 Uint8Array，再用 TextDecoder 解码，按 \n\n 切分 SSE 帧，自己解析 data:/event:/id:。
+- 优势：任意方法（POST/PUT）、任意请求头（Authorization、自定义 token）、可带 body、可配合 AbortController 取消、可读二进制/自定义协议（NDJSON、gRPC-Web 等）。
+- 代价：重连、Last-Event-ID、retry 退避、心跳、事件分发都要自己实现；浏览器兼容性需注意（Safari 早期对 streaming fetch 支持差）。 通俗类比：EventSource 像一台“只能打对方电话、不能报自己身份”的对讲机，插上就能用、断了自动重拨；fetch+ReadableStream 像自己拿水管接水，想怎么接、加什么接头都行，但漏水了得自己修。 选型：需要鉴权头/ POST / 自定义协议 → fetch 流；只是简单公开推送且想省事 → EventSource。
 
 **常见追问**：如何避免「1) 误以为 EventSource 能加 Authorization 头——不能，只能靠 Cookie 或 URL 传 token（有泄露风险）」？ 「2) 以为 fetch 流式就是“自动 SSE”，忽略要自己解析帧、处理半包和重连」在真实项目中应如何规避？
 
@@ -4461,7 +5767,11 @@ Composition API 对 TypeScript 的推断、泛型封装和依赖显式表达通�
 
 **参考回答**：
 
-Promise 初始为 pending，之后只能一次性变为 fulfilled 或 rejected，状态不会再改变。`then` 不会修改原 Promise，而是返回一个新的 Promise：回调返回普通值时新 Promise fulfilled；返回另一个 Promise/thenable 时会等待其结果；回调抛出异常时新 Promise rejected。
+Promise 初始为 pending，之后只能一次性变为 fulfilled 或 rejected，状态不会再改变。`then`
+
+- 不会修改原 Promise，而是返回一个新的 Promise：回调返回普通值时新 Promise fulfilled；
+- 返回另一个 Promise/thenable 时会等待其结果；
+- 回调抛出异常时新 Promise rejected。
 
 `catch(fn)` 可理解为 `then(undefined, fn)`，能够处理其前面链路中传播来的 rejection；处理函数若返回正常值，后续链可以恢复为 fulfilled。异步回调中的异常若没有接入 Promise 链，仍可能不会被同一个 catch 捕获。
 
@@ -4513,7 +5823,13 @@ Promise 初始为 pending，之后只能一次性变为 fulfilled 或 rejected�
 
 **参考回答**：
 
-这个项目的核心不是会用 Recharts 的 API，而是数据契约和可解释性设计。背景：招聘场景里 AI 会对简历给出多维度评分，比如技能匹配、项目深度、教育背景、稳定性、沟通表达、潜力，需要让 HR 和候选人一眼看懂差距。技术栈是 React 加 Recharts。关键设计我讲五点。第一，数据契约：后端统一输出 dimension、score、weight、reason、benchmark，前端不参与打分只做展示，这样评分口径可追溯，出了问题能定位到后端规则而不是前端渲染。第二，归一化：各维度量纲不同，必须统一映射到 0-100，雷达图的 domain 固定成 0 到 100，否则某个维度拉满会让整个图形失真。第三，多维对比：用 RadarChart 叠加多个 Radar，把候选人、岗位基准和同批均值放在一起，用不同的 stroke 和填充透明度区分，Legend 可以点击切换显示。第四，可解释性：Tooltip 展示该维度的得分、权重和 AI 给出的理由片段，点击某个维度会联动右侧高亮简历原文，让『为什么是这个分』变得可验证。第五，性能与体验：数据量大时用 useMemo 缓存 data，用 ResponsiveContainer 做自适应，加骨架屏避免布局抖动。难点与决策有两点：早期我直接把原始分喂给雷达图，结果出现『六边形战士』的假象，因为不同维度满分不同，后来改成后端返回归一化分加前端二次校验；另一个坑是 PolarAngleAxis 的 tick 文本过长导致重叠，我用自定义 tick 做截断并加 Tooltip。复盘：可视化不是终点，我最后把雷达图和『改进建议』绑在一起，点击低分维度直接给出可执行建议，用户转化率明显提升。
+这个项目的核心不是会用 Recharts 的 API，而是数据契约和可解释性设计。背景：招聘场景里 AI 会对简历给出多维度评分，比如技能匹配、项目深度、教育背景、稳定性、沟通表达、潜力，需要让 HR 和候选人一眼看懂差距。技术栈是 React 加 Recharts。关键设计我讲五点。
+
+- 第一，数据契约：后端统一输出 dimension、score、weight、reason、benchmark，前端不参与打分只做展示，这样评分口径可追溯，出了问题能定位到后端规则而不是前端渲染。
+- 第二，归一化：各维度量纲不同，必须统一映射到 0-100，雷达图的 domain 固定成 0 到 100，否则某个维度拉满会让整个图形失真。
+- 第三，多维对比：用 RadarChart 叠加多个 Radar，把候选人、岗位基准和同批均值放在一起，用不同的 stroke 和填充透明度区分，Legend 可以点击切换显示。
+- 第四，可解释性：Tooltip 展示该维度的得分、权重和 AI 给出的理由片段，点击某个维度会联动右侧高亮简历原文，让『为什么是这个分』变得可验证。
+- 第五，性能与体验：数据量大时用 useMemo 缓存 data，用 ResponsiveContainer 做自适应，加骨架屏避免布局抖动。难点与决策有两点：早期我直接把原始分喂给雷达图，结果出现『六边形战士』的假象，因为不同维度满分不同，后来改成后端返回归一化分加前端二次校验；另一个坑是 PolarAngleAxis 的 tick 文本过长导致重叠，我用自定义 tick 做截断并加 Tooltip。复盘：可视化不是终点，我最后把雷达图和『改进建议』绑在一起，点击低分维度直接给出可执行建议，用户转化率明显提升。
 
 **常见追问**：如果维度超过 8 个，雷达图还合适吗？你会怎么改？
 
@@ -4537,7 +5853,22 @@ Promise 初始为 pending，之后只能一次性变为 fulfilled 或 rejected�
 
 **参考回答**：
 
-在 CSS 盒模型里，margin 是外边距，正值让元素与相邻元素或父容器保持距离，负值则相当于把元素或后续内容往反方向拽。具体分方向看：第一，margin-top 为负，元素自身向上移动，脱离原本在文档流中的垂直占位，后续元素会跟着上移，可能覆盖到上方元素。第二，margin-left 为负，元素自身向左移动，后续内容左移，可能溢出父容器左侧。第三，margin-right 为负，元素自身位置不变，但右侧占用宽度变小，后续元素会向左靠拢，常用于让两个块级元素并排或消除右侧空隙。第四，margin-bottom 为负，元素自身位置不变，但下方占位变小，后续元素上移，可能覆盖当前元素底部。典型应用有五种：一是绝对定位居中，比如 left 50% 配合 margin-left 负 half width；二是等高列，给每列 padding-bottom 很大、margin-bottom 负同样大，再用父容器 overflow hidden 裁掉，实现视觉等高；三是覆盖叠层，让后一个元素压到前一个上，配合 z-index 控制层级；四是消除列表间距，比如 ul 的 margin-left 负值抵消 li 的 margin-left 让整体左对齐；五是圣杯和双飞翼布局。原理上，负 margin 参与布局计算：块级元素宽度计算中，margin-left 和 right 为负会增大可用内容宽度；垂直方向的负 margin 会减少元素在文档流中的占位高度。关键点是它不改变元素自身的 border-box 尺寸，只改变外部间距和后续元素位置。要注意几个副作用：可能溢出父容器，父容器 overflow visible 会撑出滚动条、hidden 会裁剪、auto 会出现滚动；另外视觉顺序与 DOM 顺序不一致时，会影响 Tab 焦点顺序和屏幕阅读器阅读顺序。所以现代布局我更推荐优先用 flex 和 grid 的 gap、align-self、order 或 transform 来替代负 margin。
+在 CSS 盒模型里，margin 是外边距，正值让元素与相邻元素或父容器保持距离，负值则相当于把元素或后续内容往反方向拽。具体分方向看：
+
+- 第一，margin-top 为负，元素自身向上移动，脱离原本在文档流中的垂直占位，后续元素会跟着上移，可能覆盖到上方元素。
+- 第二，margin-left 为负，元素自身向左移动，后续内容左移，可能溢出父容器左侧。
+- 第三，margin-right 为负，元素自身位置不变，但右侧占用宽度变小，后续元素会向左靠拢，常用于让两个块级元素并排或消除右侧空隙。
+- 第四，margin-bottom 为负，元素自身位置不变，但下方占位变小，后续元素上移，可能覆盖当前元素底部。
+
+典型应用有五种：
+
+- 一是绝对定位居中，比如 left 50% 配合 margin-left 负 half width；
+- 二是等高列，给每列 padding-bottom 很大、margin-bottom 负同样大，再用父容器 overflow hidden 裁掉，实现视觉等高；
+- 三是覆盖叠层，让后一个元素压到前一个上，配合 z-index 控制层级；
+- 四是消除列表间距，比如 ul 的 margin-left 负值抵消 li 的 margin-left 让整体左对齐；
+- 五是圣杯和双飞翼布局。原理上，负 margin 参与布局计算：块级元素宽度计算中，margin-left 和 right 为负会增大可用内容宽度；垂直方向的负 margin 会减少元素在文档流中的占位高度。关键点是它不改变元素自身的 border-box 尺寸，只改变外部间距和后续元素位置。要注意几个副作用：可能溢出父容器，父容器 overflow visible 会撑出滚动条、hidden 会裁剪、auto 会出现滚动；另外视觉顺序与 DOM 顺序不一致时，会影响 Tab 焦点顺序和屏幕阅读器阅读顺序。
+
+所以现代布局我更推荐优先用 flex 和 grid 的 gap、align-self、order 或 transform 来替代负 margin。
 
 **常见追问**：垂直方向的负 margin 和正 margin 相邻时会怎么合并？
 
@@ -4561,7 +5892,14 @@ Promise 初始为 pending，之后只能一次性变为 fulfilled 或 rejected�
 
 **参考回答**：
 
-是的，脚手架核心就是通过命令行指令按模板快速生成项目骨架。但我想补充一点，它的真正价值不在于『能生成文件』，而在于把团队的规范、依赖版本、构建配置和最佳实践固化成可复用的生成器，让新项目一开始就站在统一的标准上，避免每个人从老项目复制导致依赖版本漂移、目录结构不统一、历史包袱被带过来。实现流程上：CLI 接收项目名和模板参数，先做参数校验与目标目录冲突检查，再从模板仓库拉取或读取内置模板，渲染时把项目名、作者、包管理器这些变量注入模板文件，最后按用户选择安装依赖并初始化 git。关键决策有四个：第一，模板与生成逻辑分离，模板用独立仓库或 npm 包管理，这样升级模板不用发 CLI 版本；第二，用 ejs 或 handlebars 做变量替换，但只对文本文件渲染，二进制文件直接拷贝，否则图片会被损坏；第三，交互层用 prompts 或 inquirer，同时支持 --yes 跳过交互，方便在 CI 里非交互执行；第四，依赖安装和 git init 做成可选项，避免在受限环境或网络不通时卡住。举个例子：执行 create-app my-app --template react-ts --pm pnpm，CLI 会校验 my-app 不存在，拉取 react-ts 模板，把 package.json 里的 name 替换成 my-app，写入 .gitignore，最后执行 pnpm install 和 git init。复盘有两点：早期我把模板硬编码在 CLI 里，导致每次改模板都要发版，后来拆成远程模板加本地缓存，并加模板版本号才解决；另一个坑是 Windows 路径分隔符和文件权限，统一用 path.join 和 fs-extra 处理。
+是的，脚手架核心就是通过命令行指令按模板快速生成项目骨架。但我想补充一点，它的真正价值不在于『能生成文件』，而在于把团队的规范、依赖版本、构建配置和最佳实践固化成可复用的生成器，让新项目一开始就站在统一的标准上，避免每个人从老项目复制导致依赖版本漂移、目录结构不统一、历史包袱被带过来。
+
+实现流程上：CLI 接收项目名和模板参数，先做参数校验与目标目录冲突检查，再从模板仓库拉取或读取内置模板，渲染时把项目名、作者、包管理器这些变量注入模板文件，最后按用户选择安装依赖并初始化 git。关键决策有四个：
+
+- 第一，模板与生成逻辑分离，模板用独立仓库或 npm 包管理，这样升级模板不用发 CLI 版本；
+- 第二，用 ejs 或 handlebars 做变量替换，但只对文本文件渲染，二进制文件直接拷贝，否则图片会被损坏；
+- 第三，交互层用 prompts 或 inquirer，同时支持 --yes 跳过交互，方便在 CI 里非交互执行；
+- 第四，依赖安装和 git init 做成可选项，避免在受限环境或网络不通时卡住。举个例子：执行 create-app my-app --template react-ts --pm pnpm，CLI 会校验 my-app 不存在，拉取 react-ts 模板，把 package.json 里的 name 替换成 my-app，写入 .gitignore，最后执行 pnpm install 和 git init。复盘有两点：早期我把模板硬编码在 CLI 里，导致每次改模板都要发版，后来拆成远程模板加本地缓存，并加模板版本号才解决；另一个坑是 Windows 路径分隔符和文件权限，统一用 path.join 和 fs-extra 处理。
 
 **常见追问**：模板升级后，已经生成的老项目怎么同步更新？
 
@@ -4585,7 +5923,16 @@ Promise 初始为 pending，之后只能一次性变为 fulfilled 或 rejected�
 
 **参考回答**：
 
-我会分三层回答。第一，使用范围。在最近这个 AI Agent 项目里 TS 覆盖率大概 90% 以上，前端用 React 和 Next.js、BFF、Agent 编排服务、工具函数、SDK 封装都是 TS；只有少量运维脚本和临时数据清洗脚本用 JS。第二，为什么用 TS。Agent 项目最大的复杂度是协议多、状态多、异步链路长，一次对话要经过用户输入、意图识别、工具选择、参数校验、工具调用、结果回填、LLM 生成、流式返回，每一环都是结构化数据，如果不用 TS，字段名、可选性和枚举值很容易在联调时炸。TS 在这里主要解决三类问题：一是接口契约，我用 zod 定义 tool schema，再用 z.infer 推导出 TS 类型，做到运行时校验和编译期类型同源，避免类型和校验各写一套导致漂移；二是状态机，我用 discriminated union 表示 Agent 状态，比如 thinking、tool_call 带 tool 和 args、done 带 answer，switch 的时候可以做穷尽检查；三是流式事件，SSE 和 WebSocket 的消息用联合类型约束，前端消费时不会把 delta 和 error 搞混。第三，配置严格度。strict 基本都开，noUncheckedIndexedAccess、exactOptionalPropertyTypes 也开，CI 里跑 tsc --noEmit，禁止新增 any，历史 any 用 unknown 加类型守卫逐步替换。第四，边界。不是所有地方都硬上 TS，比如动态插件系统和用户自定义脚本，运行时才拿到结构，这时用 unknown 加 zod 校验，而不是硬 cast，因为 TS 只保证编译期，外部输入必须运行时校验。第五，复盘。早期为了快，LLM 返回结果直接 as SomeType，结果线上出现字段缺失导致工具调用参数错误，后来所有 LLM 结构化输出都先过 zod，失败就重试或降级，类型从 schema 推导，问题才收敛。
+我会分三层回答。
+
+- 第一，使用范围。在最近这个 AI Agent 项目里 TS 覆盖率大概 90% 以上，前端用 React 和 Next.js、BFF、Agent 编排服务、工具函数、SDK 封装都是 TS；只有少量运维脚本和临时数据清洗脚本用 JS。
+- 第二，为什么用 TS。Agent 项目最大的复杂度是协议多、状态多、异步链路长，一次对话要经过用户输入、意图识别、工具选择、参数校验、工具调用、结果回填、LLM 生成、流式返回，每一环都是结构化数据，如果不用 TS，字段名、可选性和枚举值很容易在联调时炸。
+
+TS 在这里主要解决三类问题：
+
+- 一是接口契约，我用 zod 定义 tool schema，再用 z.infer 推导出 TS 类型，做到运行时校验和编译期类型同源，避免类型和校验各写一套导致漂移；
+- 二是状态机，我用 discriminated union 表示 Agent 状态，比如 thinking、tool_call 带 tool 和 args、done 带 answer，switch 的时候可以做穷尽检查；
+- 三是流式事件，SSE 和 WebSocket 的消息用联合类型约束，前端消费时不会把 delta 和 error 搞混。第三，配置严格度。strict 基本都开，noUncheckedIndexedAccess、exactOptionalPropertyTypes 也开，CI 里跑 tsc --noEmit，禁止新增 any，历史 any 用 unknown 加类型守卫逐步替换。第四，边界。不是所有地方都硬上 TS，比如动态插件系统和用户自定义脚本，运行时才拿到结构，这时用 unknown 加 zod 校验，而不是硬 cast，因为 TS 只保证编译期，外部输入必须运行时校验。第五，复盘。早期为了快，LLM 返回结果直接 as SomeType，结果线上出现字段缺失导致工具调用参数错误，后来所有 LLM 结构化输出都先过 zod，失败就重试或降级，类型从 schema 推导，问题才收敛。
 
 **常见追问**：unknown 和 any 的区别是什么？为什么 JSON.parse 的返回值要收口？
 
@@ -4609,7 +5956,13 @@ Promise 初始为 pending，之后只能一次性变为 fulfilled 或 rejected�
 
 **参考回答**：
 
-重绘是元素外观改变但布局不变，只重新画像素；重构（回流）是元素几何属性或布局改变，需要重新计算布局再绘制，代价更高。浏览器渲染流程大致为：解析 HTML/CSS 构建 DOM 和 CSSOM，合成渲染树，然后进行布局（Layout/Reflow，即重构）计算每个节点的几何位置和大小，最后绘制（Paint，即重绘）把像素画出来，必要时还有合成（Composite）。 通俗类比：重构像重新排座位，所有人的位置、大小都要重新算一遍；重绘像座位不动，只把桌布颜色换一下。 触发重构的场景：改变几何属性，如 width/height、margin/padding、border、font-size、display、position、top/left、float、添加删除 DOM、读取 offsetTop/scrollTop/clientWidth 等强制同步布局的属性、窗口 resize、字体加载完成等。 触发重绘的场景：只改变不影响布局的外观属性，如 color、background-color、visibility、outline、box-shadow、border-radius 等。 关系：重构一定引起重绘，重绘不一定引起重构。所以优化核心是减少重构，尽量把操作合并，使用 transform/opacity 走合成层，避免频繁读写布局属性造成布局抖动。
+重绘是元素外观改变但布局不变，只重新画像素；重构（回流）是元素几何属性或布局改变，需要重新计算布局再绘制，代价更高。浏览器渲染流程大致为：解析 HTML/CSS 构建 DOM 和 CSSOM，合成渲染树，然后进行布局（Layout/Reflow，即重构）计算每个节点的几何位置和大小，最后绘制（Paint，即重绘）把像素画出来，必要时还有合成（Composite）。
+
+通俗类比：重构像重新排座位，所有人的位置、大小都要重新算一遍；重绘像座位不动，只把桌布颜色换一下。 触发重构的场景：改变几何属性，如 width/height、margin/padding、border、font-size、display、position、top/left、float、添加删除 DOM、读取 offsetTop/scrollTop/clientWidth 等强制同步布局的属性、窗口 resize、字体加载完成等。
+
+触发重绘的场景：只改变不影响布局的外观属性，如 color、background-color、visibility、outline、box-shadow、border-radius 等。 关系：重构一定引起重绘，重绘不一定引起重构。
+
+所以优化核心是减少重构，尽量把操作合并，使用 transform/opacity 走合成层，避免频繁读写布局属性造成布局抖动。
 
 **常见追问**：重排和重绘的触发条件，如何用 will-change/合成层规避？
 
@@ -4635,7 +5988,41 @@ Promise 初始为 pending，之后只能一次性变为 fulfilled 或 rejected�
 
 **参考回答**：
 
-先用真实用户监控(RUM)定位 LCP 的四个子阶段(首字节、资源加载延迟、资源加载时长、元素渲染延迟)中真正的瓶颈，再针对性做资源优先级、体积、链路和渲染路径优化，并用 CrUX/Lab 双轨验证。一、先测量，别拍脑袋。 1) 数据来源分两层： - 实验室(Lab)：Lighthouse / WebPageTest / Chrome DevTools Performance 面板，可复现、能看瀑布流和主线程火焰图，用于定位。 - 现场(RUM)：web-vitals 库上报 LCP、TTFB、FCP、CLS、INP，按 P75/P90 分维度(设备、网络、地区、页面模板)切片。LCP 是分布问题，3.7s→1.8s 通常指 P75。 2) 拆解 LCP 四段(Chrome 官方模型)： - TTFB：服务器响应； - Resource load delay：从 TTFB 到开始加载 LCP 资源； - Resource load duration：下载耗时； - Element render delay：资源就绪到元素绘制。 用 PerformanceObserver 拿 LCP entry 的 element、url、renderTime/loadTime，配合 PerformanceResourceTiming 算各段占比，找出最大头。 二、常见瓶颈与对应手段(按四段归因)： 1) TTFB 高： - 服务端：加 CDN/边缘缓存、SSR 流式渲染、数据库慢查询优化、连接池、gzip/brotli。 - 静态资源走 CDN，HTML 用 stale-while-revalidate。 2) Resource load delay 大(最常见)： - LCP 图片不要懒加载(去掉 loading=lazy)，用 fetchpriority="high"，preload 加 imagesrcset/imagesizes。 - 关键 CSS 内联，非关键 CSS 异步；避免 CSS 阻塞导致图片发现晚。 - 减少首屏 JS 阻塞：代码分割、路由级懒加载、defer/async。 - 字体用 font-display: swap + preload，避免 FOIT 拖后渲染。 3) Resource load duration 大： - 图片：AVIF/WebP、响应式 srcset、按 DPR 出图、压缩、CDN 图片处理； - 文本/HTML：Brotli、减少 HTML 体积； - 协议：HTTP/2 多路复用或 HTTP/3，减少域名分片。 4) Element render delay 大： - 减少主线程长任务，拆包、延迟非关键第三方脚本(用 requestIdleCallback / 动态 import)； - 避免 LCP 元素被 JS 动态插入太晚，尽量服务端直出； - 减少布局抖动、避免大 DOM 和昂贵 CSS 选择器。 三、验证与回归： - 每次改动用 Lab 对比瀑布流，RUM 看 P75/P90 趋势，做 A/B 或灰度； - 建立性能预算(LCP<2.5s、JS 体积上限)，CI 里跑 Lighthouse CI 防劣化。 四、真实案例(示例)：某电商详情页 LCP 3.7s→1.8s： - 发现 LCP 元素是首屏主图，被 loading=lazy + 在 JS 里动态设置 src，导致 load delay 1.4s； - 改为服务端直出 img + fetchpriority=high + preload，load delay 降到 0.2s； - 图片从 800KB PNG 换 AVIF 响应式，load duration 1.1s→0.4s； - 内联关键 CSS、延迟第三方埋点，render delay 0.6s→0.2s； - TTFB 通过 CDN 边缘缓存 0.6s→0.3s。合计约 1.9s 收益。
+先用真实用户监控(RUM)定位 LCP 的四个子阶段(首字节、资源加载延迟、资源加载时长、元素渲染延迟)中真正的瓶颈，再针对性做资源优先级、体积、链路和渲染路径优化，并用 CrUX/Lab 双轨验证。
+
+**一、先测量，别拍脑袋。**
+
+1) 数据来源分两层：
+
+- 实验室(Lab)：Lighthouse / WebPageTest / Chrome DevTools Performance 面板，可复现、能看瀑布流和主线程火焰图，用于定位。
+- 现场(RUM)：web-vitals 库上报 LCP、TTFB、FCP、CLS、INP，按 P75/P90 分维度(设备、网络、地区、页面模板)切片。LCP 是分布问题，3.7s→1.8s 通常指 P75。 2) 拆解 LCP 四段(Chrome 官方模型)：
+- TTFB：服务器响应；
+- Resource load delay：从 TTFB 到开始加载 LCP 资源；
+- Resource load duration：下载耗时；
+- Element render delay：资源就绪到元素绘制。 用 PerformanceObserver 拿 LCP entry 的 element、url、renderTime/loadTime，配合 PerformanceResourceTiming 算各段占比，找出最大头。
+
+**二、常见瓶颈与对应手段(按四段归因)：** 1) TTFB 高：
+
+- 服务端：加 CDN/边缘缓存、SSR 流式渲染、数据库慢查询优化、连接池、gzip/brotli。 - 静态资源走 CDN，HTML 用 stale-while-revalidate。 2) Resource load delay 大(最常见)： - LCP 图片不要懒加载(去掉 loading=lazy)，用 fetchpriority="high"，preload 加 imagesrcset/imagesizes。 - 关键 CSS 内联，非关键 CSS 异步；避免 CSS 阻塞导致图片发现晚。
+- 减少首屏 JS 阻塞：代码分割、路由级懒加载、defer/async。
+- 字体用 font-display: swap + preload，避免 FOIT 拖后渲染。 3) Resource load duration 大：
+- 图片：AVIF/WebP、响应式 srcset、按 DPR 出图、压缩、CDN 图片处理；
+- 文本/HTML：Brotli、减少 HTML 体积；
+- 协议：HTTP/2 多路复用或 HTTP/3，减少域名分片。 4) Element render delay 大： - 减少主线程长任务，拆包、延迟非关键第三方脚本(用 requestIdleCallback / 动态 import)； - 避免 LCP 元素被 JS 动态插入太晚，尽量服务端直出； - 减少布局抖动、避免大 DOM 和昂贵 CSS 选择器。
+
+**三、验证与回归：**
+
+- 每次改动用 Lab 对比瀑布流，RUM 看 P75/P90 趋势，做 A/B 或灰度； - 建立性能预算(LCP<2.5s、JS 体积上限)，CI 里跑 Lighthouse CI 防劣化。
+
+**四、真实案例(示例)**
+
+- ：某电商详情页 LCP 3.7s→1.8s： - 发现 LCP 元素是首屏主图，被 loading=lazy + 在 JS 里动态设置 src，导致 load delay 1.4s；
+- - 改为服务端直出 img + fetchpriority=high + preload，load delay 降到 0.2s；
+- - 图片从 800KB PNG 换 AVIF 响应式，load duration 1.1s→0.4s；
+- - 内联关键 CSS、延迟第三方埋点，render delay 0.6s→0.2s；
+- - TTFB 通过 CDN 边缘缓存 0.6s→0.3s。
+
+合计约 1.9s 收益。
 
 **常见追问**：SPA 首屏白屏，你用什么方案（SSR/预渲染/骨架屏）？
 
@@ -4661,7 +6048,46 @@ Promise 初始为 pending，之后只能一次性变为 fulfilled 或 rejected�
 
 **参考回答**：
 
-SPA首屏慢的本质是「关键渲染路径被 JS 阻塞 + 资源串行加载」，优化主线是：让首屏 HTML 尽快返回可渲染内容（SSR/预渲染/骨架屏），同时把 JS 体积和请求链路压到最小（分包、预加载、缓存、CDN）。一、先定位瓶颈，别盲目优化 用 Lighthouse / WebPageTest / Chrome Performance 面板看指标：TTFB、FCP、LCP、TBT、SI。SPA 首屏慢通常分三段： 1) 白屏期：HTML 下载 + 主 JS bundle 下载解析执行； 2) 框架初始化：Vue/React 挂载、路由匹配、状态初始化； 3) 数据请求期：首屏接口 RTT + 渲染。 二、网络与资源层 - 减小首屏 JS：路由级懒加载（React.lazy / () => import()）、按需引入组件库（babel-plugin-import / unplugin-vue-components）、Tree Shaking、externals + CDN、移除 moment/lodash 全量包。 - 分包策略：Webpack splitChunks 把 react/vue 等 runtime 拆成 vendor，利用长效缓存；避免把所有依赖打进一个巨大 chunk。 - 压缩与传输：Brotli/Gzip、图片 WebP/AVIF + 响应式 srcset、字体子集化 + font-display: swap。 - 预加载关键资源：<link rel=preload> 首屏 JS/CSS/字体，<link rel=prefetch> 次屏路由，<link rel=preconnect/dns-prefetch> 接口域名。 - HTTP 缓存：HTML 用 no-cache + ETag，带 hash 的静态资源用 immutable 长缓存；CDN 边缘节点。 三、渲染层（治本） - SSR / SSG / ISR：Next.js、Nuxt 服务端直出首屏 HTML，用户先看到内容再 hydrate，LCP 大幅下降。 - 预渲染：对营销页/静态页用 prerender-spa-plugin 或 Puppeteer 生成 HTML。 - 流式 SSR + Suspense：先吐 shell，再流式补数据，缩短 TTFB 到 FCP。 - 骨架屏 / 首屏内联关键 CSS：避免白屏，提升感知性能。 - 岛屿架构 / 部分 hydration：Astro、Qwik 只 hydrate 交互组件，减少主线程阻塞。 四、运行时层 - 代码分割 + 预取：进入首页后空闲时 prefetch 下一路由 chunk。 - 数据预取：SSR 时并行请求首屏接口，或 HTTP/2 Server Push / 103 Early Hints 提前推接口。 - 避免首屏同步阻塞：大计算放 Web Worker，长任务拆分（scheduler.yield / requestIdleCallback）。 - 状态管理初始化瘦身：别在入口同步拉全量 store。 五、工程与度量 - 建立性能预算（bundle 体积、LCP 阈值），CI 中用 Lighthouse CI / size-limit 卡口。 - RUM 上报真实用户 LCP/FCP，按机型/网络分桶，避免只看实验室数据。 权衡：SSR 提升首屏但增加服务器成本和缓存/降级复杂度；预渲染只适合内容变化少的页面；过度 preload 会抢带宽反而拖慢 LCP。
+SPA首屏慢的本质是「关键渲染路径被 JS 阻塞 + 资源串行加载」，优化主线是：让首屏 HTML 尽快返回可渲染内容（SSR/预渲染/骨架屏），同时把 JS 体积和请求链路压到最小（分包、预加载、缓存、CDN）。
+
+**一、先定位瓶颈，别盲目优化**
+
+用 Lighthouse / WebPageTest / Chrome Performance 面板看指标：TTFB、FCP、LCP、TBT、SI。SPA 首屏慢通常分三段：
+
+1) 白屏期：HTML 下载 + 主 JS bundle 下载解析执行；
+2) 框架初始化：Vue/React 挂载、路由匹配、状态初始化；
+3) 数据请求期：首屏接口 RTT + 渲染。
+
+**二、网络与资源层**
+
+- 减小首屏 JS：路由级懒加载（React.lazy / () => import()）、按需引入组件库（babel-plugin-import / unplugin-vue-components）、Tree Shaking、externals + CDN、移除 moment/lodash 全量包。
+- 分包策略：Webpack splitChunks 把 react/vue 等 runtime 拆成 vendor，利用长效缓存；避免把所有依赖打进一个巨大 chunk。
+- 压缩与传输：Brotli/Gzip、图片 WebP/AVIF + 响应式 srcset、字体子集化 + font-display: swap。
+- 预加载关键资源：<link rel=preload> 首屏 JS/CSS/字体，<link rel=prefetch> 次屏路由，<link rel=preconnect/dns-prefetch> 接口域名。
+- HTTP 缓存：HTML 用 no-cache + ETag，带 hash 的静态资源用 immutable 长缓存；CDN 边缘节点。
+
+**三、渲染层（治本）**
+
+- SSR / SSG / ISR：Next.js、Nuxt 服务端直出首屏 HTML，用户先看到内容再 hydrate，LCP 大幅下降。
+- 预渲染：对营销页/静态页用 prerender-spa-plugin 或 Puppeteer 生成 HTML。
+- 流式 SSR + Suspense：先吐 shell，再流式补数据，缩短 TTFB 到 FCP。
+- 骨架屏 / 首屏内联关键 CSS：避免白屏，提升感知性能。
+- 岛屿架构 / 部分 hydration：Astro、Qwik 只 hydrate 交互组件，减少主线程阻塞。
+
+**四、运行时层**
+
+- 代码分割 + 预取：进入首页后空闲时 prefetch 下一路由 chunk。
+- 数据预取：SSR 时并行请求首屏接口，或 HTTP/2 Server Push / 103 Early Hints 提前推接口。
+- 避免首屏同步阻塞：大计算放 Web Worker，长任务拆分（scheduler.yield / requestIdleCallback）。
+- 状态管理初始化瘦身：别在入口同步拉全量 store。
+
+**五、工程与度量**
+
+- 建立性能预算（bundle 体积、LCP 阈值），CI 中用 Lighthouse CI / size-limit 卡口。 - RUM 上报真实用户 LCP/FCP，按机型/网络分桶，避免只看实验室数据。
+
+- 权衡：SSR 提升首屏但增加服务器成本和缓存/降级复杂度；
+- 预渲染只适合内容变化少的页面；
+- 过度 preload 会抢带宽反而拖慢 LCP。
 
 **常见追问**：LCP 优化你具体做了什么，怎么测量前后对比？ 重排和重绘的触发条件，如何用 will-change/合成层规避？
 
@@ -4685,7 +6111,13 @@ SPA首屏慢的本质是「关键渲染路径被 JS 阻塞 + 资源串行加载�
 
 **参考回答**：
 
-optimize 在编译期遍历 AST，用 isStatic 标记静态节点（含静态根），运行时 patch 借助这些标记跳过静态子树的 diff，从而减少对比开销。Vue 2 的 optimize 是编译三阶段（parse → optimize → generate）中的第二步，目标是把模板里“永远不会变”的部分识别出来，让运行时更新时直接复用首次渲染的 vnode，不再做 diff。 核心原理： 1. 静态节点判定（isStatic）：节点是纯文本、或元素节点满足——有 v-if/v-for 等指令则不算；不能是组件（component 为 true 不算）；不能有动态绑定（bind/on/model 等）；不能有 slot/作用域插槽；不能是内置组件 slot/component；且所有子节点都是静态的。满足则 node.static = true。 2. 静态根判定（isStaticRoot）：在静态节点基础上，要求它必须是元素节点、有子节点、且不能只有一个纯文本子节点（避免优化收益小于标记成本），同时不能是 v-for/v-if 模板等。满足则 node.staticRoot = true，并把它加入 staticRoots 数组，供 codegen 生成 _m(idx) 静态渲染函数。 3. 标记方式：optimize 里用 markStatic(node) 递归自底向上打 static 标记，再用 markStaticRoots(node) 自顶向下打 staticRoot 标记。 运行时收益：patch 时遇到 oldVnode.static 为 true 的节点，直接跳过其子树的 diff（在 patchVnode 里判断 if (oldVnode.static) return），只做必要的属性/事件更新；静态根则通过 _m 缓存 vnode，首次渲染后直接复用，避免重复创建 vnode 的开销。 工程权衡： - 静态标记是编译期一次性成本，换来运行时每次更新都省掉整棵子树的递归对比，对长列表/大表单收益明显。 - 但标记过细（比如单个文本节点也标 staticRoot）反而增加 codegen 体积和 _m 调用开销，所以 Vue 规定“只有一个文本子节点”不标 staticRoot。 - 静态节点一旦被标记，就要求其内容真的不变；如果模板里混入了运行时才确定的值（如通过 render 函数动态注入），会因跳过 diff 导致视图不更新，这是典型踩坑。 - 与 v-once 的区别：v-once 是用户显式声明，optimize 是编译器自动推断；v-once 会走 _o 缓存，optimize 的 staticRoot 走 _m。 - Vue 3 用 PatchFlags + hoistStatic 替代，静态节点被提升到 render 函数外只创建一次，比 Vue 2 的 _m 更彻底，且配合 Block Tree 只 diff 动态部分。
+optimize 在编译期遍历 AST，用 isStatic 标记静态节点（含静态根），运行时 patch 借助这些标记跳过静态子树的 diff，从而减少对比开销。Vue 2 的 optimize 是编译三阶段（parse → optimize → generate）中的第二步，目标是把模板里“永远不会变”的部分识别出来，让运行时更新时直接复用首次渲染的 vnode，不再做 diff。
+
+核心原理：
+
+1. 静态节点判定（isStatic）：节点是纯文本、或元素节点满足——有 v-if/v-for 等指令则不算；不能是组件（component 为 true 不算）；不能有动态绑定（bind/on/model 等）；不能有 slot/作用域插槽；不能是内置组件 slot/component；且所有子节点都是静态的。满足则 node.static = true。
+2. 静态根判定（isStaticRoot）：在静态节点基础上，要求它必须是元素节点、有子节点、且不能只有一个纯文本子节点（避免优化收益小于标记成本），同时不能是 v-for/v-if 模板等。满足则 node.staticRoot = true，并把它加入 staticRoots 数组，供 codegen 生成 _m(idx) 静态渲染函数。
+3. 标记方式：optimize 里用 markStatic(node) 递归自底向上打 static 标记，再用 markStaticRoots(node) 自顶向下打 staticRoot 标记。 运行时收益：patch 时遇到 oldVnode.static 为 true 的节点，直接跳过其子树的 diff（在 patchVnode 里判断 if (oldVnode.static) return），只做必要的属性/事件更新；静态根则通过 _m 缓存 vnode，首次渲染后直接复用，避免重复创建 vnode 的开销。 工程权衡： - 静态标记是编译期一次性成本，换来运行时每次更新都省掉整棵子树的递归对比，对长列表/大表单收益明显。 - 但标记过细（比如单个文本节点也标 staticRoot）反而增加 codegen 体积和 _m 调用开销，所以 Vue 规定“只有一个文本子节点”不标 staticRoot。 - 静态节点一旦被标记，就要求其内容真的不变；如果模板里混入了运行时才确定的值（如通过 render 函数动态注入），会因跳过 diff 导致视图不更新，这是典型踩坑。 - 与 v-once 的区别：v-once 是用户显式声明，optimize 是编译器自动推断；v-once 会走 _o 缓存，optimize 的 staticRoot 走 _m。 - Vue 3 用 PatchFlags + hoistStatic 替代，静态节点被提升到 render 函数外只创建一次，比 Vue 2 的 _m 更彻底，且配合 Block Tree 只 diff 动态部分。
 
 **常见追问**：LCP 优化你具体做了什么，怎么测量前后对比？ 重排和重绘的触发条件，如何用 will-change/合成层规避？
 
@@ -4711,7 +6143,19 @@ optimize 在编译期遍历 AST，用 isStatic 标记静态节点（含静态根
 
 **参考回答**：
 
-three.js 的 Raycaster 通过包围盒/包围球预筛选、BVH 加速、层级剪裁、背面剔除与射线-几何体专用求交算法，把 O(n) 的暴力遍历降为近似 O(log n) 或常数级候选集。three.js 的射线检测核心在 Raycaster.intersectObject/intersectObjects 与各几何体的 raycast 方法。优化分四层： 1) 对象级预筛选：先做 Ray.intersectsSphere/intersectsBox 测试（基于 object.boundingSphere / boundingBox），不命中直接跳过整个子树；intersectObjects 递归时若父节点包围盒不命中，子节点不再遍历，相当于层级剪裁。 2) 几何体级加速：Mesh.raycast 先测 boundingSphere，再测 boundingBox，最后才进入三角形求交。对 BufferGeometry 使用 Ray.intersectTriangle（Möller–Trumbore 算法），只对索引三角形逐个测试；若设置了 geometry.boundsTree（three-mesh-bvh），则用 BVH 把三角形求交从 O(n) 降到 O(log n)。 3) 背面与材质剔除：默认 material.side=FrontSide 时，Ray.intersectTriangle 的 backfaceCulling 参数为 true，直接跳过背面三角形；Points/Line 也有各自的阈值（Points.threshold、Line.threshold）避免无意义求交。 4) 专用求交：Sprite、Points、Line、Mesh 各自实现 raycast，避免统一走三角形路径；LOD 只测当前可见层级；SkinnedMesh 用骨骼变换后的包围盒近似。 工程上还会：只对必要对象调用 intersectObject 而非整个 scene；用 layers 过滤；把静态几何合并或预建 BVH；对大量对象先做粗筛（如空间哈希/四叉树）再调 Raycaster。
+three.js 的 Raycaster 通过包围盒/包围球预筛选、BVH 加速、层级剪裁、背面剔除与射线-几何体专用求交算法，把 O(n) 的暴力遍历降为近似 O(log n) 或常数级候选集。three.js 的射线检测核心在 Raycaster.intersectObject/intersectObjects 与各几何体的 raycast 方法。
+
+优化分四层：
+
+1) 对象级预筛选：先做 Ray.intersectsSphere/intersectsBox 测试（基于 object.boundingSphere / boundingBox），不命中直接跳过整个子树；intersectObjects 递归时若父节点包围盒不命中，子节点不再遍历，相当于层级剪裁。
+2) 几何体级加速：Mesh.raycast 先测 boundingSphere，再测 boundingBox，最后才进入三角形求交。对 BufferGeometry 使用 Ray.intersectTriangle（Möller–Trumbore 算法），只对索引三角形逐个测试；若设置了 geometry.boundsTree（three-mesh-bvh），则用 BVH 把三角形求交从 O(n) 降到 O(log n)。
+3) 背面与材质剔除：默认 material.side=FrontSide 时，Ray.intersectTriangle 的 backfaceCulling 参数为 true，直接跳过背面三角形；Points/Line 也有各自的阈值（Points.threshold、Line.threshold）避免无意义求交。
+4) 专用求交：Sprite、Points、Line、Mesh 各自实现 raycast，避免统一走三角形路径；LOD 只测当前可见层级；SkinnedMesh 用骨骼变换后的包围盒近似。
+
+- 工程上还会：只对必要对象调用 intersectObject 而非整个 scene；
+- 用 layers 过滤；
+- 把静态几何合并或预建 BVH；
+- 对大量对象先做粗筛（如空间哈希/四叉树）再调 Raycaster。
 
 **常见追问**：重排和重绘的触发条件，如何用 will-change/合成层规避？
 
@@ -4737,7 +6181,13 @@ three.js 的 Raycaster 通过包围盒/包围球预筛选、BVH 加速、层级�
 
 **参考回答**：
 
-SEO优化的核心是让搜索引擎能高效抓取、理解并信任你的内容，技术侧重点在于SSR/预渲染、结构化数据、语义化HTML、站点地图与性能优化，而非堆砌关键词。实现SEO优化需要从可抓取性、可理解性、可索引性和用户体验四个层面系统推进。 1. 可抓取性：确保搜索引擎爬虫能拿到完整内容。对于SPA（React/Vue），默认CSR返回空HTML，爬虫虽能执行JS但成本高、不稳定，应使用SSR（Next.js/Nuxt）或预渲染（prerender）输出完整HTML。同时提供robots.txt、XML sitemap，并合理使用canonical标签避免重复内容。 2. 可理解性：用语义化HTML（h1-h6、article、nav）表达结构；为图片加alt；为动态内容提供title/description；使用JSON-LD结构化数据（schema.org）标注文章、商品、FAQ等，帮助搜索引擎生成富摘要。 3. 可索引性：控制哪些页面被索引，用noindex处理后台/搜索结果页；确保URL静态化、可读；使用hreflang处理多语言；通过301重定向处理旧链接，避免404和软404。 4. 性能与体验：Core Web Vitals（LCP、FID/INP、CLS）直接影响排名。优化手段包括：CDN、图片懒加载与WebP、代码分割、缓存策略、减少阻塞资源。移动端优先索引要求响应式设计。 5. 内容与链接：高质量原创内容、合理内链、外链建设。避免关键词堆砌、隐藏文本等黑帽手段。 工程落地时，通常将SEO与前端框架结合：Next.js的generateMetadata、getStaticProps；Nuxt的useSeoMeta；同时用Lighthouse、Search Console监控。
+SEO优化的核心是让搜索引擎能高效抓取、理解并信任你的内容，技术侧重点在于SSR/预渲染、结构化数据、语义化HTML、站点地图与性能优化，而非堆砌关键词。实现SEO优化需要从可抓取性、可理解性、可索引性和用户体验四个层面系统推进。
+
+1. 可抓取性：确保搜索引擎爬虫能拿到完整内容。对于SPA（React/Vue），默认CSR返回空HTML，爬虫虽能执行JS但成本高、不稳定，应使用SSR（Next.js/Nuxt）或预渲染（prerender）输出完整HTML。同时提供robots.txt、XML sitemap，并合理使用canonical标签避免重复内容。
+2. 可理解性：用语义化HTML（h1-h6、article、nav）表达结构；为图片加alt；为动态内容提供title/description；使用JSON-LD结构化数据（schema.org）标注文章、商品、FAQ等，帮助搜索引擎生成富摘要。
+3. 可索引性：控制哪些页面被索引，用noindex处理后台/搜索结果页；确保URL静态化、可读；使用hreflang处理多语言；通过301重定向处理旧链接，避免404和软404。
+4. 性能与体验：Core Web Vitals（LCP、FID/INP、CLS）直接影响排名。优化手段包括：CDN、图片懒加载与WebP、代码分割、缓存策略、减少阻塞资源。移动端优先索引要求响应式设计。
+5. 内容与链接：高质量原创内容、合理内链、外链建设。避免关键词堆砌、隐藏文本等黑帽手段。 工程落地时，通常将SEO与前端框架结合：Next.js的generateMetadata、getStaticProps；Nuxt的useSeoMeta；同时用Lighthouse、Search Console监控。
 
 **常见追问**：SPA 首屏白屏，你用什么方案（SSR/预渲染/骨架屏）？
 
@@ -4763,7 +6213,11 @@ SEO优化的核心是让搜索引擎能高效抓取、理解并信任你的内�
 
 **参考回答**：
 
-预加载的触发时机应由用户意图信号（hover/touchstart/视口进入）与网络/设备状态共同决定，150ms 只是点击延迟窗口的兜底，不是唯一判据。核心思路：把“预加载”当成一个带预算的投机行为，用信号强度决定是否下注。 1) 触发信号分层： - 强意图：mousedown/touchstart/pointerdown、hover 超过 50-100ms、focus。这些信号在真实点击前出现，命中率高。 - 中意图：链接进入视口（IntersectionObserver）、鼠标轨迹朝向目标、键盘 Tab 聚焦。 - 弱意图：页面空闲（requestIdleCallback）、网络空闲。 2) 150ms 延迟的定位：移动端 click 有约 300ms 历史延迟，现代浏览器加 viewport meta 后基本消除，但“点击后到路由切换/请求发出”仍有几十到几百毫秒。150ms 窗口适合做“点击已发生但页面还没跳走”的兜底预取：在 pointerdown 时启动预加载，若 150ms 内用户没有取消（pointercancel/滚动/离开），则继续；若已跳转则复用。 3) 判断条件（工程上要同时满足）： - 用户意图信号命中（hover/pointerdown/视口）； - 网络非 saveData、非 2G/3G 慢网（navigator.connection.effectiveType）； - 设备非低电量/低内存（deviceMemory、battery）； - 预加载预算未超（并发数、总字节、QPS）； - 资源可缓存且命中率高（HTML/JS chunk/接口 GET）。 4) 实现示例： ``js const conn = navigator.connection; const slow = conn && (conn.saveData || /2g|3g/.test(conn.effectiveType)); function shouldPrefetch(el){ if (slow) return false; if (prefetchBudget.exceeded()) return false; return true; } el.addEventListener('pointerdown', () => { const t = setTimeout(() => { if (shouldPrefetch(el)) prefetch(el.href); }, 150); el.addEventListener('pointercancel', () => clearTimeout(t), {once:true}); }); `` 5) 权衡：预加载提升感知性能，但会浪费带宽、挤占关键请求、增加服务端压力。必须可观测（命中率、浪费率、LCP/TTI 影响），并支持灰度与降级。
+预加载的触发时机应由用户意图信号（hover/touchstart/视口进入）与网络/设备状态共同决定，150ms 只是点击延迟窗口的兜底，不是唯一判据。核心思路：把“预加载”当成一个带预算的投机行为，用信号强度决定是否下注。 1) 触发信号分层：
+
+- 强意图：mousedown/touchstart/pointerdown、hover 超过 50-100ms、focus。这些信号在真实点击前出现，命中率高。
+- 中意图：链接进入视口（IntersectionObserver）、鼠标轨迹朝向目标、键盘 Tab 聚焦。
+- 弱意图：页面空闲（requestIdleCallback）、网络空闲。 2) 150ms 延迟的定位：移动端 click 有约 300ms 历史延迟，现代浏览器加 viewport meta 后基本消除，但“点击后到路由切换/请求发出”仍有几十到几百毫秒。150ms 窗口适合做“点击已发生但页面还没跳走”的兜底预取：在 pointerdown 时启动预加载，若 150ms 内用户没有取消（pointercancel/滚动/离开），则继续；若已跳转则复用。 3) 判断条件（工程上要同时满足）： - 用户意图信号命中（hover/pointerdown/视口）； - 网络非 saveData、非 2G/3G 慢网（navigator.connection.effectiveType）； - 设备非低电量/低内存（deviceMemory、battery）； - 预加载预算未超（并发数、总字节、QPS）； - 资源可缓存且命中率高（HTML/JS chunk/接口 GET）。 4) 实现示例： ``js const conn = navigator.connection; const slow = conn && (conn.saveData || /2g|3g/.test(conn.effectiveType)); function shouldPrefetch(el){ if (slow) return false; if (prefetchBudget.exceeded()) return false; return true; } el.addEventListener('pointerdown', () => { const t = setTimeout(() => { if (shouldPrefetch(el)) prefetch(el.href); }, 150); el.addEventListener('pointercancel', () => clearTimeout(t), {once:true}); }); `` 5) 权衡：预加载提升感知性能，但会浪费带宽、挤占关键请求、增加服务端压力。必须可观测（命中率、浪费率、LCP/TTI 影响），并支持灰度与降级。
 
 **常见追问**：上线后模型输出质量下降，你用什么指标和 tracing 监控？
 
@@ -4818,31 +6272,63 @@ JavaScript 会先计算 `isHeavyLoad`；结果为 truthy 时只求值并返回�
 
 EventSource 的 close() 方法用于主动关闭一个已经建立的 Server-Sent Events（SSE）连接，停止接收服务端推送并释放资源。
 
-EventSource 是浏览器提供的用于接收服务器推送事件（Server-Sent Events, SSE）的 API。它通过 HTTP 长连接从服务端单向接收文本流（text/event-stream）。当调用 eventSource.close() 时，浏览器会： 1. 将 EventSource 的 readyState 置为 CLOSED（值为 2）； 2. 终止底层 HTTP 连接（如果尚未断开）； 3. 停止自动重连机制（EventSource 默认在连接断开后会自动重连，close() 会阻止这一行为）； 4. 不再触发任何事件（如 message、error、open）。 通俗类比：EventSource 就像你订阅了一份报纸，报社每天给你送报（服务端推送）。close() 相当于你打电话给报社取消订阅，之后报社不再送报，你也不会再收到任何报纸。 适用场景： - 组件卸载时（如 React 的 useEffect 清理函数）必须调用 close()，否则会造成内存泄漏和无效的网络请求。 - 用户主动登出或切换页面时，关闭不再需要的推送连接。 - 当业务逻辑需要暂停接收推送时，可以关闭连接，后续需要时重新创建 EventSource 实例。 示例： ```js const es = new EventSource('/api/stream'); es.onmessage = (e) => console.log(e.data); // 不再需要时 es.close(); ``` 注意：close() 后不能重新打开同一个 EventSource 实例，必须新建一个。
+EventSource 是浏览器提供的用于接收服务器推送事件（Server-Sent Events, SSE）的 API。它通过 HTTP 长连接从服务端单向接收文本流（text/event-stream）。当调用 eventSource.close() 时，浏览器会：
+
+1. 将 EventSource 的 readyState 置为 CLOSED（值为 2）；
+2. 终止底层 HTTP 连接（如果尚未断开）；
+3. 停止自动重连机制（EventSource 默认在连接断开后会自动重连，close() 会阻止这一行为）；
+4. 不再触发任何事件（如 message、error、open）。
+
+通俗类比：EventSource 就像你订阅了一份报纸，报社每天给你送报（服务端推送）。close() 相当于你打电话给报社取消订阅，之后报社不再送报，你也不会再收到任何报纸。
+
+适用场景： - 组件卸载时（如 React 的 useEffect 清理函数）必须调用 close()，否则会造成内存泄漏和无效的网络请求。 - 用户主动登出或切换页面时，关闭不再需要的推送连接。 - 当业务逻辑需要暂停接收推送时，可以关闭连接，后续需要时重新创建 EventSource 实例。
+
+示例： ```js const es = new EventSource('/api/stream'); es.onmessage = (e) => console.log(e.data); // 不再需要时 es.close(); ``` 注意：close() 后不能重新打开同一个 EventSource 实例，必须新建一个。
 
 **常见追问**：如何避免「误以为 close() 后可以重新调用 open() 或重新使用同一个实例——实际上 EventSource 没有 open() 方法，close() 后实例不可复用。」？ 「忘记在组件卸载时调用 close()，导致内存泄漏和后台持续请求。」在真实项目中应如何规避？
 
 ---
 
-## 202. onOpen?.()
+## 202. 可选调用 onOpen?.() 在什么情况下短路，什么情况下仍会报错？
 
 > 原题 ID：`q2061`
 
 **高频程度**：★★★
 
-**考察点**：考察对「onOpen?.()」的掌握，重点看能否讲清：`?.()` 是 JavaScript/TypeScript 的可选链（optional chaining）中的“可选调用”语法
+**考察点**：nullish 短路、可调用性与对象属性访问的边界。
 
 **回答框架**：
 
-`?.()` 是 JavaScript/TypeScript 的可选链（optional chaining）中的“可选调用”语法；它等价于：；```js；if (onOpen != null) {；onOpen()；更准确地说，`obj.method?.()` 只在 `obj.method` 为 null 或 undefined 时短路，不会因为 `obj` 本身为 null 而报错（因为 `obj.method` 的读取本身也会被可选链处理）
+1) 仅在 null/undefined 时短路
+2) 非函数值仍会抛 TypeError
+3) 对象可空时另加 ?.
 
 **参考回答**：
 
-`onOpen?.()` 是可选链调用：当 onOpen 存在且为函数时才调用，否则静默返回 undefined，避免 TypeError。
+`onOpen?.()` 表示可选调用，不是“只要不是函数就忽略”。
 
-`?.()` 是 JavaScript/TypeScript 的可选链（optional chaining）中的“可选调用”语法。它等价于： ```js if (onOpen != null) { onOpen(); } ``` 更准确地说，`obj.method?.()` 只在 `obj.method` 为 null 或 undefined 时短路，不会因为 `obj` 本身为 null 而报错（因为 `obj.method` 的读取本身也会被可选链处理）。但 `onOpen?.()` 这种写法只对 `onOpen` 做可选调用，不涉及属性访问。 通俗类比：你给朋友打电话，如果号码存在就拨出去，号码不存在就什么都不做，而不是直接报错。 典型场景：回调函数是可选的。比如一个事件订阅 API： ```ts function connect(options: { onOpen?: () => void }) { // ... options.onOpen?.(); } ``` 调用方可以传 onOpen，也可以不传，代码都不需要写 if 判断。 注意：`?.()` 与 `&&` 的区别：`onOpen && onOpen()` 在 onOpen 为 0、'' 等假值时不会调用，而 `?.()` 只判断 null/undefined，更精确。
+1. **null 或 undefined**：不调用，表达式结果为 undefined。
+2. **可调用的值**：正常调用并返回其结果；函数自身抛出的异常仍会向外传播。
+3. **其他非空值**：例如 42、false 或普通对象，调用会抛 TypeError。
 
-**常见追问**：如何避免「误以为 `onOpen?.()` 会检查 onOpen 是否为函数：如果 onOpen 是数字或字符串，仍会尝试调用并抛出 TypeError。」？ 「误以为 `?.()` 可以替代所有类型检查：它只处理 null/undefined。」在真实项目中应如何规避？
+```javascript
+let onOpen;
+onOpen?.(); // undefined
+onOpen = () => "opened";
+onOpen?.(); // "opened"
+onOpen = 42;
+// onOpen?.(); // TypeError: 不是函数
+```
+
+**对象可空与方法可空是两个检查点**
+
+`obj.method?.()` 先读取 obj.method，因此 obj 为 null/undefined 时仍会报错。需要同时保护对象与方法时写 `obj?.method?.()`；但方法存在却不是函数时仍会报错。未声明的变量也不能靠可选链避免 ReferenceError。
+
+与 `onOpen && onOpen()` 相比，可选调用只检查 null/undefined，不把 0、空字符串和 false 当作短路条件。
+
+**常见追问**：为什么 obj?.method?.() 仍不能保证永不抛异常？
+
+**核验资料**：[MDN Optional chaining](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Optional_chaining)
 
 ---
 
@@ -4860,7 +6346,15 @@ EventSource 是浏览器提供的用于接收服务器推送事件（Server-Sent
 
 **参考回答**：
 
-通俗类比一下：interface 像是给一个对象形状立了一份可以续签的合同，同一个名字能多次追加条款；type 像是给某个类型起了个外号，起完就固定了，不能再追加定义。具体区别有几点。第一是能描述的类型范围：interface 只能描述对象类型，包括带函数、数组、类实例的形状，但不能直接写联合、元组、条件类型、映射类型、模板字面量类型；type 几乎可以给任何类型起别名，包括 type Status = 'on' | 'off' 这种联合类型。第二是声明合并：同名的 interface 会自动合并成员，这是它独有的能力，常用来扩展第三方库的类型，比如给 Window 或者 Express 的 Request 加字段；而同名的 type 会直接报重复标识符错误。第三是扩展方式：interface 用 extends，而且可以同时继承多个；type 用交叉类型 &。这一点有个实践差别——extends 在成员冲突时会报错，提示更清晰；交叉类型遇到冲突可能静默推导成 never 而不报错，排查起来麻烦。第四是实现关系：class 可以 implements 一个 interface，也可以 implements 一个 type，只要形状匹配就行；interface 还能被 interface 和 class 继承。第五是性能和语义：因为 interface 可合并、可被编译器缓存，在大型项目里类型检查通常略快一些，type 的条件类型和交叉在复杂场景下可能更慢。语义上，interface 更偏向「定义一个契约、一个可被别人实现的形状」，type 更偏向「给已有类型起个别名或者做类型运算」。实际选型上，我给对象的形状定义优先用 interface，需要联合、条件、映射这些类型运算时用 type。
+通俗类比一下：interface 像是给一个对象形状立了一份可以续签的合同，同一个名字能多次追加条款；type 像是给某个类型起了个外号，起完就固定了，不能再追加定义。具体区别有几点。
+
+- 第一是能描述的类型范围：interface 只能描述对象类型，包括带函数、数组、类实例的形状，但不能直接写联合、元组、条件类型、映射类型、模板字面量类型；type 几乎可以给任何类型起别名，包括 type Status = 'on' | 'off' 这种联合类型。
+- 第二是声明合并：同名的 interface 会自动合并成员，这是它独有的能力，常用来扩展第三方库的类型，比如给 Window 或者 Express 的 Request 加字段；而同名的 type 会直接报重复标识符错误。
+- 第三是扩展方式：interface 用 extends，而且可以同时继承多个；type 用交叉类型 &。这一点有个实践差别——extends 在成员冲突时会报错，提示更清晰；交叉类型遇到冲突可能静默推导成 never 而不报错，排查起来麻烦。
+- 第四是实现关系：class 可以 implements 一个 interface，也可以 implements 一个 type，只要形状匹配就行；interface 还能被 interface 和 class 继承。
+- 第五是性能和语义：因为 interface 可合并、可被编译器缓存，在大型项目里类型检查通常略快一些，type 的条件类型和交叉在复杂场景下可能更慢。语义上，interface 更偏向「定义一个契约、一个可被别人实现的形状」，type 更偏向「给已有类型起个别名或者做类型运算」。
+
+实际选型上，我给对象的形状定义优先用 interface，需要联合、条件、映射这些类型运算时用 type。
 
 **常见追问**：给第三方库扩展类型你会用哪种？交叉类型冲突时不报错有什么风险？
 
@@ -4882,7 +6376,15 @@ EventSource 是浏览器提供的用于接收服务器推送事件（Server-Sent
 
 数据双向绑定指视图与数据模型自动互相更新，核心是监听数据变化（如Object.defineProperty或Proxy）与监听视图输入事件（如input），并通过发布-订阅模式同步两者。
 
-双向绑定 = 数据变化 → 视图更新 + 视图变化 → 数据更新。以Vue为例，实现三步：1) 数据劫持：用Object.defineProperty（Vue2）或Proxy（Vue3）递归监听data所有属性，在get中收集依赖（Watcher），在set中通知依赖更新。2) 模板编译：解析模板中的指令（如v-model），将数据与视图绑定，并初始化视图。3) 事件监听：对表单元素（如input）绑定事件，当用户输入时，触发setter更新数据，进而触发视图更新。通俗类比：数据是仓库，视图是货架，双向绑定是自动传送带——仓库出货架自动补货，货架被拿货仓库自动记录。适用场景：表单交互、实时搜索、配置面板等需要频繁同步的场景。
+双向绑定 = 数据变化 → 视图更新 + 视图变化 → 数据更新。以Vue为例，实现三步：
+
+1) 数据劫持：用Object.defineProperty（Vue2）或Proxy（Vue3）递归监听data所有属性，在get中收集依赖（Watcher），在set中通知依赖更新。
+2) 模板编译：解析模板中的指令（如v-model），将数据与视图绑定，并初始化视图。
+3) 事件监听：对表单元素（如input）绑定事件，当用户输入时，触发setter更新数据，进而触发视图更新。
+
+通俗类比：数据是仓库，视图是货架，双向绑定是自动传送带——仓库出货架自动补货，货架被拿货仓库自动记录。
+
+适用场景：表单交互、实时搜索、配置面板等需要频繁同步的场景。
 
 **常见追问**：如何避免「1) 误以为双向绑定是数据直接修改视图，忽略中间的事件监听和依赖收集」？ 「2) 混淆双向绑定与单向数据流，认为Vue没有单向数据流」在真实项目中应如何规避？
 
@@ -4904,7 +6406,18 @@ EventSource 是浏览器提供的用于接收服务器推送事件（Server-Sent
 
 可视化平台与渲染引擎通信的核心是：平台侧只产出与引擎无关的中间描述（JSON/场景图/指令流），再通过适配层翻译成目标引擎的 API 调用或绘制指令，通信方式按耦合度分为进程内 API 调用、跨进程 RPC/消息、以及数据/指令流三种。
 
-先明确“渲染引擎”指什么：可能是 Web 端的 Canvas/SVG/WebGL、Three.js/Babylon.js，也可能是桌面端的 Unity/Unreal、或服务端 Skia/Cairo/Headless Chrome。可视化平台（拖拽配置、图表 DSL、大屏搭建）本身不应该直接依赖某个引擎，否则换引擎就要重写。 典型分层： 1) 平台层：用户配置 → 统一中间表示（IR），比如场景图 SceneGraph、图表 spec（类似 Vega-Lite）、或绘制指令列表。 2) 适配层/渲染器：把 IR 翻译成具体引擎调用。例如把 {type:'rect', x,y,w,h,fill} 翻译成 Three.js 的 Mesh+PlaneGeometry，或 Canvas 的 fillRect，或 SVG 的 <rect>。 3) 引擎层：真正执行 GPU/CPU 绘制。 通信方式按场景选： - 同进程直接调用：Web 里最常见，平台 JS 直接调 Three.js API，零序列化开销，但耦合高。 - 跨进程/跨语言：如平台是 Java/Go 服务，渲染在 Node/浏览器/客户端，用 WebSocket、gRPC、HTTP 传 IR 或指令流；高频交互（拖拽、缩放）用二进制协议（Protobuf/FlatBuffers）降低延迟。 - 指令流/增量更新：只传 diff（新增/删除/属性变更），类似 React 的 reconciliation，避免每帧全量重传。 - 事件回传：引擎把点击、hover、命中测试结果回传平台，平台再更新选中态。 通俗类比：平台像“导演”，只写分镜脚本（IR）；适配层像“翻译”，把脚本翻成不同演员（引擎）能懂的语言；引擎是“演员”，负责真正表演。导演不需要会每个演员的母语。 为什么这么做：解耦、可替换引擎、可测试（IR 可单测）、可跨端（同一份配置渲染到 Web/大屏/服务端出图）。
+先明确“渲染引擎”指什么：可能是 Web 端的 Canvas/SVG/WebGL、Three.js/Babylon.js，也可能是桌面端的 Unity/Unreal、或服务端 Skia/Cairo/Headless Chrome。可视化平台（拖拽配置、图表 DSL、大屏搭建）本身不应该直接依赖某个引擎，否则换引擎就要重写。
+
+典型分层：
+
+1) 平台层：用户配置 → 统一中间表示（IR），比如场景图 SceneGraph、图表 spec（类似 Vega-Lite）、或绘制指令列表。
+2) 适配层/渲染器：把 IR 翻译成具体引擎调用。例如把 {type:'rect', x,y,w,h,fill} 翻译成 Three.js 的 Mesh+PlaneGeometry，或 Canvas 的 fillRect，或 SVG 的 <rect>。
+3) 引擎层：真正执行 GPU/CPU 绘制。 通信方式按场景选：
+
+- 同进程直接调用：Web 里最常见，平台 JS 直接调 Three.js API，零序列化开销，但耦合高。
+- 跨进程/跨语言：如平台是 Java/Go 服务，渲染在 Node/浏览器/客户端，用 WebSocket、gRPC、HTTP 传 IR 或指令流；高频交互（拖拽、缩放）用二进制协议（Protobuf/FlatBuffers）降低延迟。
+- 指令流/增量更新：只传 diff（新增/删除/属性变更），类似 React 的 reconciliation，避免每帧全量重传。
+- 事件回传：引擎把点击、hover、命中测试结果回传平台，平台再更新选中态。 通俗类比：平台像“导演”，只写分镜脚本（IR）；适配层像“翻译”，把脚本翻成不同演员（引擎）能懂的语言；引擎是“演员”，负责真正表演。导演不需要会每个演员的母语。 为什么这么做：解耦、可替换引擎、可测试（IR 可单测）、可跨端（同一份配置渲染到 Web/大屏/服务端出图）。
 
 **常见追问**：如何避免「1) 直接说“平台调引擎 API”就结束，没讲中间抽象层，换引擎就重写」？ 「2) 把通信等同于网络 RPC，忽略同进程直接调用这种最常见情况」在真实项目中应如何规避？
 
@@ -4926,7 +6439,19 @@ SameSite 控制浏览器在跨站请求中是否携带 Cookie，核心是区分�
 
 SameSite 是 Cookie 的跨站发送策略，Strict 最严、Lax 折中、None 必须配 Secure，分别对应不同跨站请求场景。
 
-SameSite 控制浏览器在跨站请求中是否携带 Cookie，核心是区分“同站”和“跨站”。同站看的是可注册域（eTLD+1），比如 a.example.com 和 b.example.com 算同站，example.com 和 example.org 算跨站。 1）Strict：任何跨站请求都不带 Cookie。场景：从别的网站点击链接跳到你站、第三方 iframe、跨站表单提交、跨站 fetch/XHR，全都不带。适合高敏感操作，如银行转账、修改密码、后台管理。缺点是用户从外链进来会显示未登录，需要再点一次或刷新。 2）Lax：默认值（现代浏览器）。跨站的“顶级导航 + 安全方法（GET）”会带 Cookie，比如用户点 <a href> 从外站跳到你的页面、地址栏直接输入、书签打开，会带。但跨站的 POST 表单、iframe、fetch/XHR、<img>/<script> 等子资源请求不带。适合大多数普通登录态页面，兼顾安全和体验。 3）None：显式允许跨站携带，但必须同时设置 Secure（HTTPS）。场景：第三方嵌入、跨站 iframe、跨站 AJAX、SSO 回调、支付/广告/统计等需要跨站读写 Cookie 的场景。不设 Secure 会被浏览器拒绝。 通俗类比：Cookie 像一张门禁卡。Strict 是“只认本楼内部通道”，从外面进来一律不认；Lax 是“你从正门走进来可以刷卡，但从窗户/后门递东西不行”；None 是“任何入口都认，但卡必须加密防伪（Secure）”。
+SameSite 控制浏览器在跨站请求中是否携带 Cookie，核心是区分“同站”和“跨站”。同站看的是可注册域（eTLD+1），比如 a.example.com 和 b.example.com 算同站，example.com 和 example.org 算跨站。 1）Strict：任何跨站请求都不带 Cookie。
+
+场景：从别的网站点击链接跳到你站、第三方 iframe、跨站表单提交、跨站 fetch/XHR，全都不带。适合高敏感操作，如银行转账、修改密码、后台管理。缺点是用户从外链进来会显示未登录，需要再点一次或刷新。 2）Lax：默认值（现代浏览器）。跨站的“顶级导航 + 安全方法（GET）”会带 Cookie，比如用户点 <a href> 从外站跳到你的页面、地址栏直接输入、书签打开，会带。
+
+但跨站的 POST 表单、iframe、fetch/XHR、<img>/<script> 等子资源请求不带。适合大多数普通登录态页面，兼顾安全和体验。 3）None：显式允许跨站携带，但必须同时设置 Secure（HTTPS）。场景：第三方嵌入、跨站 iframe、跨站 AJAX、SSO 回调、支付/广告/统计等需要跨站读写 Cookie 的场景。
+
+不设 Secure 会被浏览器拒绝。
+
+通俗类比：Cookie 像一张门禁卡。
+
+- Strict 是“只认本楼内部通道”，从外面进来一律不认；
+- Lax 是“你从正门走进来可以刷卡，但从窗户/后门递东西不行”；
+- None 是“任何入口都认，但卡必须加密防伪（Secure）”。
 
 **常见追问**：如何避免「1）把“同站”当成“同源”，误以为 a.example.com 和 b.example.com 跨站」？ 「2）以为 Lax 所有跨站请求都不带 Cookie，实际上顶级导航 GET 会带」在真实项目中应如何规避？
 
@@ -4948,7 +6473,16 @@ v-show：需要频繁切换显示状态（如 tab 切换、下拉菜单、鼠标
 
 v-show 是 Vue 的条件渲染指令，通过切换元素 CSS 的 display 属性来控制显隐，元素始终保留在 DOM 中，适合频繁切换的场景。
 
-v-show 与 v-if 都是 Vue 中用于条件渲染的指令，但底层机制完全不同。 原理：v-show 在编译阶段会被处理成一条指令，运行时通过修改元素 style.display 的值（原值为 none 时恢复为原 display 值，否则设为 none）来隐藏/显示元素。元素本身始终存在于 DOM 树中，只是不可见。而 v-if 是真正的条件渲染，会根据条件动态创建或销毁元素及其子组件，切换时触发组件的生命周期钩子（created/mounted/destroyed 等），并且是惰性的——初始为假时什么都不做。 通俗类比：v-show 像给房间拉上窗帘，房间还在，只是看不见；v-if 像直接把房间拆掉，需要时再重新盖。 适用场景： - v-show：需要频繁切换显示状态（如 tab 切换、下拉菜单、鼠标悬停提示），因为切换开销小，只改样式。 - v-if：条件很少改变（如权限控制、首屏懒加载），因为初始渲染开销小，且能真正销毁组件释放资源。 注意：v-show 不支持 <template> 元素，也不能和 v-else 搭配使用；v-if 则支持。 如果面试官问“没用过 v-show 怎么办”，可以坦诚说明，但立刻补充：我理解它和 v-if 的区别，实际项目中我可能更常用 v-if，因为……（结合场景说明），并主动对比两者，展示知识迁移能力。
+v-show 与 v-if 都是 Vue 中用于条件渲染的指令，但底层机制完全不同。 原理：v-show 在编译阶段会被处理成一条指令，运行时通过修改元素 style.display 的值（原值为 none 时恢复为原 display 值，否则设为 none）来隐藏/显示元素。元素本身始终存在于 DOM 树中，只是不可见。
+
+而 v-if 是真正的条件渲染，会根据条件动态创建或销毁元素及其子组件，切换时触发组件的生命周期钩子（created/mounted/destroyed 等），并且是惰性的——初始为假时什么都不做。
+
+通俗类比：v-show 像给房间拉上窗帘，房间还在，只是看不见；v-if 像直接把房间拆掉，需要时再重新盖。
+
+适用场景：
+
+- v-show：需要频繁切换显示状态（如 tab 切换、下拉菜单、鼠标悬停提示），因为切换开销小，只改样式。
+- v-if：条件很少改变（如权限控制、首屏懒加载），因为初始渲染开销小，且能真正销毁组件释放资源。 注意：v-show 不支持 <template> 元素，也不能和 v-else 搭配使用；v-if 则支持。 如果面试官问“没用过 v-show 怎么办”，可以坦诚说明，但立刻补充：我理解它和 v-if 的区别，实际项目中我可能更常用 v-if，因为……（结合场景说明），并主动对比两者，展示知识迁移能力。
 
 **常见追问**：如何避免「误以为 v-show 和 v-if 一样会销毁/重建 DOM，或认为 v-show 会触发组件生命周期。」？ 「认为 v-show 性能一定优于 v-if，忽略初始渲染开销和 DOM 常驻内存占用。」在真实项目中应如何规避？
 
@@ -4970,7 +6504,16 @@ v-show 与 v-if 都是 Vue 中用于条件渲染的指令，但底层机制完�
 
 录音本地持久化的核心目的是通过客户端存储录音数据，减少向服务器上传的频率和冗余传输，从而降低服务器带宽与存储压力，并提升用户体验。
 
-录音本地持久化是指将录音数据先保存在用户设备本地（如文件系统、数据库），而不是实时上传到服务器。这样做的主要目的有： 1. **减轻服务器负载**：如果每个录音片段都实时上传，服务器需要处理大量并发写入和存储，成本高且易成为瓶颈。本地持久化后，可以批量、择机上传，平滑服务器压力。 2. **减少冗余资源重传**：网络不稳定时，实时上传容易失败，导致重复上传相同数据。本地保存后，可以记录上传状态，只传未成功部分，避免重复传输。 3. **提升用户体验**：录音时即使无网络也能继续，后续有网再同步，保证录音不丢失。 4. **节省用户流量**：避免实时上传消耗流量，尤其对移动用户友好。 通俗类比：就像写文章时先保存到本地草稿箱，而不是每打一个字就发到云端。这样既不会因为网络卡顿丢字，也减少了云端的频繁写入。 适用场景：语音消息、会议记录、语音笔记等需要录音且可能网络不稳定的应用。
+录音本地持久化是指将录音数据先保存在用户设备本地（如文件系统、数据库），而不是实时上传到服务器。这样做的主要目的有：
+
+1. **减轻服务器负载**：如果每个录音片段都实时上传，服务器需要处理大量并发写入和存储，成本高且易成为瓶颈。本地持久化后，可以批量、择机上传，平滑服务器压力。
+2. **减少冗余资源重传**：网络不稳定时，实时上传容易失败，导致重复上传相同数据。本地保存后，可以记录上传状态，只传未成功部分，避免重复传输。
+3. **提升用户体验**：录音时即使无网络也能继续，后续有网再同步，保证录音不丢失。
+4. **节省用户流量**：避免实时上传消耗流量，尤其对移动用户友好。
+
+通俗类比：就像写文章时先保存到本地草稿箱，而不是每打一个字就发到云端。这样既不会因为网络卡顿丢字，也减少了云端的频繁写入。
+
+适用场景：语音消息、会议记录、语音笔记等需要录音且可能网络不稳定的应用。
 
 **常见追问**：如何避免「误以为本地持久化就是为了永久保存，实际上它只是临时缓存，最终可能上传或删除。」？ 「忽略数据安全：本地存储可能被恶意应用读取，需加密。」在真实项目中应如何规避？
 
@@ -4992,7 +6535,20 @@ v-show 与 v-if 都是 Vue 中用于条件渲染的指令，但底层机制完�
 
 localStorage 是浏览器提供的同步、同源、字符串键值对持久化存储，适合存少量非敏感配置/状态，通过 JSON 序列化读写，并需处理容量、异常与跨标签同步。
 
-localStorage 是 Web Storage API 的一部分，挂在 window 上，特点：1) 同源隔离（协议+域名+端口一致才能访问）；2) 数据以字符串键值对保存，页面关闭、浏览器重启后仍在，除非用户清缓存或代码删除；3) 同步 API，读写会阻塞主线程；4) 容量通常约 5MB/源（各浏览器略有差异）；5) 生命周期是持久的，和 sessionStorage（标签页关闭即清）相对。 通俗类比：它像浏览器给每个网站发的一个小抽屉，抽屉只能放纸条（字符串），钥匙是字符串，抽屉按网站分开放，别人网站打不开你的抽屉；抽屉不会因为关门（关页面）就清空，但抽屉很小，塞太多会关不上（抛 QuotaExceededError）。 基本用法： - 写：localStorage.setItem('user', JSON.stringify({id:1,name:'Tom'})) - 读：const user = JSON.parse(localStorage.getItem('user') || 'null') - 删：localStorage.removeItem('user')；清空：localStorage.clear() - 遍历：Object.keys(localStorage) 或 for (let i=0;i<localStorage.length;i++) localStorage.key(i) 工程上一般封装一层 storage 工具：统一加前缀避免 key 冲突、try/catch 捕获 JSON 解析失败和写入超限、支持过期时间（存 {value, expire}，读取时判断）、对敏感信息不落盘。 适用场景：用户偏好（主题、语言）、登录 token 的非敏感部分（更推荐 httpOnly Cookie 存敏感凭证）、草稿、上次访问位置、埋点缓存等。不适用：大数据量、频繁读写的高频状态、敏感隐私数据、需要服务端共享的数据。 跨标签页同步：storage 事件在其它同源标签页修改时触发，可在 window.addEventListener('storage', e => ...) 中同步状态；注意当前修改的标签页本身不触发。 为什么用它：相比 Cookie，它不随每次 HTTP 请求发送，容量更大；相比 IndexedDB，它 API 简单、同步读取方便，适合小数据。
+localStorage 是 Web Storage API 的一部分，挂在 window 上，特点：
+
+1) 同源隔离（协议+域名+端口一致才能访问）；
+2) 数据以字符串键值对保存，页面关闭、浏览器重启后仍在，除非用户清缓存或代码删除；
+3) 同步 API，读写会阻塞主线程；
+4) 容量通常约 5MB/源（各浏览器略有差异）；
+5) 生命周期是持久的，和 sessionStorage（标签页关闭即清）相对。
+
+通俗类比：它像浏览器给每个网站发的一个小抽屉，抽屉只能放纸条（字符串），钥匙是字符串，抽屉按网站分开放，别人网站打不开你的抽屉；抽屉不会因为关门（关页面）就清空，但抽屉很小，塞太多会关不上（抛 QuotaExceededError）。 基本用法：
+
+- 写：localStorage.setItem('user', JSON.stringify({id:1,name:'Tom'}))
+- 读：const user = JSON.parse(localStorage.getItem('user') || 'null')
+- 删：localStorage.removeItem('user')；清空：localStorage.clear()
+- 遍历：Object.keys(localStorage) 或 for (let i=0;i<localStorage.length;i++) localStorage.key(i) 工程上一般封装一层 storage 工具：统一加前缀避免 key 冲突、try/catch 捕获 JSON 解析失败和写入超限、支持过期时间（存 {value, expire}，读取时判断）、对敏感信息不落盘。 适用场景：用户偏好（主题、语言）、登录 token 的非敏感部分（更推荐 httpOnly Cookie 存敏感凭证）、草稿、上次访问位置、埋点缓存等。不适用：大数据量、频繁读写的高频状态、敏感隐私数据、需要服务端共享的数据。 跨标签页同步：storage 事件在其它同源标签页修改时触发，可在 window.addEventListener('storage', e => ...) 中同步状态；注意当前修改的标签页本身不触发。 为什么用它：相比 Cookie，它不随每次 HTTP 请求发送，容量更大；相比 IndexedDB，它 API 简单、同步读取方便，适合小数据。
 
 **常见追问**：如何避免「1) 误以为 localStorage 能存对象，直接 setItem('a', {}) 会变成 '[object Object]'」？ 「2) 误以为它是异步或不会阻塞」在真实项目中应如何规避？
 
@@ -5014,7 +6570,13 @@ localStorage 是 Web Storage API 的一部分，挂在 window 上，特点：1) 
 
 这是考察候选人对富文本编辑器技术选型与二次开发深度的题，核心要讲清为什么选 Summernote、二次开发改了什么、以及 WYSIWYG 编辑器的底层原理（contenteditable + 文档模型 + 命令执行）。
 
-回答要分三层。第一层是选型：WYSIWYG 编辑器本质是一个把「可视化操作」映射为「HTML/文档模型变更」的组件，底层通常基于浏览器 contenteditable 或自绘渲染。常见方案有 UEditor、wangEditor、Quill、ProseMirror、Slate、TipTap、CKEditor、Summernote。Summernote 是基于 jQuery + Bootstrap 的轻量方案，优点是接入快、API 简单、插件生态够用、对老项目友好；缺点是依赖 jQuery、文档模型弱（直接操作 DOM/HTML 字符串）、复杂嵌套和协同编辑能力差。所以选它通常是「业务以基础排版为主、团队要快速交付、已有 Bootstrap 技术栈」的场景。第二层是二次开发：一般不是从零造轮子，而是在 Summernote 上做定制，比如自定义 toolbar 按钮和弹窗（图片上传、视频、表格、公式）、重写图片上传走自家 OSS/CDN、粘贴过滤（paste 时清洗 Word/网页样式）、XSS 白名单过滤、@提及、代码块高亮、只读模式、内容变更防抖同步到表单、以及和业务组件（如商品卡片、投票）的插入。第三层是原理：contenteditable 让 DOM 可编辑，document.execCommand 或 Range/Selection API 执行加粗、插入等命令，编辑器把当前 DOM 序列化成 HTML 提交。真正的难点在于「所见即所得」并不等于「所见即所得」——浏览器渲染、粘贴来源、CSS 隔离都会导致回显不一致，所以成熟方案会引入自己的文档模型（如 ProseMirror 的 schema、Slate 的 JSON 树）来保证数据可控。
+回答要分三层。第一层是选型：WYSIWYG 编辑器本质是一个把「可视化操作」映射为「HTML/文档模型变更」的组件，底层通常基于浏览器 contenteditable 或自绘渲染。常见方案有 UEditor、wangEditor、Quill、ProseMirror、Slate、TipTap、CKEditor、Summernote。
+
+Summernote 是基于 jQuery + Bootstrap 的轻量方案，优点是接入快、API 简单、插件生态够用、对老项目友好；缺点是依赖 jQuery、文档模型弱（直接操作 DOM/HTML 字符串）、复杂嵌套和协同编辑能力差。
+
+所以选它通常是「业务以基础排版为主、团队要快速交付、已有 Bootstrap 技术栈」的场景。第二层是二次开发：一般不是从零造轮子，而是在 Summernote 上做定制，比如自定义 toolbar 按钮和弹窗（图片上传、视频、表格、公式）、重写图片上传走自家 OSS/CDN、粘贴过滤（paste 时清洗 Word/网页样式）、XSS 白名单过滤、@提及、代码块高亮、只读模式、内容变更防抖同步到表单、以及和业务组件（如商品卡片、投票）的插入。
+
+第三层是原理：contenteditable 让 DOM 可编辑，document.execCommand 或 Range/Selection API 执行加粗、插入等命令，编辑器把当前 DOM 序列化成 HTML 提交。真正的难点在于「所见即所得」并不等于「所见即所得」——浏览器渲染、粘贴来源、CSS 隔离都会导致回显不一致，所以成熟方案会引入自己的文档模型（如 ProseMirror 的 schema、Slate 的 JSON 树）来保证数据可控。
 
 **常见追问**：如何避免「1）把「基于 Summernote 二次开发」说成「完全自研」，面试官一追问 API 和源码就露馅」？ 「2）只讲用了什么按钮，讲不出数据流（编辑 → HTML → 提交 → 回显）和过滤链路」在真实项目中应如何规避？
 
@@ -5034,9 +6596,13 @@ localStorage 是 Web Storage API 的一部分，挂在 window 上，特点：1) 
 
 **参考回答**：
 
-`<meta name="viewport" content="width=device-width, initial-scale=1">` 用于告诉移动浏览器按设备 CSS 宽度建立布局视口，避免桌面宽度页面被整体缩小；`viewport-fit=cover` 可配合安全区变量处理异形屏。不要轻易设置 `user-scalable=no` 或过窄的最大缩放，因为这会损害无障碍。
+`<meta name="viewport" content="width=device-width, initial-scale=1">` 用于告诉移动浏览器按设备 CSS 宽度建立布局视口，避免桌面宽度页面被整体缩小；`viewport-fit=cover` 可配合安全区变量处理异形屏。
 
-`http-equiv` 是 HTML 中对少数响应行为的兼容性提示，例如 `refresh`；它不能替代真正的 HTTP 响应头。编码应优先写 `<meta charset="UTF-8">`，缓存、安全策略、跳转和 CSP 等生产行为应尽可能由服务器响应头控制；某些 CSP 指令也只能通过响应头生效。两者都放在 `head` 中，但 viewport 解决页面布局，http-equiv 只是有限的协议兼容机制。
+不要轻易设置 `user-scalable=no` 或过窄的最大缩放，因为这会损害无障碍。
+
+`http-equiv` 是 HTML 中对少数响应行为的兼容性提示，例如 `refresh`；它不能替代真正的 HTTP 响应头。编码应优先写 `<meta charset="UTF-8">`，缓存、安全策略、跳转和 CSP 等生产行为应尽可能由服务器响应头控制；某些 CSP 指令也只能通过响应头生效。
+
+两者都放在 `head` 中，但 viewport 解决页面布局，http-equiv 只是有限的协议兼容机制。
 
 **常见追问**：为什么移动端页面只写响应式 CSS、却漏掉 viewport 时仍可能出现整体缩小？
 
@@ -5058,7 +6624,16 @@ localStorage 是 Web Storage API 的一部分，挂在 window 上，特点：1) 
 
 ref 可包装任意类型（含基本类型），通过 .value 访问，返回 RefImpl；reactive 只能代理对象/数组/Map/Set 等引用类型，直接访问属性，返回 Proxy，且解构/替换会丢失响应性。
 
-两者都是 Vue 3 创建响应式数据的 API，底层都基于 @vue/reactivity 的依赖收集与触发机制，但入口和适用场景不同。 1) 数据类型：ref 内部用 RefImpl 类，把值放在 _value 上，通过 get value/set value 拦截；如果传入的是对象，ref 会再调用 toReactive（即 reactive）把 _value 变成 Proxy，所以 ref 能包基本类型（number/string/boolean/null/undefined/symbol/bigint）和引用类型。reactive 只接受对象类型，传入基本类型会在开发环境警告并原样返回，不会响应式。 2) 访问方式：ref 在 JS 中必须 .value（模板中自动解包，顶层 ref 在模板里可省略 .value）；reactive 直接 obj.foo。 3) 响应性保持：reactive 返回 Proxy，解构 const { count } = state 会得到普通值，失去响应性；替换整个对象 state = newObj 也会断开原代理。ref 因为访问的是同一个 RefImpl 实例，整体替换 ref.value = newObj 仍然响应，解构 .value 后若为对象也可配合 toRefs 保持。 4) 适用场景：基本类型、需要整体替换、需要跨函数传递单一值、组合式函数返回值，优先 ref；一组相关的对象状态、表单、复杂嵌套对象，可用 reactive 减少 .value 书写。实际项目中 ref 更通用，官方也推荐默认用 ref。 通俗类比：ref 像一个带感应器的盒子，盒子本身不变，换里面的东西（.value）也能被感知；reactive 像给对象本身装了感应器，对象被换掉或拆开，感应器就失效了。
+两者都是 Vue 3 创建响应式数据的 API，底层都基于 @vue/reactivity 的依赖收集与触发机制，但入口和适用场景不同。
+
+1) 数据类型：ref 内部用 RefImpl 类，把值放在 _value 上，通过 get value/set value 拦截；如果传入的是对象，ref 会再调用 toReactive（即 reactive）把 _value 变成 Proxy，所以 ref 能包基本类型（number/string/boolean/null/undefined/symbol/bigint）和引用类型。reactive 只接受对象类型，传入基本类型会在开发环境警告并原样返回，不会响应式。
+2) 访问方式：ref 在 JS 中必须 .value（模板中自动解包，顶层 ref 在模板里可省略 .value）；reactive 直接 obj.foo。
+3) 响应性保持：reactive 返回 Proxy，解构 const { count } = state 会得到普通值，失去响应性；替换整个对象 state = newObj 也会断开原代理。ref 因为访问的是同一个 RefImpl 实例，整体替换 ref.value = newObj 仍然响应，解构 .value 后若为对象也可配合 toRefs 保持。
+4) 适用场景：基本类型、需要整体替换、需要跨函数传递单一值、组合式函数返回值，优先 ref；一组相关的对象状态、表单、复杂嵌套对象，可用 reactive 减少 .value 书写。
+
+实际项目中 ref 更通用，官方也推荐默认用 ref。
+
+通俗类比：ref 像一个带感应器的盒子，盒子本身不变，换里面的东西（.value）也能被感知；reactive 像给对象本身装了感应器，对象被换掉或拆开，感应器就失效了。
 
 **常见追问**：如何避免「1) 说 reactive 能处理基本类型，或说 ref 只能处理基本类型」？ 「2) 认为 ref 和 reactive 完全等价，忽略 .value 和整体替换的差异」在真实项目中应如何规避？
 
@@ -5080,7 +6655,17 @@ ref 可包装任意类型（含基本类型），通过 .value 访问，返回 R
 
 TanStack Virtual 解决的是长列表/大表格等场景下一次性渲染海量 DOM 节点导致的性能问题，通过只渲染视口内可见的少量元素并动态撑起滚动高度，实现虚拟滚动。
 
-核心问题：当列表有 1 万条数据时，如果直接 map 渲染 1 万个 DOM 节点，浏览器要创建、布局、绘制大量元素，首屏会卡顿、内存占用高、滚动掉帧。 TanStack Virtual 的思路是“窗口化/虚拟化”： 1. 容器只渲染可视区域（viewport）内的元素，通常再加 overscan 预渲染上下各几条，滚动时用绝对定位或 transform 把元素摆到正确位置。 2. 用一个占位元素把总高度撑成 itemCount * estimateSize，保证滚动条比例正确。 3. 监听滚动，根据 scrollTop 计算当前应该显示哪一段索引，只更新这一小段。 通俗类比：像看一张很长的画卷，你不需要把整幅画一次性铺在桌上，只需要一个取景框，画卷滚动到哪就画哪一段，取景框外的不画。 它和 React Window / react-virtualized 同类，但 TanStack Virtual 是 headless 的：只提供虚拟化计算逻辑（Virtualizer），不提供 UI 组件，你可以用 div、table、canvas 甚至任意框架渲染，因此适配 React、Vue、Solid、Svelte 等。 适用场景：长列表、无限滚动、聊天记录、大表格、时间轴、虚拟网格、横向滚动等。不适用场景：数据量很小（几十条）、需要一次性 SEO 抓取全部内容、或元素高度完全不可预测且必须精确测量的极端情况。
+核心问题：当列表有 1 万条数据时，如果直接 map 渲染 1 万个 DOM 节点，浏览器要创建、布局、绘制大量元素，首屏会卡顿、内存占用高、滚动掉帧。 TanStack Virtual 的思路是“窗口化/虚拟化”：
+
+1. 容器只渲染可视区域（viewport）内的元素，通常再加 overscan 预渲染上下各几条，滚动时用绝对定位或 transform 把元素摆到正确位置。
+2. 用一个占位元素把总高度撑成 itemCount * estimateSize，保证滚动条比例正确。
+3. 监听滚动，根据 scrollTop 计算当前应该显示哪一段索引，只更新这一小段。
+
+通俗类比：像看一张很长的画卷，你不需要把整幅画一次性铺在桌上，只需要一个取景框，画卷滚动到哪就画哪一段，取景框外的不画。
+
+它和 React Window / react-virtualized 同类，但 TanStack Virtual 是 headless 的：只提供虚拟化计算逻辑（Virtualizer），不提供 UI 组件，你可以用 div、table、canvas 甚至任意框架渲染，因此适配 React、Vue、Solid、Svelte 等。
+
+适用场景：长列表、无限滚动、聊天记录、大表格、时间轴、虚拟网格、横向滚动等。不适用场景：数据量很小（几十条）、需要一次性 SEO 抓取全部内容、或元素高度完全不可预测且必须精确测量的极端情况。
 
 **常见追问**：如何避免「误以为虚拟滚动能减少数据请求或后端压力，它只优化渲染，不解决数据量本身。」？ 「认为用了虚拟滚动就一定能提升性能：如果 item 组件本身很重、每次滚动都重建，或者 overscan 设得过大，依然会卡。」在真实项目中应如何规避？
 
@@ -5102,7 +6687,13 @@ TanStack Virtual 解决的是长列表/大表格等场景下一次性渲染海�
 
 先复现并抓取前端报错与资源加载情况，结合监控与日志定位是JS异常、接口失败还是资源加载失败，再针对性修复。
 
-定位偶发白屏要分层次：1) 复现与信息收集：问用户操作路径、浏览器/版本、是否弱网；查前端监控（Sentry）的JS错误、白屏检测、资源加载失败；查后端日志与网关日志看接口是否5xx/超时。2) 判断白屏类型：如果是JS执行报错导致React/Vue渲染中断，通常有错误堆栈；如果是接口返回异常但前端未兜底，会白屏；如果是CDN资源加载失败（如chunk加载失败），常见于发版后旧页面引用旧chunk。3) 常见根因：a. 发版后用户未刷新，旧HTML引用已删除的JS chunk，报ChunkLoadError；b. 接口偶发超时/返回非预期结构，前端直接访问undefined属性抛错；c. 权限/审批流数据边界（如空数组、null）未处理；d. 第三方SDK或浏览器兼容问题。4) 修复：加ErrorBoundary兜底、接口异常降级、chunk加载失败自动刷新、资源版本兼容、监控告警。5) 验证：灰度、压测、模拟弱网与旧版本。
+定位偶发白屏要分层次：
+
+1) 复现与信息收集：问用户操作路径、浏览器/版本、是否弱网；查前端监控（Sentry）的JS错误、白屏检测、资源加载失败；查后端日志与网关日志看接口是否5xx/超时。
+2) 判断白屏类型：如果是JS执行报错导致React/Vue渲染中断，通常有错误堆栈；如果是接口返回异常但前端未兜底，会白屏；如果是CDN资源加载失败（如chunk加载失败），常见于发版后旧页面引用旧chunk。
+3) 常见根因：a. 发版后用户未刷新，旧HTML引用已删除的JS chunk，报ChunkLoadError；b. 接口偶发超时/返回非预期结构，前端直接访问undefined属性抛错；c. 权限/审批流数据边界（如空数组、null）未处理；d. 第三方SDK或浏览器兼容问题。
+4) 修复：加ErrorBoundary兜底、接口异常降级、chunk加载失败自动刷新、资源版本兼容、监控告警。
+5) 验证：灰度、压测、模拟弱网与旧版本。
 
 **常见追问**：如何避免「只答‘看日志’不区分前后端」？ 「忽略发版导致的chunk失效」在真实项目中应如何规避？
 
@@ -5124,7 +6715,17 @@ TanStack Virtual 解决的是长列表/大表格等场景下一次性渲染海�
 
 对话状态优先用 Pinia 管理，Composition API 只适合封装局部逻辑；两者不是二选一，而是分层协作。
 
-先明确概念：Pinia 是 Vue 官方推荐的状态管理库，本质是一个全局单例 store，提供 state/getters/actions、devtools 时间旅行、插件、SSR 支持；Composition API 是 Vue 3 的组件逻辑复用方式，用 ref/reactive/computed/watch 把逻辑抽成 composable 函数，但它本身不提供全局单例、跨组件共享、持久化和调试能力。 用通俗类比：Composition API 像你家里的收纳盒，能把零散物品整理好，但每个盒子是独立的；Pinia 像小区公共仓库，所有住户（组件）都能存取同一份东西，还有管理员（devtools）记录谁什么时候动了什么。 对话状态的特点：1) 跨组件共享，比如侧边栏会话列表、主聊天窗口、输入框、顶部标题都要读同一份当前会话；2) 生命周期长，切换路由后仍要保留；3) 需要持久化到 localStorage/IndexedDB；4) 需要可观测、可回放、可撤销；5) 流式响应时多个组件要同步更新。这些正是 Pinia 的强项。 推荐分层：Pinia store 管全局对话状态（会话列表、当前会话 id、消息数组、流式状态、错误、配置），composable 管局部可复用逻辑（如 useAutoScroll、useMarkdownRender、useStreamingText、useMessageGrouping），组件只负责渲染和事件。composable 内部可以调用 store，但不要把全局状态藏在 composable 的模块级 ref 里。 例子： // stores/chat.ts export const useChatStore = defineStore('chat', { state: () => ({ sessions: [], currentId: '', messages: [], streaming: false }), getters: { current: (s) => s.sessions.find(x => x.id === s.currentId) }, actions: { async send(text) { ... } } }) // composables/useAutoScroll.ts export function useAutoScroll(elRef) { /* 只依赖传入的 ref，不持有全局状态 */ } 适用场景：全局共享、需要持久化/调试/SSR 的用 Pinia；纯 UI 行为、只在一个组件树内复用、无全局副作用的用 Composition API。
+先明确概念：Pinia 是 Vue 官方推荐的状态管理库，本质是一个全局单例 store，提供 state/getters/actions、devtools 时间旅行、插件、SSR 支持；Composition API 是 Vue 3 的组件逻辑复用方式，用 ref/reactive/computed/watch 把逻辑抽成 composable 函数，但它本身不提供全局单例、跨组件共享、持久化和调试能力。
+
+用通俗类比：Composition API 像你家里的收纳盒，能把零散物品整理好，但每个盒子是独立的；Pinia 像小区公共仓库，所有住户（组件）都能存取同一份东西，还有管理员（devtools）记录谁什么时候动了什么。 对话状态的特点：
+
+1) 跨组件共享，比如侧边栏会话列表、主聊天窗口、输入框、顶部标题都要读同一份当前会话；
+2) 生命周期长，切换路由后仍要保留；
+3) 需要持久化到 localStorage/IndexedDB；
+4) 需要可观测、可回放、可撤销；
+5) 流式响应时多个组件要同步更新。这些正是 Pinia 的强项。 推荐分层：Pinia store 管全局对话状态（会话列表、当前会话 id、消息数组、流式状态、错误、配置），composable 管局部可复用逻辑（如 useAutoScroll、useMarkdownRender、useStreamingText、useMessageGrouping），组件只负责渲染和事件。composable 内部可以调用 store，但不要把全局状态藏在 composable 的模块级 ref 里。
+
+例子： // stores/chat.ts export const useChatStore = defineStore('chat', { state: () => ({ sessions: [], currentId: '', messages: [], streaming: false }), getters: { current: (s) => s.sessions.find(x => x.id === s.currentId) }, actions: { async send(text) { ... } } }) // composables/useAutoScroll.ts export function useAutoScroll(elRef) { /* 只依赖传入的 ref，不持有全局状态 */ } 适用场景：全局共享、需要持久化/调试/SSR 的用 Pinia；纯 UI 行为、只在一个组件树内复用、无全局副作用的用 Composition API。
 
 **常见追问**：如何避免「1) 认为 Composition API 能替代 Pinia，把全局状态写成模块级 ref，导致多实例、SSR 污染、devtools 失效」？ 「2) 把所有状态都塞进 Pinia，连输入框草稿、滚动位置这种局部 UI 状态也全局化，造成耦合和性能问题」在真实项目中应如何规避？
 
@@ -5146,7 +6747,19 @@ reactive：适合定义一组相关的状态对象，如表单、复杂状态。
 
 reactive 用 Proxy 把对象变成深层响应式，ref 用 .value 包装任意值（含基本类型）实现响应式，toRef 把响应式对象的某个属性转成保持连接的 ref，toRefs 则批量做这件事，常用于解构 props 或 store 时不丢失响应性。
 
-Vue 3 的响应式核心是 Proxy + effect 依赖收集。 1) reactive(obj)：接收一个对象（数组、Map、Set 等），返回一个 Proxy。访问属性时 track 收集依赖，修改时 trigger 触发更新。它是深层的：嵌套对象在访问时会被递归代理。类比：给整个房间装上感应灯，任何角落有人动都会亮。限制：只能代理对象，不能代理基本类型；解构会丢失响应性；重新赋值整个对象会断开代理。 2) ref(value)：把任意值（基本类型、对象、甚至函数）包成一个带 .value 的 RefImpl 对象。读取 .value 时 track，写入时 trigger。如果传入的是对象，内部会用 reactive 处理，所以 ref 对象也是深层响应式。类比：给一个值配一个带传感器的盒子，必须通过盒子（.value）存取。模板中自动解包，所以写 {{ count }} 而不是 {{ count.value }}。 3) toRef(obj, key)：针对 reactive 对象或 ref 对象的某个属性，返回一个 ref，且这个 ref 与原对象保持双向同步。读 toRef 的 .value 等于读原属性，写它也等于写原属性。它不复制值，只是建立一个连接。类比：给房间里的某盏灯单独接一个开关，开关和灯是同一路电。 4) toRefs(obj)：把 reactive 对象的每个属性都转成 ref，返回一个普通对象，每个属性都是 toRef 的结果。常用于解构：const state = reactive({a:1,b:2}); const {a,b} = toRefs(state); 这样 a、b 仍是响应式，且与 state 同步。类比：给房间里每盏灯都接一个独立开关。 适用场景： - reactive：适合定义一组相关的状态对象，如表单、复杂状态。 - ref：适合基本类型、需要整体替换的值，或组合式函数返回值。 - toRef：需要把某个属性单独传递、保持响应性时。 - toRefs：解构 props、setup 返回、store 解构时保持响应性。 原理补充：ref 的 .value 访问触发 track，赋值触发 trigger；toRef 内部对 reactive 对象使用 Object.defineProperty 或 Proxy 的 get/set 转发，对 ref 对象则直接返回原 ref 或建立 getter/setter。toRefs 遍历对象所有 key 调用 toRef。
+Vue 3 的响应式核心是 Proxy + effect 依赖收集。
+
+1) reactive(obj)：接收一个对象（数组、Map、Set 等），返回一个 Proxy。访问属性时 track 收集依赖，修改时 trigger 触发更新。它是深层的：嵌套对象在访问时会被递归代理。类比：给整个房间装上感应灯，任何角落有人动都会亮。限制：只能代理对象，不能代理基本类型；解构会丢失响应性；重新赋值整个对象会断开代理。
+2) ref(value)：把任意值（基本类型、对象、甚至函数）包成一个带 .value 的 RefImpl 对象。读取 .value 时 track，写入时 trigger。如果传入的是对象，内部会用 reactive 处理，所以 ref 对象也是深层响应式。类比：给一个值配一个带传感器的盒子，必须通过盒子（.value）存取。模板中自动解包，所以写 {{ count }} 而不是 {{ count.value }}。
+3) toRef(obj, key)：针对 reactive 对象或 ref 对象的某个属性，返回一个 ref，且这个 ref 与原对象保持双向同步。读 toRef 的 .value 等于读原属性，写它也等于写原属性。它不复制值，只是建立一个连接。类比：给房间里的某盏灯单独接一个开关，开关和灯是同一路电。
+4) toRefs(obj)：把 reactive 对象的每个属性都转成 ref，返回一个普通对象，每个属性都是 toRef 的结果。常用于解构：const state = reactive({a:1,b:2}); const {a,b} = toRefs(state); 这样 a、b 仍是响应式，且与 state 同步。类比：给房间里每盏灯都接一个独立开关。
+
+适用场景：
+
+- reactive：适合定义一组相关的状态对象，如表单、复杂状态。
+- ref：适合基本类型、需要整体替换的值，或组合式函数返回值。
+- toRef：需要把某个属性单独传递、保持响应性时。
+- toRefs：解构 props、setup 返回、store 解构时保持响应性。 原理补充：ref 的 .value 访问触发 track，赋值触发 trigger；toRef 内部对 reactive 对象使用 Object.defineProperty 或 Proxy 的 get/set 转发，对 ref 对象则直接返回原 ref 或建立 getter/setter。toRefs 遍历对象所有 key 调用 toRef。
 
 **常见追问**：如何避免「1) 认为 ref 只能用于基本类型：ref 也能包对象，且内部会 reactive 化」？ 「2) 直接解构 reactive 对象后仍以为有响应性：解构会丢失响应性，必须用 toRefs 或 toRef」在真实项目中应如何规避？
 
@@ -5168,7 +6781,14 @@ Vue 3 的响应式核心是 Proxy + effect 依赖收集。 1) reactive(obj)：�
 
 Pinia 是 Vue 官方推荐的下一代状态管理库，基于 Vue 3 的响应式系统（reactive/ref），用组合式 API 风格定义 store，去掉了 Vuex 的 Mutation，类型推导更好、更轻量、支持模块化与 SSR。
 
-Pinia 可以理解为 Vuex 的继任者，核心目标是让状态管理更简单、类型更友好。 1. 基本概念：一个 store 由 state、getters、actions 组成。state 是响应式数据，getters 类似计算属性，actions 是同步或异步方法。定义方式有两种：Options API 风格（state/getters/actions 对象）和 Setup 风格（用 ref/computed/function 定义，返回对象）。 2. 为什么出现：Vuex 有 Mutation 和 Action 两层，写起来繁琐；Vuex 对 TypeScript 支持差，需要大量类型体操；Vuex 是单一 store 树，模块嵌套复杂。Pinia 去掉 Mutation，actions 直接改 state；每个 store 是独立模块，天然支持代码分割；基于 Vue 3 响应式，类型自动推导。 3. 核心原理：Pinia 内部用 Vue 的 reactive 创建 state，用 computed 创建 getters，用 effectScope 管理副作用。每个 store 是一个独立的作用域，通过 inject/provide 或全局 activePinia 实例管理。store 实例是单例，首次调用 useStore() 时创建并缓存。 4. 使用场景：中大型 Vue 3 应用需要跨组件共享状态时；需要 SSR 时（Pinia 支持服务端状态序列化）；需要 TypeScript 强类型时；需要模块化、按需加载 store 时。小型应用或简单父子通信不需要 Pinia。 5. 通俗类比：Vuex 像一个大仓库，所有货物必须通过管理员（Mutation）登记才能改；Pinia 像多个独立小仓库，每个仓库有自己的管理员（Action），可以直接改货，更灵活。 6. 与 Vuex 对比：Pinia 没有 Mutation，actions 可同步可异步；没有 modules 嵌套，每个 store 独立；支持组合式 API；TypeScript 支持更好；体积更小（约 1KB）；支持 Vue 2（通过插件）。
+Pinia 可以理解为 Vuex 的继任者，核心目标是让状态管理更简单、类型更友好。
+
+1. 基本概念：一个 store 由 state、getters、actions 组成。state 是响应式数据，getters 类似计算属性，actions 是同步或异步方法。定义方式有两种：Options API 风格（state/getters/actions 对象）和 Setup 风格（用 ref/computed/function 定义，返回对象）。
+2. 为什么出现：Vuex 有 Mutation 和 Action 两层，写起来繁琐；Vuex 对 TypeScript 支持差，需要大量类型体操；Vuex 是单一 store 树，模块嵌套复杂。Pinia 去掉 Mutation，actions 直接改 state；每个 store 是独立模块，天然支持代码分割；基于 Vue 3 响应式，类型自动推导。
+3. 核心原理：Pinia 内部用 Vue 的 reactive 创建 state，用 computed 创建 getters，用 effectScope 管理副作用。每个 store 是一个独立的作用域，通过 inject/provide 或全局 activePinia 实例管理。store 实例是单例，首次调用 useStore() 时创建并缓存。
+4. 使用场景：中大型 Vue 3 应用需要跨组件共享状态时；需要 SSR 时（Pinia 支持服务端状态序列化）；需要 TypeScript 强类型时；需要模块化、按需加载 store 时。小型应用或简单父子通信不需要 Pinia。
+5. 通俗类比：Vuex 像一个大仓库，所有货物必须通过管理员（Mutation）登记才能改；Pinia 像多个独立小仓库，每个仓库有自己的管理员（Action），可以直接改货，更灵活。
+6. 与 Vuex 对比：Pinia 没有 Mutation，actions 可同步可异步；没有 modules 嵌套，每个 store 独立；支持组合式 API；TypeScript 支持更好；体积更小（约 1KB）；支持 Vue 2（通过插件）。
 
 **常见追问**：如何避免「误以为 Pinia 只能用于 Vue 3：Pinia 也支持 Vue 2，需安装 @vue/composition-api 或 Vue 2.7+。」？ 「误以为 Pinia 没有 Mutation 就不安全：Pinia 通过 actions 集中修改，仍可追踪，且 devtools 支持时间旅行。」在真实项目中应如何规避？
 
@@ -5190,7 +6810,16 @@ src（source）表示“源”，浏览器会把目标资源下载并嵌入到�
 
 src用于替换当前元素（引入资源并嵌入文档流），href用于建立当前文档与目标资源的关联（超链接/引用），二者在加载行为、阻塞性和语义上不同。
 
-src（source）表示“源”，浏览器会把目标资源下载并嵌入到当前元素所在位置，替换该元素的内容，典型如 <script src>、<img src>、<iframe src>、<audio/video src>。href（hypertext reference）表示“超文本引用”，用于建立当前文档与外部资源之间的链接关系，浏览器不会用目标内容替换当前元素，典型如 <a href>、<link href>。 通俗类比：src 像“把别人的零件拆下来装到自己身上”，href 像“在自己身上贴一张指向别人家的门牌/名片”。 关键差异： 1) 加载与阻塞：<script src> 默认会阻塞 HTML 解析（除非 async/defer），因为脚本可能修改 DOM；<link href> 加载 CSS 不阻塞 HTML 解析，但会阻塞渲染（render-blocking），因为浏览器要等样式确定后再绘制。 2) 语义：src 是“内容来源”，href 是“引用地址/关系”。 3) 对元素的影响：img/iframe 的 src 决定其显示内容；a 的 href 只决定点击跳转目标，不改变 a 标签自身内容。 4) 适用场景：需要把资源作为当前文档一部分呈现或执行时用 src；需要链接、跳转、声明外部资源关系（样式表、预加载、canonical、icon）时用 href。 例子：<img src="a.png"> 会把图片画在页面上；<a href="a.html"> 只是可点击链接，页面不会自动加载 a.html。<script src="x.js"> 会下载并执行 x.js；<link rel="stylesheet" href="x.css"> 会下载 CSS 并应用到当前文档。
+src（source）表示“源”，浏览器会把目标资源下载并嵌入到当前元素所在位置，替换该元素的内容，典型如 <script src>、<img src>、<iframe src>、<audio/video src>。href（hypertext reference）表示“超文本引用”，用于建立当前文档与外部资源之间的链接关系，浏览器不会用目标内容替换当前元素，典型如 <a href>、<link href>。
+
+通俗类比：src 像“把别人的零件拆下来装到自己身上”，href 像“在自己身上贴一张指向别人家的门牌/名片”。 关键差异：
+
+1) 加载与阻塞：<script src> 默认会阻塞 HTML 解析（除非 async/defer），因为脚本可能修改 DOM；<link href> 加载 CSS 不阻塞 HTML 解析，但会阻塞渲染（render-blocking），因为浏览器要等样式确定后再绘制。
+2) 语义：src 是“内容来源”，href 是“引用地址/关系”。
+3) 对元素的影响：img/iframe 的 src 决定其显示内容；a 的 href 只决定点击跳转目标，不改变 a 标签自身内容。
+4) 适用场景：需要把资源作为当前文档一部分呈现或执行时用 src；需要链接、跳转、声明外部资源关系（样式表、预加载、canonical、icon）时用 href。
+
+例子：<img src="a.png"> 会把图片画在页面上；<a href="a.html"> 只是可点击链接，页面不会自动加载 a.html。<script src="x.js"> 会下载并执行 x.js；<link rel="stylesheet" href="x.css"> 会下载 CSS 并应用到当前文档。
 
 **常见追问**：如何避免「1) 误以为 href 也会把资源嵌入页面（如把 <link href> 当成加载内容）」？ 「2) 误以为所有 src 都阻塞解析：img/iframe 不阻塞 HTML 解析，只有 script src 默认阻塞」在真实项目中应如何规避？
 
@@ -5212,7 +6841,25 @@ nowrap（默认）：所有 flex item 被强制放在同一条主轴线上。即
 
 flex-wrap 定义 flex 容器内项目在主轴方向排不下时是否换行以及换行方向，默认 nowrap 不换行，wrap 换行且第一行在上/左，wrap-reverse 反向换行。
 
-flex-wrap 是 CSS Flexbox 中作用于 flex 容器的属性，用来控制“单行还是多行”的布局。它的取值有： 1. nowrap（默认）：所有 flex item 被强制放在同一条主轴线上。即使空间不够，也不会换行，而是通过 flex-shrink 压缩项目，或者溢出容器。 2. wrap：当一条主轴线上排不下时，允许换行。换行方向与主轴方向一致：如果主轴是 row，则新行在下方；如果主轴是 column，则新列在右侧。 3. wrap-reverse：同样允许换行，但交叉轴起点和终点互换。例如 row 下第一行会出现在下方，新行向上堆叠；column 下第一列出现在右侧，新列向左堆叠。 通俗类比：把 flex 容器想成一排停车位，主轴是横向。nowrap 就是“只能停一排，车太多就挤一挤或停到线外”；wrap 是“一排停满后，在下面再开一排”；wrap-reverse 是“一排停满后，在上面再开一排”。 换行后的关键点： - 换行产生的每一行/列称为一条 flex line。 - 多行时，align-content 控制这些行在交叉轴上的整体分布；单行时 align-content 不生效，由 align-items 控制项目在交叉轴上的对齐。 - 换行后，每一条 flex line 内部仍然独立进行主轴空间分配，flex-grow / flex-shrink 只在同一行内计算。 - 是否换行取决于主轴剩余空间和项目的 flex-basis / 宽度；如果项目设置了 min-width 或内容不可压缩，nowrap 下更容易溢出。 适用场景：响应式卡片列表、标签云、导航菜单、图片墙等需要“排满自动折行”的布局。如果希望固定单行并压缩，用 nowrap；如果希望换行且控制行间对齐，配合 align-content 使用。
+flex-wrap 是 CSS Flexbox 中作用于 flex 容器的属性，用来控制“单行还是多行”的布局。它的取值有：
+
+1. nowrap（默认）：所有 flex item 被强制放在同一条主轴线上。即使空间不够，也不会换行，而是通过 flex-shrink 压缩项目，或者溢出容器。
+2. wrap：当一条主轴线上排不下时，允许换行。换行方向与主轴方向一致：如果主轴是 row，则新行在下方；如果主轴是 column，则新列在右侧。
+3. wrap-reverse：同样允许换行，但交叉轴起点和终点互换。
+
+例如 row 下第一行会出现在下方，新行向上堆叠；column 下第一列出现在右侧，新列向左堆叠。
+
+通俗类比：把 flex 容器想成一排停车位，主轴是横向。
+
+- nowrap 就是“只能停一排，车太多就挤一挤或停到线外”；
+- wrap 是“一排停满后，在下面再开一排”；
+- wrap-reverse 是“一排停满后，在上面再开一排”。
+
+换行后的关键点： - 换行产生的每一行/列称为一条 flex line。 - 多行时，align-content 控制这些行在交叉轴上的整体分布；单行时 align-content 不生效，由 align-items 控制项目在交叉轴上的对齐。 - 换行后，每一条 flex line 内部仍然独立进行主轴空间分配，flex-grow / flex-shrink 只在同一行内计算。
+
+- 是否换行取决于主轴剩余空间和项目的 flex-basis / 宽度；如果项目设置了 min-width 或内容不可压缩，nowrap 下更容易溢出。
+
+适用场景：响应式卡片列表、标签云、导航菜单、图片墙等需要“排满自动折行”的布局。如果希望固定单行并压缩，用 nowrap；如果希望换行且控制行间对齐，配合 align-content 使用。
 
 **常见追问**：如何避免「误以为 flex-wrap 是设置在 flex item 上的属性，实际上它必须设置在 flex container 上。」？ 「把 wrap-reverse 理解成“主轴方向反转”，其实它反转的是交叉轴方向，主轴方向仍由 flex-direction 决定。」在真实项目中应如何规避？
 
@@ -5234,7 +6881,18 @@ flex-wrap 是 CSS Flexbox 中作用于 flex 容器的属性，用来控制“单
 
 Sass 和 Less 都是 CSS 预处理器，核心区别在于 Sass 由 Ruby 起家、现用 Dart 实现且功能更强大（支持 @if/@for 等控制指令、真正的变量作用域），Less 基于 JavaScript 运行、语法更接近原生 CSS、上手更简单。
 
-CSS 预处理器本质是给 CSS 加上编程能力（变量、嵌套、混入、运算、继承），再用编译器把它翻译成浏览器能识别的普通 CSS。可以类比：原生 CSS 像手写 HTML，预处理器像用模板引擎生成 HTML。 Sass（2006，最初 Ruby，现主流 dart-sass）与 Less（2009，JavaScript）的主要区别： 1. 实现语言与运行环境：Sass 早期依赖 Ruby，现在用 Dart 编译，可在 Node、CLI、构建工具中使用；Less 基于 JS，可直接在浏览器端用 less.js 编译，也能在 Node 中编译。 2. 语法：Sass 有两种语法，.sass 缩进式（无分号大括号）和 .scss 的 CSS 超集；Less 语法几乎就是 CSS 加扩展，学习成本最低。 3. 变量：Sass 用 $var，Less 用 @var。Sass 变量有作用域和 !default/!global，Less 变量是惰性求值（lazy evaluation），同一作用域内后声明可覆盖先使用。 4. 控制指令与函数：Sass 内置 @if/@else、@for、@each、@while、@function、@mixin/@include、@extend，函数库非常丰富（颜色、数学、列表、Map）；Less 也有 mixin（可带参、可 guard）、when 条件、循环靠递归 mixin 实现，函数和逻辑能力相对弱。 5. 模块化：Sass 有 @use/@forward（新）和 @import（旧），支持命名空间；Less 用 @import，支持 reference、inline 等选项。 6. 生态与工具：Sass 被 Bootstrap 4/5、Foundation 等采用，dart-sass 是官方推荐；Less 曾因 Bootstrap 3 流行，Ant Design 早期也用 Less，现在社区活跃度 Sass 更高。 适用场景：团队已有大量 Less 代码或需要浏览器端实时编译时用 Less；新项目、需要复杂逻辑/函数/模块化时优先 Sass（SCSS）。两者都能配合 webpack/vite 的 loader 使用。
+CSS 预处理器本质是给 CSS 加上编程能力（变量、嵌套、混入、运算、继承），再用编译器把它翻译成浏览器能识别的普通 CSS。可以类比：原生 CSS 像手写 HTML，预处理器像用模板引擎生成 HTML。 Sass（2006，最初 Ruby，现主流 dart-sass）与 Less（2009，JavaScript）的主要区别：
+
+1. 实现语言与运行环境：Sass 早期依赖 Ruby，现在用 Dart 编译，可在 Node、CLI、构建工具中使用；Less 基于 JS，可直接在浏览器端用 less.js 编译，也能在 Node 中编译。
+2. 语法：Sass 有两种语法，.sass 缩进式（无分号大括号）和 .scss 的 CSS 超集；Less 语法几乎就是 CSS 加扩展，学习成本最低。
+3. 变量：Sass 用 $var，Less 用 @var。Sass 变量有作用域和 !default/!global，Less 变量是惰性求值（lazy evaluation），同一作用域内后声明可覆盖先使用。
+4. 控制指令与函数：Sass 内置 @if/@else、@for、@each、@while、@function、@mixin/@include、@extend，函数库非常丰富（颜色、数学、列表、Map）；Less 也有 mixin（可带参、可 guard）、when 条件、循环靠递归 mixin 实现，函数和逻辑能力相对弱。
+5. 模块化：Sass 有 @use/@forward（新）和 @import（旧），支持命名空间；Less 用 @import，支持 reference、inline 等选项。
+6. 生态与工具：Sass 被 Bootstrap 4/5、Foundation 等采用，dart-sass 是官方推荐；Less 曾因 Bootstrap 3 流行，Ant Design 早期也用 Less，现在社区活跃度 Sass 更高。
+
+适用场景：团队已有大量 Less 代码或需要浏览器端实时编译时用 Less；新项目、需要复杂逻辑/函数/模块化时优先 Sass（SCSS）。
+
+两者都能配合 webpack/vite 的 loader 使用。
 
 **常见追问**：如何避免「把 Sass 和 SCSS 混为一谈：Sass 是语言/工具名，SCSS 是它的一种语法（另一种是缩进式 .sass）。2. 认为 Less 不能写逻辑：Less 有 when 守卫、递归 mixin 可实现循环，只是不如 Sass 直观。3. 说 Sass 变量是运行时变量：预处理器变量在编译期就被替换，不能像 CSS 变量那样动态改。4. 忽略构建链路：以为写完 .scss 浏览器直接能跑，实际必须经过编译。5. 只背语法差异，答不出为什么选型（生态、团队、构建工具支持）。」？ 能否结合「能说出 Sass 的 @extend 与 mixin 的区别：@extend 生成组合选择器、减少重复但可能造成选择器爆炸和跨文件副作用；mixin 是复制声明、更可控。2. 知道 Less 变量惰性求值：`@var: 0; .class { @var: 1; prop: @var; }` 会取最近作用域最后定义的值，容易踩坑。3. 了解 dart-sass 取代 node-sass 的原因：node-sass 绑定 libsass，安装依赖二进制、Node 版本升级易挂；dart-sass 纯 Dart 实现、跨平台、支持新特性。4. 能提到 CSS 原生变量（custom properties）与预处理器变量的本质差异：原生变量运行时可变、可被 JS 读取，预处理器变量编译期替换。5. 知道 Sass 的 @use 相比 @import 不会重复输出、有命名空间，是官方推荐迁移方向。」进一步展开？
 
@@ -5256,7 +6914,25 @@ CSS 预处理器本质是给 CSS 加上编程能力（变量、嵌套、混入�
 
 Canvas 是像素级、命令式的位图绘制（画完即忘），SVG 是矢量、声明式的 DOM 图形（保留对象模型），前者适合大量动态像素渲染，后者适合可交互、可缩放的矢量图形。
 
-一、本质区别 1) 渲染模型：Canvas 提供一块位图（bitmap）画布，通过 JS 调用 2D/WebGL 上下文 API 逐条执行绘制命令，绘制结果直接写入像素缓冲区，绘制完成后浏览器不再保留图形的语义信息（俗称“画完即忘”，immediate mode）。SVG 是 XML 描述的矢量图形，每个图形（rect、circle、path…）都是 DOM 节点，浏览器维护一棵可查询、可修改、可绑定事件的场景图（retained mode）。 2) 分辨率与缩放：Canvas 依赖像素，放大后锯齿/模糊，需按 devicePixelRatio 重设尺寸重绘；SVG 由几何描述，任意缩放不失真，天然适配 Retina 与打印。 3) 交互与事件：SVG 每个元素可像 HTML 一样绑定 click/hover、用 CSS 设置样式、用 JS 改属性，命中检测由浏览器完成；Canvas 只有整块画布一个元素，命中检测需自己写（如颜色拾取、几何求交、离屏 canvas 逐像素判断）。 4) 性能特征：Canvas 绘制 N 个图形是 O(N) 的绘制调用，但每帧重绘整屏，适合高频动画、粒子、游戏、图表大数据量；SVG 节点多时 DOM 树庞大，布局/重绘/合成开销大，几千个节点就会卡，但少量节点时性能稳定且省电。 5) 可访问性与 SEO：SVG 文本可被搜索引擎和屏幕阅读器读取，可加 title/aria；Canvas 内容对它们不可见，需额外提供替代文本。 二、通俗类比 Canvas 像在白板上用笔一笔一笔画，画完就只剩颜色，想改只能擦掉重画；SVG 像用乐高积木拼图，每块积木都是独立对象，可以单独移动、上色、贴标签。 三、适用场景 Canvas：游戏、视频/图像处理、粒子特效、地图瓦片、大数据量可视化（ECharts 的 canvas 模式）、WebGL/3D。 SVG：图标、Logo、流程图、地图路径、可交互图表（少量数据）、需要 CSS 动画/滤镜、需要无障碍与缩放的场景。 四、选型口诀 图形数量大且频繁重绘 → Canvas；图形少但要交互/缩放/可访问 → SVG。二者也可混用（如地图底图用 Canvas、标注用 SVG 覆盖层）。
+**一、本质区别**
+
+1) 渲染模型：Canvas 提供一块位图（bitmap）画布，通过 JS 调用 2D/WebGL 上下文 API 逐条执行绘制命令，绘制结果直接写入像素缓冲区，绘制完成后浏览器不再保留图形的语义信息（俗称“画完即忘”，immediate mode）。SVG 是 XML 描述的矢量图形，每个图形（rect、circle、path…）都是 DOM 节点，浏览器维护一棵可查询、可修改、可绑定事件的场景图（retained mode）。
+2) 分辨率与缩放：Canvas 依赖像素，放大后锯齿/模糊，需按 devicePixelRatio 重设尺寸重绘；SVG 由几何描述，任意缩放不失真，天然适配 Retina 与打印。
+3) 交互与事件：SVG 每个元素可像 HTML 一样绑定 click/hover、用 CSS 设置样式、用 JS 改属性，命中检测由浏览器完成；Canvas 只有整块画布一个元素，命中检测需自己写（如颜色拾取、几何求交、离屏 canvas 逐像素判断）。
+4) 性能特征：Canvas 绘制 N 个图形是 O(N) 的绘制调用，但每帧重绘整屏，适合高频动画、粒子、游戏、图表大数据量；SVG 节点多时 DOM 树庞大，布局/重绘/合成开销大，几千个节点就会卡，但少量节点时性能稳定且省电。
+5) 可访问性与 SEO：SVG 文本可被搜索引擎和屏幕阅读器读取，可加 title/aria；Canvas 内容对它们不可见，需额外提供替代文本。
+
+**二、通俗类比**
+
+Canvas 像在白板上用笔一笔一笔画，画完就只剩颜色，想改只能擦掉重画；SVG 像用乐高积木拼图，每块积木都是独立对象，可以单独移动、上色、贴标签。
+
+**三、适用场景**
+
+Canvas：游戏、视频/图像处理、粒子特效、地图瓦片、大数据量可视化（ECharts 的 canvas 模式）、WebGL/3D。 SVG：图标、Logo、流程图、地图路径、可交互图表（少量数据）、需要 CSS 动画/滤镜、需要无障碍与缩放的场景。
+
+**四、选型口诀**
+
+图形数量大且频繁重绘 → Canvas；图形少但要交互/缩放/可访问 → SVG。二者也可混用（如地图底图用 Canvas、标注用 SVG 覆盖层）。
 
 **常见追问**：如何避免「1) 误以为 Canvas 不能交互——其实可以自己做命中检测，只是没有内置事件」？ 「2) 误以为 SVG 一定比 Canvas 慢——少量节点时 SVG 更快更省电，且能用 CSS/GPU 合成」在真实项目中应如何规避？
 
@@ -5278,7 +6954,16 @@ Canvas 是像素级、命令式的位图绘制（画完即忘），SVG 是矢量
 
 用 CSS 的 text-overflow: ellipsis 配合 overflow: hidden 和 white-space: nowrap 实现单行省略，多行则用 -webkit-line-clamp 或 JS 计算截断。
 
-核心原理：浏览器默认不会在容器边界处截断文字，而是让文字溢出或换行。要让超出宽度的文字显示为省略号，需要同时满足三个条件：1) 容器有确定的宽度限制（如 width、max-width 或 flex 布局中的约束）；2) 禁止换行（white-space: nowrap）；3) 溢出隐藏（overflow: hidden）；4) 用 text-overflow: ellipsis 告诉浏览器在截断处渲染省略号。 单行省略示例： .box { width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } 多行省略（WebKit 内核）： .box { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; } 注意 -webkit-line-clamp 是 WebKit 私有属性，现代浏览器（Chrome、Safari、Firefox 68+、Edge）已支持，但标准 CSS 的 line-clamp 仍在草案中。 对于需要精确控制或兼容性要求高的场景，可以用 JavaScript 计算：测量文字宽度，二分查找截断位置，再拼接省略号。 适用场景：列表项标题、卡片描述、表格单元格、导航菜单等需要固定布局且不希望文字撑破容器的位置。 通俗类比：就像给文字装了一个“裁剪框”，框的宽度固定，文字只能在一行内显示，超出部分被剪掉，并在剪口处贴一个“...”标签。
+核心原理：浏览器默认不会在容器边界处截断文字，而是让文字溢出或换行。要让超出宽度的文字显示为省略号，需要同时满足三个条件：
+
+1) 容器有确定的宽度限制（如 width、max-width 或 flex 布局中的约束）；
+2) 禁止换行（white-space: nowrap）；
+3) 溢出隐藏（overflow: hidden）；
+4) 用 text-overflow: ellipsis 告诉浏览器在截断处渲染省略号。 单行省略示例： .box { width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } 多行省略（WebKit 内核）： .box { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; } 注意 -webkit-line-clamp 是 WebKit 私有属性，现代浏览器（Chrome、Safari、Firefox 68+、Edge）已支持，但标准 CSS 的 line-clamp 仍在草案中。 对于需要精确控制或兼容性要求高的场景，可以用 JavaScript 计算：测量文字宽度，二分查找截断位置，再拼接省略号。
+
+适用场景：列表项标题、卡片描述、表格单元格、导航菜单等需要固定布局且不希望文字撑破容器的位置。
+
+通俗类比：就像给文字装了一个“裁剪框”，框的宽度固定，文字只能在一行内显示，超出部分被剪掉，并在剪口处贴一个“...”标签。
 
 **常见追问**：如何避免「1) 只写 text-overflow: ellipsis 而不写 overflow: hidden 和 white-space: nowrap，导致无效」？ 「2) 容器没有宽度约束（如 width: auto 且父级无限制），文字不会溢出，省略号不出现」在真实项目中应如何规避？
 
@@ -5300,7 +6985,15 @@ Event Loop（事件循环）本质是一个不断循环的调度器：它维护�
 
 Event Loop 是单线程运行时通过“任务队列 + 循环取任务执行”来调度异步回调的机制，让非阻塞 I/O 和定时器等异步操作能在主线程空闲时被回调。
 
-Event Loop（事件循环）本质是一个不断循环的调度器：它维护一个或多个任务队列，主线程执行完同步代码后，就反复从队列中取出已就绪的回调并执行。 为什么需要它？因为 JavaScript 主线程是单线程的，如果异步操作（网络请求、定时器、文件 I/O）直接阻塞等待，页面就会卡死。于是运行时把耗时操作交给底层系统（浏览器内核、libuv 线程池、操作系统），完成后把回调放进队列，Event Loop 再在主线程空闲时执行回调。 通俗类比：餐厅只有一个服务员（主线程）。服务员把菜做好后不站在厨房等，而是继续接待客人；厨房做好一道菜就按铃（把回调放入队列），服务员听到铃声后，在接待间隙去把菜端给对应客人。Event Loop 就是服务员“不断查看有没有铃响、有就去端菜”的工作循环。 以浏览器为例，一次循环大致是：执行一个宏任务（如 script 整体、setTimeout 回调）→ 清空所有微任务（Promise.then、queueMicrotask、MutationObserver）→ 如有需要则渲染 → 取下一个宏任务。Node.js 则分为 timers、pending callbacks、poll、check、close callbacks 等阶段，每个阶段后也会清空微任务（process.nextTick 优先级高于 Promise）。 适用场景：所有异步回调、Promise/async-await、定时器、I/O、UI 事件都依赖 Event Loop 调度。理解它才能解释“为什么 setTimeout 不准”“为什么 Promise 比 setTimeout 先执行”“为什么死循环会卡死页面”。
+Event Loop（事件循环）本质是一个不断循环的调度器：它维护一个或多个任务队列，主线程执行完同步代码后，就反复从队列中取出已就绪的回调并执行。 为什么需要它？因为 JavaScript 主线程是单线程的，如果异步操作（网络请求、定时器、文件 I/O）直接阻塞等待，页面就会卡死。
+
+于是运行时把耗时操作交给底层系统（浏览器内核、libuv 线程池、操作系统），完成后把回调放进队列，Event Loop 再在主线程空闲时执行回调。
+
+通俗类比：餐厅只有一个服务员（主线程）。服务员把菜做好后不站在厨房等，而是继续接待客人；厨房做好一道菜就按铃（把回调放入队列），服务员听到铃声后，在接待间隙去把菜端给对应客人。Event Loop 就是服务员“不断查看有没有铃响、有就去端菜”的工作循环。 以浏览器为例，一次循环大致是：执行一个宏任务（如 script 整体、setTimeout 回调）→ 清空所有微任务（Promise.then、queueMicrotask、MutationObserver）→ 如有需要则渲染 → 取下一个宏任务。
+
+Node.js 则分为 timers、pending callbacks、poll、check、close callbacks 等阶段，每个阶段后也会清空微任务（process.nextTick 优先级高于 Promise）。
+
+适用场景：所有异步回调、Promise/async-await、定时器、I/O、UI 事件都依赖 Event Loop 调度。理解它才能解释“为什么 setTimeout 不准”“为什么 Promise 比 setTimeout 先执行”“为什么死循环会卡死页面”。
 
 **常见追问**：如何避免「1) 误以为 Event Loop 是多线程，或以为异步回调在另一个线程执行」？ 「实际回调仍在主线程执行，只是调度延后」在真实项目中应如何规避？
 
@@ -5322,7 +7015,19 @@ pending（待定）：初始状态，既未成功也未失败。；fulfilled（�
 
 Promise 有 pending、fulfilled、rejected 三种状态，只能从 pending 单向变为 fulfilled 或 rejected，且一旦敲定就不可再变。
 
-Promise 是一个表示异步操作最终完成或失败的对象，它像一个“承诺”：刚给出时结果未知（pending），之后要么兑现（fulfilled），要么失败（rejected）。 三种状态： 1. pending（待定）：初始状态，既未成功也未失败。 2. fulfilled（已兑现）：异步操作成功完成，会携带一个 value（结果值）。 3. rejected（已拒绝）：异步操作失败，会携带一个 reason（失败原因，通常是 Error）。 状态变化规则： - 只能从 pending 变为 fulfilled，或从 pending 变为 rejected。 - 不能从 fulfilled 变回 pending，也不能从 fulfilled 变成 rejected，反之亦然。 - 状态一旦改变（settled，已敲定），就永久固定，后续再调用 resolve/reject 都不会生效。 触发变化的机制： - 执行器函数 executor(resolve, reject) 在 new Promise 时同步执行。 - 调用 resolve(value) 会把状态从 pending 改为 fulfilled，并保存 value。 - 调用 reject(reason) 会把状态从 pending 改为 rejected，并保存 reason。 - 如果 executor 中抛出异常，Promise 会自动以该异常为 reason 变为 rejected。 状态与 then 的关系： - then(onFulfilled, onRejected) 注册的回调不会立即执行，而是等状态敲定后，按微任务（microtask）异步执行。 - 如果调用 then 时状态已经是 fulfilled，则 onFulfilled 会被异步调度；如果已经是 rejected，则 onRejected 被调度；如果还是 pending，则回调先被保存，等状态变化后再调度。 - then 返回一个新的 Promise，因此可以链式调用；前一个回调的返回值会决定新 Promise 的状态。 通俗类比：Promise 像外卖订单。下单后是 pending；骑手送到是 fulfilled，你拿到餐（value）；商家退单或配送失败是 rejected，你拿到失败原因（reason）。订单一旦完成或取消，就不能再改成另一种结果。
+Promise 是一个表示异步操作最终完成或失败的对象，它像一个“承诺”：刚给出时结果未知（pending），之后要么兑现（fulfilled），要么失败（rejected）。 三种状态：
+
+1. pending（待定）：初始状态，既未成功也未失败。
+2. fulfilled（已兑现）：异步操作成功完成，会携带一个 value（结果值）。
+3. rejected（已拒绝）：异步操作失败，会携带一个 reason（失败原因，通常是 Error）。 状态变化规则： - 只能从 pending 变为 fulfilled，或从 pending 变为 rejected。 - 不能从 fulfilled 变回 pending，也不能从 fulfilled 变成 rejected，反之亦然。 - 状态一旦改变（settled，已敲定），就永久固定，后续再调用 resolve/reject 都不会生效。 触发变化的机制： - 执行器函数 executor(resolve, reject) 在 new Promise 时同步执行。 - 调用 resolve(value) 会把状态从 pending 改为 fulfilled，并保存 value。 - 调用 reject(reason) 会把状态从 pending 改为 rejected，并保存 reason。 - 如果 executor 中抛出异常，Promise 会自动以该异常为 reason 变为 rejected。 状态与 then 的关系： - then(onFulfilled, onRejected) 注册的回调不会立即执行，而是等状态敲定后，按微任务（microtask）异步执行。 - 如果调用 then 时状态已经是 fulfilled，则 onFulfilled 会被异步调度；如果已经是 rejected，则 onRejected 被调度；如果还是 pending，则回调先被保存，等状态变化后再调度。 - then 返回一个新的 Promise，因此可以链式调用；前一个回调的返回值会决定新 Promise 的状态。
+
+通俗类比：Promise 像外卖订单。
+
+- 下单后是 pending；
+- 骑手送到是 fulfilled，你拿到餐（value）；
+- 商家退单或配送失败是 rejected，你拿到失败原因（reason）。
+
+订单一旦完成或取消，就不能再改成另一种结果。
 
 **常见追问**：如何避免「误以为 Promise 有“成功/失败/进行中/取消”等多种状态，实际上规范只有三种，没有 canceled 状态。」？ 「误以为状态可以双向变化，比如 fulfilled 后还能 reject，或者 pending 可以反复切换。」在真实项目中应如何规避？
 
@@ -5344,7 +7049,23 @@ Promise 是一个表示异步操作最终完成或失败的对象，它像一个
 
 三者都是前端发 HTTP 请求的方式：Ajax 是基于 XMLHttpRequest 的旧式统称，Fetch 是浏览器原生 Promise API，Axios 是基于 XHR 的第三方库，封装更完善。
 
-先厘清概念：Ajax（Asynchronous JavaScript and XML）不是某个具体 API，而是一种“不刷新页面异步请求数据”的技术统称，早期实现靠 XMLHttpRequest（XHR）。所以严格说 Ajax 是思想/模式，XHR 是它的实现。 Fetch 是 ES6 之后浏览器原生提供的 API（window.fetch），基于 Promise，用法简洁：fetch(url).then(res=>res.json())。它属于“原生、轻量”，但有几个坑：1）只有网络错误才 reject，HTTP 4xx/5xx 不会 reject，需要手动判断 res.ok；2）默认不带 cookie，需要设置 credentials:'include'；3）没有超时控制，需要 AbortController；4）上传进度支持弱。 Axios 是第三方库，底层在浏览器用 XHR、在 Node 用 http 模块。它自动把响应 JSON 解析、自动 reject 非 2xx、支持请求/响应拦截器、支持取消（CancelToken/AbortController）、支持超时、支持上传下载进度、自动处理 CSRF、浏览器和 Node 通用。 通俗类比：Ajax 是“打电话”这件事本身；XHR 是那台老式座机，功能全但操作繁琐；Fetch 是手机自带的拨号，简洁现代但有些功能要自己配；Axios 是装好的通讯 App，帮你把录音、重拨、通讯录都封装好了。 适用场景：简单请求、追求零依赖可用 Fetch；需要拦截器、统一错误处理、超时、进度、跨端复用选 Axios；老项目兼容 IE 可能还在用 XHR/Ajax。
+先厘清概念：Ajax（Asynchronous JavaScript and XML）不是某个具体 API，而是一种“不刷新页面异步请求数据”的技术统称，早期实现靠 XMLHttpRequest（XHR）。
+
+所以严格说 Ajax 是思想/模式，XHR 是它的实现。 Fetch 是 ES6 之后浏览器原生提供的 API（window.fetch），基于 Promise，用法简洁：fetch(url).then(res=>res.json())。它属于“原生、轻量”，但有几个坑：
+
+- 1）只有网络错误才 reject，HTTP 4xx/5xx 不会 reject，需要手动判断 res.ok；
+- 2）默认不带 cookie，需要设置 credentials:'include'；
+- 3）没有超时控制，需要 AbortController；
+- 4）上传进度支持弱。 Axios 是第三方库，底层在浏览器用 XHR、在 Node 用 http 模块。它自动把响应 JSON 解析、自动 reject 非 2xx、支持请求/响应拦截器、支持取消（CancelToken/AbortController）、支持超时、支持上传下载进度、自动处理 CSRF、浏览器和 Node 通用。
+
+- 通俗类比：Ajax 是“打电话”这件事本身；
+- XHR 是那台老式座机，功能全但操作繁琐；
+- Fetch 是手机自带的拨号，简洁现代但有些功能要自己配；
+- Axios 是装好的通讯 App，帮你把录音、重拨、通讯录都封装好了。
+
+- 适用场景：简单请求、追求零依赖可用 Fetch；
+- 需要拦截器、统一错误处理、超时、进度、跨端复用选 Axios；
+- 老项目兼容 IE 可能还在用 XHR/Ajax。
 
 **常见追问**：如何避免「1）把 Ajax 等同于 XHR，其实 Ajax 是技术统称」？ 「2）以为 Fetch 会自动 reject 404/500，实际不会」在真实项目中应如何规避？
 
@@ -5366,7 +7087,13 @@ Promise 是一个表示异步操作最终完成或失败的对象，它像一个
 
 三者都是浏览器端存储，核心区别在于：Cookie 会随每次 HTTP 请求自动发送给同源服务器且容量极小（约 4KB），localStorage 持久保存且容量大（约 5-10MB），sessionStorage 仅在当前标签页会话内有效、关闭标签即清除。
 
-通俗类比：Cookie 像你每次寄信都夹带的一张名片，服务器每次都能看到；localStorage 像家里的大储物柜，东西一直放着；sessionStorage 像酒店房间的抽屉，退房（关标签页）就清空。 1) Cookie：由服务器通过 Set-Cookie 响应头下发，浏览器保存后在同源请求的 Cookie 请求头中自动携带。单个约 4KB，每个域名数量有限（约 50 个）。可设置 Expires/Max-Age 控制过期，不设置则为会话 Cookie，关浏览器即失效。可设 HttpOnly 防止 JS 读取（防 XSS 窃取），Secure 仅 HTTPS 发送，SameSite 防 CSRF。主要用于会话标识、鉴权、埋点等。 2) localStorage：HTML5 提供，window.localStorage，键值对均为字符串，同源共享，除非手动删除否则永久保存。容量约 5-10MB。不会随请求发送，纯客户端。适合存不敏感、需长期保留的数据，如主题、草稿、缓存。 3) sessionStorage：API 与 localStorage 相同，但生命周期绑定当前标签页/窗口的会话，关闭标签即清除；且不与其他标签页共享（即使同源）。适合存表单临时数据、一次性流程状态。 共同点：都受同源策略限制，都只能存字符串（对象需 JSON 序列化），都同步 API（可能阻塞主线程）。
+- 通俗类比：Cookie 像你每次寄信都夹带的一张名片，服务器每次都能看到；
+- localStorage 像家里的大储物柜，东西一直放着；
+- sessionStorage 像酒店房间的抽屉，退房（关标签页）就清空。
+
+1) Cookie：由服务器通过 Set-Cookie 响应头下发，浏览器保存后在同源请求的 Cookie 请求头中自动携带。单个约 4KB，每个域名数量有限（约 50 个）。可设置 Expires/Max-Age 控制过期，不设置则为会话 Cookie，关浏览器即失效。可设 HttpOnly 防止 JS 读取（防 XSS 窃取），Secure 仅 HTTPS 发送，SameSite 防 CSRF。主要用于会话标识、鉴权、埋点等。
+2) localStorage：HTML5 提供，window.localStorage，键值对均为字符串，同源共享，除非手动删除否则永久保存。容量约 5-10MB。不会随请求发送，纯客户端。适合存不敏感、需长期保留的数据，如主题、草稿、缓存。
+3) sessionStorage：API 与 localStorage 相同，但生命周期绑定当前标签页/窗口的会话，关闭标签即清除；且不与其他标签页共享（即使同源）。适合存表单临时数据、一次性流程状态。 共同点：都受同源策略限制，都只能存字符串（对象需 JSON 序列化），都同步 API（可能阻塞主线程）。
 
 **常见追问**：如何避免「1) 误以为 localStorage 会随请求发送（只有 Cookie 会）」？ 「2) 混淆 sessionStorage 与「会话 Cookie」：前者关标签即清，后者关浏览器才清，且 sessionStorage 不跨标签共享」在真实项目中应如何规避？
 
@@ -5388,7 +7115,15 @@ Promise 是一个表示异步操作最终完成或失败的对象，它像一个
 
 load 等页面所有资源（图片、样式、脚本等）加载完才触发；DOMContentLoaded 只等 HTML 解析完、DOM 树构建完成就触发，不等待图片等外部资源。
 
-DOMContentLoaded 在浏览器完成 HTML 解析、构建出完整 DOM 树后触发，此时 CSS、图片、iframe、视频等外部资源可能还没下载完。load 则在页面及其所有依赖资源（图片、样式表、脚本、字体等）全部加载完成后才触发。 通俗类比：DOMContentLoaded 像“房子框架搭好了，可以开始装修/摆家具”，load 像“所有家具、家电、软装都到齐并安装完毕”。 典型用法： - 需要尽早操作 DOM、绑定事件、初始化 UI 时，用 DOMContentLoaded。 - 需要等图片尺寸、资源全部就绪（如计算布局、canvas 绘制、打印）时，用 load。 代码示例： ```js document.addEventListener('DOMContentLoaded', () => { console.log('DOM 已就绪'); }); window.addEventListener('load', () => { console.log('所有资源已加载'); }); ``` 注意：DOMContentLoaded 会被同步脚本阻塞。如果 HTML 中遇到普通 <script>，浏览器会暂停解析并执行脚本，直到脚本执行完才继续解析并触发 DOMContentLoaded。因此把脚本放在 </body> 前或加 defer 可避免阻塞。async 脚本不保证顺序，也不阻塞 DOMContentLoaded（但可能在其后执行）；defer 脚本会在 DOMContentLoaded 之前按顺序执行。
+DOMContentLoaded 在浏览器完成 HTML 解析、构建出完整 DOM 树后触发，此时 CSS、图片、iframe、视频等外部资源可能还没下载完。load 则在页面及其所有依赖资源（图片、样式表、脚本、字体等）全部加载完成后才触发。
+
+通俗类比：DOMContentLoaded 像“房子框架搭好了，可以开始装修/摆家具”，load 像“所有家具、家电、软装都到齐并安装完毕”。 典型用法： - 需要尽早操作 DOM、绑定事件、初始化 UI 时，用 DOMContentLoaded。 - 需要等图片尺寸、资源全部就绪（如计算布局、canvas 绘制、打印）时，用 load。
+
+代码示例： ```js document.addEventListener('DOMContentLoaded', () => { console.log('DOM 已就绪'); }); window.addEventListener('load', () => { console.log('所有资源已加载'); }); ``` 注意：DOMContentLoaded 会被同步脚本阻塞。
+
+如果 HTML 中遇到普通 <script>，浏览器会暂停解析并执行脚本，直到脚本执行完才继续解析并触发 DOMContentLoaded。
+
+因此把脚本放在 </body> 前或加 defer 可避免阻塞。async 脚本不保证顺序，也不阻塞 DOMContentLoaded（但可能在其后执行）；defer 脚本会在 DOMContentLoaded 之前按顺序执行。
 
 **常见追问**：如何避免「误以为 DOMContentLoaded 要等所有资源加载完。」？ 「误以为 load 一定在 DOMContentLoaded 之后很久，其实资源少时几乎同时。」在真实项目中应如何规避？
 
@@ -5410,7 +7145,22 @@ DOMContentLoaded 在浏览器完成 HTML 解析、构建出完整 DOM 树后触�
 
 mate 标签是 HTML 中用于描述网页元信息的标签，常见有 charset、name=viewport/description/keywords/author/robots 等，以及 http-equiv 和 property（Open Graph）等，它们不直接显示在页面上，但影响编码、SEO、移动端适配和社交分享。
 
-mate 标签（正确写法是 meta，不是 mate）位于 <head> 中，用来向浏览器和搜索引擎提供关于页面的元数据。可以把它理解成网页的“身份证/说明书”：页面正文是给人看的，meta 是给机器看的。 常见 meta 标签及含义： 1. <meta charset="UTF-8">：声明文档字符编码，避免中文乱码。应放在 head 最前面。 2. <meta name="viewport" content="width=device-width, initial-scale=1.0">：移动端视口设置，让页面按设备宽度渲染，是响应式布局的基础。 3. <meta name="description" content="...">：页面描述，搜索引擎常用来生成搜索结果摘要，影响点击率。 4. <meta name="keywords" content="...">：页面关键词，早期 SEO 重要，现在主流搜索引擎基本忽略。 5. <meta name="author" content="...">：页面作者。 6. <meta name="robots" content="index,follow">：告诉爬虫是否索引、是否跟踪链接，如 noindex,nofollow。 7. <meta http-equiv="refresh" content="5;url=...">：定时刷新或跳转，现代开发不推荐，应使用 HTTP 重定向或前端路由。 8. <meta http-equiv="X-UA-Compatible" content="IE=edge">：让旧 IE 使用最新渲染模式，现代项目基本不需要。 9. <meta property="og:title" content="...">、og:description、og:image：Open Graph 协议，用于微信、Facebook 等社交平台分享卡片。 10. <meta name="theme-color" content="#fff">：移动端浏览器地址栏/状态栏主题色。 11. <meta name="referrer" content="no-referrer">：控制请求头 Referer 的发送策略。 12. <meta http-equiv="Content-Security-Policy" content="...">：可通过 meta 设置部分 CSP，但更推荐 HTTP 响应头。 原理上，浏览器解析 HTML 时读取这些元信息，决定解码方式、视口布局、缓存/跳转行为；搜索引擎爬虫和社交平台抓取器也会读取它们做索引和展示。适用场景包括：国际化编码、移动端适配、SEO 优化、社交分享、安全策略等。
+mate 标签（正确写法是 meta，不是 mate）位于 <head> 中，用来向浏览器和搜索引擎提供关于页面的元数据。可以把它理解成网页的“身份证/说明书”：页面正文是给人看的，meta 是给机器看的。 常见 meta 标签及含义：
+
+1. <meta charset="UTF-8">：声明文档字符编码，避免中文乱码。应放在 head 最前面。
+2. <meta name="viewport" content="width=device-width, initial-scale=1.0">：移动端视口设置，让页面按设备宽度渲染，是响应式布局的基础。
+3. <meta name="description" content="...">：页面描述，搜索引擎常用来生成搜索结果摘要，影响点击率。
+4. <meta name="keywords" content="...">：页面关键词，早期 SEO 重要，现在主流搜索引擎基本忽略。
+5. <meta name="author" content="...">：页面作者。
+6. <meta name="robots" content="index,follow">：告诉爬虫是否索引、是否跟踪链接，如 noindex,nofollow。
+7. <meta http-equiv="refresh" content="5;url=...">：定时刷新或跳转，现代开发不推荐，应使用 HTTP 重定向或前端路由。
+8. <meta http-equiv="X-UA-Compatible" content="IE=edge">：让旧 IE 使用最新渲染模式，现代项目基本不需要。
+9. <meta property="og:title" content="...">、og:description、og:image：Open Graph 协议，用于微信、Facebook 等社交平台分享卡片。
+10. <meta name="theme-color" content="#fff">：移动端浏览器地址栏/状态栏主题色。
+11. <meta name="referrer" content="no-referrer">：控制请求头 Referer 的发送策略。
+12. <meta http-equiv="Content-Security-Policy" content="...">：可通过 meta 设置部分 CSP，但更推荐 HTTP 响应头。 原理上，浏览器解析 HTML 时读取这些元信息，决定解码方式、视口布局、缓存/跳转行为；搜索引擎爬虫和社交平台抓取器也会读取它们做索引和展示。
+
+适用场景包括：国际化编码、移动端适配、SEO 优化、社交分享、安全策略等。
 
 **常见追问**：如何避免「把 meta 写成 mate，面试中拼写错误会显得基础不牢。」？ 「认为 keywords 对 SEO 仍然很重要，实际上主流搜索引擎早已弱化或忽略。」在真实项目中应如何规避？
 
@@ -5432,7 +7182,16 @@ CORS（跨域资源共享）：服务端返回 Access-Control-Allow-Origin 等�
 
 跨域是浏览器同源策略对脚本发起的跨源请求的限制，常用解法有 CORS、JSONP、代理、postMessage、WebSocket 等，生产首选 CORS 或同源反向代理。
 
-先明确：跨域不是服务器拒绝，而是浏览器基于同源策略（协议、域名、端口三者完全相同才算同源）拦截了前端读取跨源响应。请求往往已经发出，只是响应被浏览器挡住。 常用方法： 1. CORS（跨域资源共享）：服务端返回 Access-Control-Allow-Origin 等响应头，浏览器据此放行。简单请求直接发；非简单请求（如 PUT、自定义头、application/json）先发 OPTIONS 预检，服务端需正确响应 Access-Control-Allow-Methods/Headers，并可用 Access-Control-Max-Age 缓存预检。带 Cookie 时前端要 xhr.withCredentials=true，服务端 Allow-Origin 不能为 *，且要 Allow-Credentials: true。这是标准、推荐方案。 2. JSONP：利用 <script> 不受同源策略限制，通过回调函数名传参，服务端返回 callback(data)。只支持 GET、无错误状态码、有 XSS 风险，属历史方案。 3. 同源反向代理：Nginx 或开发服务器（webpack/vite proxy）把 /api 转发到目标服务，浏览器只看到同源请求。生产常用，能顺带解决 Cookie、鉴权、隐藏后端地址。 4. postMessage：用于 iframe、弹窗等跨窗口通信，需校验 event.origin，避免任意页面注入消息。 5. WebSocket：协议本身不受同源策略限制，服务端可校验 Origin 做安全控制。 6. document.domain：仅适用于主域相同、子域不同的场景，现代浏览器已逐步废弃。 类比：同源策略像小区门禁，只允许本小区住户互相串门；CORS 是物业给外来访客发通行证；代理是把访客先请到本小区再内部转达；JSONP 是借别人的快递员送信，只能送不能收。 选型：能改服务端就 CORS；不能改或要统一入口就用 Nginx 代理；老系统兼容才考虑 JSONP。
+先明确：跨域不是服务器拒绝，而是浏览器基于同源策略（协议、域名、端口三者完全相同才算同源）拦截了前端读取跨源响应。请求往往已经发出，只是响应被浏览器挡住。 常用方法：
+
+1. CORS（跨域资源共享）：服务端返回 Access-Control-Allow-Origin 等响应头，浏览器据此放行。简单请求直接发；非简单请求（如 PUT、自定义头、application/json）先发 OPTIONS 预检，服务端需正确响应 Access-Control-Allow-Methods/Headers，并可用 Access-Control-Max-Age 缓存预检。带 Cookie 时前端要 xhr.withCredentials=true，服务端 Allow-Origin 不能为 *，且要 Allow-Credentials: true。这是标准、推荐方案。
+2. JSONP：利用 <script> 不受同源策略限制，通过回调函数名传参，服务端返回 callback(data)。只支持 GET、无错误状态码、有 XSS 风险，属历史方案。
+3. 同源反向代理：Nginx 或开发服务器（webpack/vite proxy）把 /api 转发到目标服务，浏览器只看到同源请求。生产常用，能顺带解决 Cookie、鉴权、隐藏后端地址。
+4. postMessage：用于 iframe、弹窗等跨窗口通信，需校验 event.origin，避免任意页面注入消息。
+5. WebSocket：协议本身不受同源策略限制，服务端可校验 Origin 做安全控制。
+6. document.domain：仅适用于主域相同、子域不同的场景，现代浏览器已逐步废弃。 类比：同源策略像小区门禁，只允许本小区住户互相串门；CORS 是物业给外来访客发通行证；代理是把访客先请到本小区再内部转达；JSONP 是借别人的快递员送信，只能送不能收。
+
+选型：能改服务端就 CORS；不能改或要统一入口就用 Nginx 代理；老系统兼容才考虑 JSONP。
 
 **常见追问**：如何避免「误以为跨域是后端收不到请求，其实请求常已到达，只是响应被浏览器拦截。2. 认为加 Access-Control-Allow-Origin: * 就万能，带 Cookie 时 * 无效。3. 把 JSONP 当通用方案，忽略只支持 GET 和 XSS 风险。4. 混淆同源与同站，忽略端口不同也算跨域。5. 预检请求只处理 GET/POST 而漏掉 OPTIONS，导致 PUT/自定义头失败。6. 用 document.domain 解决所有跨域，实际只限主域相同子域。7. 代理后忘记改 Cookie 域或重写路径，导致登录态丢失。」？ 能否结合「CORS 预检失败常见于 Nginx 未透传 OPTIONS 或未返回 Access-Control-Allow-Headers，可指出 Access-Control-Request-Headers 回显。2. 带凭证时 Allow-Origin 必须具体域名，可用 Vary: Origin 避免 CDN 缓存串域。3. JSONP 回调名要白名单校验，防 XSS。4. 可提 CORB/ORB、SameSite Cookie、Private Network Access 等新限制。5. 代理方案中注意 X-Forwarded-For、Host 头与 Cookie Domain/Path 的改写。」进一步展开？
 
@@ -5454,7 +7213,12 @@ CORS（跨域资源共享）：服务端返回 Access-Control-Allow-Origin 等�
 
 防抖是等事件停止触发一段时间后才执行，节流是固定时间间隔内最多执行一次；前者合并高频调用，后者限制执行频率。
 
-防抖（debounce）和节流（throttle）都是控制高频事件执行频率的手段。 通俗类比： - 防抖像电梯门：只要还有人进来，门就一直不关；直到最后一个人进来后等待几秒，门才关闭并执行一次。 - 节流像地铁发车：不管站台来了多少人，列车固定每 5 分钟发一班，期间只执行一次。 适用场景： - 防抖：搜索框输入联想、窗口 resize 结束后计算布局、表单校验、按钮防重复提交。 - 节流：滚动加载、鼠标移动轨迹、拖拽、高频点击上报、游戏射击。 手写防抖： ```js function debounce(fn, wait, immediate = false) { let timer = null; return function (...args) { const context = this; if (timer) clearTimeout(timer); if (immediate && !timer) { fn.apply(context, args); } timer = setTimeout(() => { timer = null; if (!immediate) fn.apply(context, args); }, wait); }; } ``` 手写节流（时间戳 + 定时器双模式）： ```js function throttle(fn, wait) { let last = 0; let timer = null; return function (...args) { const context = this; const now = Date.now(); const remaining = wait - (now - last); if (remaining <= 0) { if (timer) { clearTimeout(timer); timer = null; } last = now; fn.apply(context, args); } else if (!timer) { timer = setTimeout(() => { last = Date.now(); timer = null; fn.apply(context, args); }, remaining); } }; } ``` 核心区别：防抖关注“最后一次”，节流关注“固定频率”。防抖可能永远不执行（事件一直触发），节流保证在持续触发时也会按间隔执行。
+防抖（debounce）和节流（throttle）都是控制高频事件执行频率的手段。 通俗类比：
+
+- 防抖像电梯门：只要还有人进来，门就一直不关；直到最后一个人进来后等待几秒，门才关闭并执行一次。
+- 节流像地铁发车：不管站台来了多少人，列车固定每 5 分钟发一班，期间只执行一次。 适用场景：
+- 防抖：搜索框输入联想、窗口 resize 结束后计算布局、表单校验、按钮防重复提交。
+- 节流：滚动加载、鼠标移动轨迹、拖拽、高频点击上报、游戏射击。 手写防抖： ```js function debounce(fn, wait, immediate = false) { let timer = null; return function (...args) { const context = this; if (timer) clearTimeout(timer); if (immediate && !timer) { fn.apply(context, args); } timer = setTimeout(() => { timer = null; if (!immediate) fn.apply(context, args); }, wait); }; } ``` 手写节流（时间戳 + 定时器双模式）： ```js function throttle(fn, wait) { let last = 0; let timer = null; return function (...args) { const context = this; const now = Date.now(); const remaining = wait - (now - last); if (remaining <= 0) { if (timer) { clearTimeout(timer); timer = null; } last = now; fn.apply(context, args); } else if (!timer) { timer = setTimeout(() => { last = Date.now(); timer = null; fn.apply(context, args); }, remaining); } }; } ``` 核心区别：防抖关注“最后一次”，节流关注“固定频率”。防抖可能永远不执行（事件一直触发），节流保证在持续触发时也会按间隔执行。
 
 **常见追问**：如何避免「把防抖和节流说反：防抖是“等停止后执行”，节流是“固定间隔执行”。」？ 「手写时忘记 clearTimeout 或 timer 置空，导致重复执行或状态错误。」在真实项目中应如何规避？
 
@@ -5476,7 +7240,23 @@ CORS（跨域资源共享）：服务端返回 Access-Control-Allow-Origin 等�
 
 diff 算法是在两棵新旧虚拟 DOM 树之间找出最小变更集，再以最小代价更新真实 DOM 的启发式算法，核心是分层比较、同层 key 复用和 O(n) 复杂度。
 
-diff 算法要解决的问题是：状态变化后重新生成了一棵新的虚拟 DOM 树，如何高效地把真实 DOM 更新成新树的样子。如果做完整树编辑距离计算，复杂度是 O(n^3)，对前端渲染不可接受，所以 React、Vue 等框架都采用启发式策略，把复杂度降到 O(n)。 三个核心假设： 1. 只做同层比较，不跨层级移动节点。如果节点跨层移动，框架会直接删除再重建，而不是移动。 2. 类型不同直接替换。如果新旧节点 tag 不同，比如 div 变成 span，就销毁旧节点及其子树，创建新节点。 3. 同层节点通过 key 标识身份。key 相同则认为是同一个节点，可以复用；key 不同则删除重建。 通俗类比：把 diff 想成整理书架。旧书和新书都在同一层书架上比较，不会把第三层的书搬到第一层去；如果一本书从小说换成了教材，直接换掉整本；每本书有唯一编号 key，编号相同就是同一本书，只需要改封面，编号不同就扔掉换新书。 具体流程： - 新旧树从根节点开始同层比较。 - 如果节点类型不同，直接替换。 - 如果类型相同，复用真实 DOM，只更新变化的属性。 - 对子节点列表，React 用双端比较加 Map 查找，Vue3 用最长递增子序列求最小移动。 - 最终生成 patch，批量更新真实 DOM。 为什么需要 key：列表 diff 时，如果没有 key，框架只能按索引比较。比如在列表头部插入一项，旧列表 [A,B,C] 和新列表 [X,A,B,C]，按索引比较会认为 A 变成 X、B 变成 A、C 变成 B，最后新增 C，导致三次内容更新加一次新增；有 key 时，框架能识别出 A、B、C 都还在，只是位置后移，于是只新增 X，其余节点移动或复用。 适用场景：任何需要把状态映射为视图并频繁更新的场景，如 React、Vue、小程序、Flutter 的 Widget 树等。
+diff 算法要解决的问题是：状态变化后重新生成了一棵新的虚拟 DOM 树，如何高效地把真实 DOM 更新成新树的样子。如果做完整树编辑距离计算，复杂度是 O(n^3)，对前端渲染不可接受，所以 React、Vue 等框架都采用启发式策略，把复杂度降到 O(n)。 三个核心假设：
+
+1. 只做同层比较，不跨层级移动节点。如果节点跨层移动，框架会直接删除再重建，而不是移动。
+2. 类型不同直接替换。如果新旧节点 tag 不同，比如 div 变成 span，就销毁旧节点及其子树，创建新节点。
+3. 同层节点通过 key 标识身份。key 相同则认为是同一个节点，可以复用；key 不同则删除重建。
+
+通俗类比：把 diff 想成整理书架。
+
+- 旧书和新书都在同一层书架上比较，不会把第三层的书搬到第一层去；
+- 如果一本书从小说换成了教材，直接换掉整本；
+- 每本书有唯一编号 key，编号相同就是同一本书，只需要改封面，编号不同就扔掉换新书。
+
+具体流程： - 新旧树从根节点开始同层比较。 - 如果节点类型不同，直接替换。 - 如果类型相同，复用真实 DOM，只更新变化的属性。 - 对子节点列表，React 用双端比较加 Map 查找，Vue3 用最长递增子序列求最小移动。 - 最终生成 patch，批量更新真实 DOM。
+
+为什么需要 key：列表 diff 时，如果没有 key，框架只能按索引比较。比如在列表头部插入一项，旧列表 [A,B,C] 和新列表 [X,A,B,C]，按索引比较会认为 A 变成 X、B 变成 A、C 变成 B，最后新增 C，导致三次内容更新加一次新增；有 key 时，框架能识别出 A、B、C 都还在，只是位置后移，于是只新增 X，其余节点移动或复用。
+
+适用场景：任何需要把状态映射为视图并频繁更新的场景，如 React、Vue、小程序、Flutter 的 Widget 树等。
 
 **常见追问**：如何避免「误以为 diff 是找两棵树的最小编辑距离，实际上框架用的是启发式 O(n) 算法，不保证全局最优。」？ 「认为 key 只是用来消除 React 警告，实际上 key 决定节点复用和移动策略，直接影响正确性和性能。」在真实项目中应如何规避？
 
@@ -5498,7 +7278,15 @@ diff 算法要解决的问题是：状态变化后重新生成了一棵新的虚
 
 mutation 必须是同步的、直接修改 state，用于提交状态变更；action 可以包含异步逻辑和副作用，通过 commit 调用 mutation 来间接修改 state。
 
-在 Vuex 的单向数据流中，state 是唯一数据源，组件不能直接改 state，必须走 store 提供的通道。mutation 是唯一被允许修改 state 的函数，它接收 state 作为第一个参数、payload 作为第二个参数，并且必须是同步函数。之所以强制同步，是因为 Vuex 的 devtools 需要给每次状态变更打快照（snapshot），如果 mutation 里混入异步，快照记录的顺序和实际 state 变化顺序会错位，导致时间旅行调试失效、状态难以追踪。 action 则是一个可以包含任意异步逻辑的函数，它接收 context（包含 commit、dispatch、state、getters 等）和 payload。action 本身不直接改 state，而是通过 context.commit 触发 mutation，或者再 dispatch 其他 action 来组合业务逻辑。典型场景：组件里 dispatch('fetchUser')，action 里先 commit('SET_LOADING', true)，await 接口请求，再 commit('SET_USER', data)，最后 commit('SET_LOADING', false)。 通俗类比：mutation 像银行柜台的‘记账’操作，必须一笔一笔即时完成、有流水；action 像‘跑腿办事’的流程，可以先打电话、排队、等审批，最后回到柜台让柜员记账。柜台只认同步的记账动作，跑腿过程可以异步。 适用场景：纯同步、简单的状态赋值用 mutation；涉及接口请求、定时器、多个 mutation 组合、条件分支等异步或复杂业务逻辑用 action。组件中一般只 dispatch action，不直接 commit mutation，除非是极简的同步场景。
+在 Vuex 的单向数据流中，state 是唯一数据源，组件不能直接改 state，必须走 store 提供的通道。mutation 是唯一被允许修改 state 的函数，它接收 state 作为第一个参数、payload 作为第二个参数，并且必须是同步函数。之所以强制同步，是因为 Vuex 的 devtools 需要给每次状态变更打快照（snapshot），如果 mutation 里混入异步，快照记录的顺序和实际 state 变化顺序会错位，导致时间旅行调试失效、状态难以追踪。
+
+action 则是一个可以包含任意异步逻辑的函数，它接收 context（包含 commit、dispatch、state、getters 等）和 payload。action 本身不直接改 state，而是通过 context.commit 触发 mutation，或者再 dispatch 其他 action 来组合业务逻辑。
+
+典型场景：组件里 dispatch('fetchUser')，action 里先 commit('SET_LOADING', true)，await 接口请求，再 commit('SET_USER', data)，最后 commit('SET_LOADING', false)。
+
+通俗类比：mutation 像银行柜台的‘记账’操作，必须一笔一笔即时完成、有流水；action 像‘跑腿办事’的流程，可以先打电话、排队、等审批，最后回到柜台让柜员记账。柜台只认同步的记账动作，跑腿过程可以异步。
+
+适用场景：纯同步、简单的状态赋值用 mutation；涉及接口请求、定时器、多个 mutation 组合、条件分支等异步或复杂业务逻辑用 action。组件中一般只 dispatch action，不直接 commit mutation，除非是极简的同步场景。
 
 **常见追问**：如何避免「1）认为 action 可以直接改 state——实际上 action 里直接赋值 state 在严格模式下会报错，且 devtools 无法追踪」？ 「2）认为 mutation 里可以写异步（如 setTimeout、await）——这会导致调试快照错乱，是典型错误」在真实项目中应如何规避？
 
@@ -5520,7 +7308,15 @@ mutation 要写成 commit('user/login')；；action 要写成 dispatch('user/log
 
 Vuex 分模块是为了把单一 Store 按业务域拆分、避免状态臃肿和命名冲突；加命名空间是为了让每个模块的 state/mutation/action/getter 拥有独立作用域，使提交和读取路径可预测、可维护。
 
-Vuex 是单一状态树，所有状态集中在一个 store 里。项目变大后，如果所有 state、mutation、action、getter 都平铺在根 store，会出现三个问题：1）文件巨大、职责混杂，团队协作时容易互相覆盖；2）不同业务可能有同名 mutation/action/getter，比如 user 模块和 order 模块都有 reset，注册到根上会冲突或互相覆盖；3）根 state 层级过深，组件里写 mapState 或 this.$store.state.user.profile.name 很啰嗦。 分模块就是把 store 拆成 user、cart、order 等模块，每个模块有自己的 state、mutations、actions、getters，甚至可以继续嵌套子模块。它像把一个大仓库隔成多个带标签的货架，每个货架只放一类货。 但只分模块还不够：默认情况下，模块内的 mutation、action、getter 仍然注册在全局命名空间，同名依然会冲突，而且提交时无法直观看出来自哪个模块。命名空间通过 namespaced: true 开启，开启后： - mutation 要写成 commit('user/login')； - action 要写成 dispatch('user/login')； - getter 要写成 getters['user/token']； - 在模块内部，getter 和 action 可以通过 rootState、rootGetters 访问根状态，也可以 commit('someRootMutation', payload, { root: true }) 提交根 mutation。 适用场景：中大型项目、按业务域划分清晰、多人协作、需要复用模块或动态注册模块时。小 demo 或状态极少时不必强行分模块。 通俗类比：公司只有一个大办公室，所有人把文件堆在一张桌上，找文件难、还容易拿错同名文件。分模块相当于按部门分办公室；命名空间相当于给每个部门加门牌号，寄快递要写“用户部/登录”，不会和“订单部/登录”混淆。
+Vuex 是单一状态树，所有状态集中在一个 store 里。项目变大后，如果所有 state、mutation、action、getter 都平铺在根 store，会出现三个问题：
+
+- 1）文件巨大、职责混杂，团队协作时容易互相覆盖；
+- 2）不同业务可能有同名 mutation/action/getter，比如 user 模块和 order 模块都有 reset，注册到根上会冲突或互相覆盖；
+- 3）根 state 层级过深，组件里写 mapState 或 this.$store.state.user.profile.name 很啰嗦。 分模块就是把 store 拆成 user、cart、order 等模块，每个模块有自己的 state、mutations、actions、getters，甚至可以继续嵌套子模块。它像把一个大仓库隔成多个带标签的货架，每个货架只放一类货。 但只分模块还不够：默认情况下，模块内的 mutation、action、getter 仍然注册在全局命名空间，同名依然会冲突，而且提交时无法直观看出来自哪个模块。命名空间通过 namespaced: true 开启，开启后： - mutation 要写成 commit('user/login')； - action 要写成 dispatch('user/login')； - getter 要写成 getters['user/token']； - 在模块内部，getter 和 action 可以通过 rootState、rootGetters 访问根状态，也可以 commit('someRootMutation', payload, { root: true }) 提交根 mutation。
+
+适用场景：中大型项目、按业务域划分清晰、多人协作、需要复用模块或动态注册模块时。小 demo 或状态极少时不必强行分模块。
+
+通俗类比：公司只有一个大办公室，所有人把文件堆在一张桌上，找文件难、还容易拿错同名文件。分模块相当于按部门分办公室；命名空间相当于给每个部门加门牌号，寄快递要写“用户部/登录”，不会和“订单部/登录”混淆。
 
 **常见追问**：如何避免「1）以为分模块后自动隔离命名空间：不写 namespaced: true，mutation/action/getter 仍然注册在全局，同名会冲突」？ 「2）混淆 state 的访问：模块 state 默认仍挂在根 state 下，即 this.$store.state.user.token，而不是 this.$store.state.token」在真实项目中应如何规避？
 
@@ -5542,7 +7338,18 @@ Vuex 是单一状态树，所有状态集中在一个 store 里。项目变大�
 
 Vdom 本身并不比手写原生 DOM 快，它的价值在于用可预测的声明式模型把「状态→UI」的更新成本降到可接受，并在复杂应用里避免手写 DOM 的灾难性错误。
 
-先给结论：Vdom 不是「快」的技术，而是「够快且可维护」的技术。 1) 为什么说它不一定快？ - 原生 DOM 操作本身并不慢，慢的是「频繁、无节制、跨边界」的操作，比如在循环里反复读写 offsetHeight 触发强制同步布局（layout thrashing）。 - Vdom 的 diff 是纯 JS 计算，但最终仍要调用原生 DOM API 去 patch。也就是说，Vdom 在原生 DOM 之上加了一层：先算差异，再批量更新。 - 极端场景下，手写命令式 DOM 可以做到「只改一个 textContent」，而 Vdom 可能要先创建 VNode 树、diff、再 patch，反而多花时间。 2) 那它为什么被广泛使用？ - 声明式：你描述「UI 应该长什么样」，框架负责把旧 UI 变成新 UI。开发者不用手动追踪哪些节点要改，减少遗漏和状态不一致。 - 可预测的更新模型：状态变化 → 重新渲染 → diff → patch，形成稳定闭环，适合复杂交互和团队协作。 - 跨平台抽象：VNode 是普通 JS 对象，可以渲染到 DOM、Native、Canvas、SSR 字符串等，这是原生 DOM 做不到的。 3) 通俗类比： - 手写 DOM 像自己拿刷子补墙：小面积修补最快，但大面积、多房间时容易漏刷、刷错颜色。 - Vdom 像先画一张「装修对比图」，再让工人按差异施工：画图有成本，但能保证整体一致，适合大工程。 4) 适用场景： - 适合：状态驱动、组件化、频繁局部更新的中大型前端应用。 - 不适合：极致性能的静态页面、单点高频动画、需要直接操作 DOM 的库（如某些图表、编辑器内核），这些场景手写 DOM 或直接命令式更新往往更快。 5) 现代框架的演进： - Vue 3 的编译时优化（静态提升、Patch Flag、Block Tree）让 diff 更精准； - React 的 Fiber 把渲染拆成可中断任务，优化的是「调度」而不是「diff 本身更快」； - Svelte/Solid 等编译时方案直接生成原生 DOM 操作，进一步说明：Vdom 只是实现声明式 UI 的一种手段，不是性能终点。
+先给结论：Vdom 不是「快」的技术，而是「够快且可维护」的技术。
+
+1) 为什么说它不一定快？ - 原生 DOM 操作本身并不慢，慢的是「频繁、无节制、跨边界」的操作，比如在循环里反复读写 offsetHeight 触发强制同步布局（layout thrashing）。 - Vdom 的 diff 是纯 JS 计算，但最终仍要调用原生 DOM API 去 patch。也就是说，Vdom 在原生 DOM 之上加了一层：先算差异，再批量更新。 - 极端场景下，手写命令式 DOM 可以做到「只改一个 textContent」，而 Vdom 可能要先创建 VNode 树、diff、再 patch，反而多花时间。
+2) 那它为什么被广泛使用？
+
+- 声明式：你描述「UI 应该长什么样」，框架负责把旧 UI 变成新 UI。开发者不用手动追踪哪些节点要改，减少遗漏和状态不一致。
+- 可预测的更新模型：状态变化 → 重新渲染 → diff → patch，形成稳定闭环，适合复杂交互和团队协作。
+- 跨平台抽象：VNode 是普通 JS 对象，可以渲染到 DOM、Native、Canvas、SSR 字符串等，这是原生 DOM 做不到的。 3) 通俗类比：
+- 手写 DOM 像自己拿刷子补墙：小面积修补最快，但大面积、多房间时容易漏刷、刷错颜色。
+- Vdom 像先画一张「装修对比图」，再让工人按差异施工：画图有成本，但能保证整体一致，适合大工程。 4) 适用场景：
+- 适合：状态驱动、组件化、频繁局部更新的中大型前端应用。
+- 不适合：极致性能的静态页面、单点高频动画、需要直接操作 DOM 的库（如某些图表、编辑器内核），这些场景手写 DOM 或直接命令式更新往往更快。 5) 现代框架的演进： - Vue 3 的编译时优化（静态提升、Patch Flag、Block Tree）让 diff 更精准； - React 的 Fiber 把渲染拆成可中断任务，优化的是「调度」而不是「diff 本身更快」； - Svelte/Solid 等编译时方案直接生成原生 DOM 操作，进一步说明：Vdom 只是实现声明式 UI 的一种手段，不是性能终点。
 
 **常见追问**：如何避免「1) 直接说「Vdom 比原生 DOM 快」——这是最常见的错误，Vdom 最终还是要操作 DOM，不可能凭空更快」？ 「2) 把「React 快」等同于「Vdom 快」——React 的优化很多来自调度、批处理、memo，不是 diff 本身」在真实项目中应如何规避？
 
@@ -5564,7 +7371,13 @@ v-model 用于在表单元素或组件上创建双向数据绑定；在 Vue 2 �
 
 v-model 是 Vue 的语法糖，本质是绑定 value 属性并监听 input 事件（Vue 2）或 modelValue 属性并监听 update:modelValue 事件（Vue 3），实现双向数据绑定。
 
-v-model 用于在表单元素或组件上创建双向数据绑定。在 Vue 2 中，对于原生表单元素，v-model 会被编译为 :value 绑定和 @input 事件监听，例如 <input v-model="msg"> 等价于 <input :value="msg" @input="msg = $event.target.value">。对于自定义组件，v-model 默认绑定 value 属性并监听 input 事件，组件内部通过 $emit('input', newValue) 触发更新。在 Vue 3 中，v-model 默认绑定 modelValue 属性并监听 update:modelValue 事件，且支持多个 v-model，如 v-model:foo 和 v-model:bar。原理上，v-model 是编译时的语法糖，Vue 编译器会将其转换为属性绑定和事件监听，从而实现数据从数据层到视图层、视图层到数据层的双向同步。适用场景包括表单输入、自定义组件双向绑定等。通俗类比：就像一根双向管道，数据变化自动更新视图，视图变化自动更新数据。
+v-model 用于在表单元素或组件上创建双向数据绑定。在 Vue 2 中，对于原生表单元素，v-model 会被编译为 :value 绑定和 @input 事件监听，例如 <input v-model="msg"> 等价于 <input :value="msg" @input="msg = $event.target.value">。对于自定义组件，v-model 默认绑定 value 属性并监听 input 事件，组件内部通过 $emit('input', newValue) 触发更新。
+
+在 Vue 3 中，v-model 默认绑定 modelValue 属性并监听 update:modelValue 事件，且支持多个 v-model，如 v-model:foo 和 v-model:bar。原理上，v-model 是编译时的语法糖，Vue 编译器会将其转换为属性绑定和事件监听，从而实现数据从数据层到视图层、视图层到数据层的双向同步。
+
+适用场景包括表单输入、自定义组件双向绑定等。
+
+通俗类比：就像一根双向管道，数据变化自动更新视图，视图变化自动更新数据。
 
 **常见追问**：如何避免「误以为 v-model 是真正的双向绑定，实际上它是单向数据流加上事件监听。2. 在自定义组件中，忘记在 props 中声明 value/modelValue，导致绑定失败。3. 在 Vue 3 中仍使用 value 和 input 事件，导致不生效。4. 认为 v-model 可以绑定多个值，在 Vue 2 中不支持，Vue 3 支持多个 v-model。5. 忽略修饰符的作用，如 .number 会自动转换类型。6. 在组件上使用 v-model 时，直接修改 prop 而不是通过 emit 事件，导致警告。」？ 能否结合「Vue 3 中 v-model 支持自定义修饰符，如 v-model.trim，编译器会生成 modelModifiers 属性。2. 在 Vue 2 中，可以通过组件的 model 选项自定义 v-model 的 prop 和 event。3. 源码层面，Vue 3 的 compiler-dom 中 transformModel 函数负责转换 v-model，处理不同元素类型和修饰符。4. 对于自定义组件，Vue 3 使用 v-model 时，如果组件没有定义 modelValue prop，会警告。5. 性能上，v-model 在输入时可能触发频繁更新，可使用 .lazy 修饰符改为 change 事件。」进一步展开？
 
@@ -5586,7 +7399,17 @@ v-model 用于在表单元素或组件上创建双向数据绑定。在 Vue 2 �
 
 跨域时请求发两次，通常是因为浏览器对非简单跨域请求先发一个 OPTIONS 预检请求，预检通过后才发真正的业务请求。
 
-跨域请求发两次，核心是 CORS 预检机制。浏览器把跨域请求分为“简单请求”和“非简单请求”。简单请求只需满足方法为 GET、HEAD、POST，且请求头只包含 Accept、Accept-Language、Content-Language、Content-Type，并且 Content-Type 只能是 application/x-www-form-urlencoded、multipart/form-data、text/plain。只要不满足其中任意一条，比如用 PUT、DELETE，或者 Content-Type 是 application/json，或者自定义了 Authorization、X-Token 等请求头，浏览器就会先自动发一个 OPTIONS 请求，也就是预检请求。这个 OPTIONS 请求会带上 Origin、Access-Control-Request-Method、Access-Control-Request-Headers，询问服务器是否允许这个跨域请求。服务器如果返回 Access-Control-Allow-Origin、Access-Control-Allow-Methods、Access-Control-Allow-Headers 等响应头，并且允许该方法和请求头，浏览器才会继续发真正的业务请求。所以你在 Network 面板里看到两次请求：第一次是 OPTIONS 预检，第二次才是真正的 GET/POST/PUT 等。通俗类比：你要进一个小区找朋友，保安先拦下你问“你找谁、干什么、有没有预约”，保安打电话确认后，才放你进去。OPTIONS 就是保安的确认电话，真正请求才是你进门。适用场景上，只要跨域且是非简单请求，就会触发预检；同源请求不会；简单请求也不会。预检结果可以被浏览器缓存，通过 Access-Control-Max-Age 指定缓存秒数，缓存期内同一请求不再重复预检。
+跨域请求发两次，核心是 CORS 预检机制。浏览器把跨域请求分为“简单请求”和“非简单请求”。简单请求只需满足方法为 GET、HEAD、POST，且请求头只包含 Accept、Accept-Language、Content-Language、Content-Type，并且 Content-Type 只能是 application/x-www-form-urlencoded、multipart/form-data、text/plain。
+
+只要不满足其中任意一条，比如用 PUT、DELETE，或者 Content-Type 是 application/json，或者自定义了 Authorization、X-Token 等请求头，浏览器就会先自动发一个 OPTIONS 请求，也就是预检请求。这个 OPTIONS 请求会带上 Origin、Access-Control-Request-Method、Access-Control-Request-Headers，询问服务器是否允许这个跨域请求。
+
+服务器如果返回 Access-Control-Allow-Origin、Access-Control-Allow-Methods、Access-Control-Allow-Headers 等响应头，并且允许该方法和请求头，浏览器才会继续发真正的业务请求。
+
+所以你在 Network 面板里看到两次请求：第一次是 OPTIONS 预检，第二次才是真正的 GET/POST/PUT 等。
+
+通俗类比：你要进一个小区找朋友，保安先拦下你问“你找谁、干什么、有没有预约”，保安打电话确认后，才放你进去。OPTIONS 就是保安的确认电话，真正请求才是你进门。
+
+适用场景上，只要跨域且是非简单请求，就会触发预检；同源请求不会；简单请求也不会。预检结果可以被浏览器缓存，通过 Access-Control-Max-Age 指定缓存秒数，缓存期内同一请求不再重复预检。
 
 **常见追问**：如何避免「常见误解：1. 以为两次请求是前端代码写了两次，其实第二次才是业务请求，第一次是浏览器自动预检」？ 「2. 以为所有跨域都会发两次，简单请求不会」在真实项目中应如何规避？
 
@@ -5608,7 +7431,13 @@ v-model 用于在表单元素或组件上创建双向数据绑定。在 Vue 2 �
 
 created 在实例创建完成、数据观测/事件/侦听器已初始化但尚未挂载 DOM 时触发；mounted 在实例挂载到 DOM 后触发，此时可访问真实 DOM。
 
-在 Vue 2/3 的生命周期中，created 和 mounted 都只执行一次（非 keep-alive 重复激活场景），核心区别在于“有没有真实 DOM”。 1) created：实例已经创建，完成了 data 的响应式处理、computed/watch/methods 的初始化、事件监听配置等，但还没有开始渲染，$el 还不存在（Vue 2 中为 undefined）。因此适合做：初始化非 DOM 依赖的数据、发起接口请求、设置全局状态、注册事件总线监听等。 2) mounted：模板已经编译并渲染成真实 DOM，实例挂载完成，this.$el 可访问，$refs 也能拿到子组件/元素。适合做：操作 DOM、初始化第三方库（如 ECharts、地图、富文本编辑器）、获取元素尺寸、绑定需要真实节点的监听。 通俗类比：created 像“人已经出生、大脑和记忆都准备好了，但还没搬进房子”；mounted 像“已经住进房子，可以开始装修、摆家具、量尺寸”。 父子组件顺序（Vue 2）：父 beforeCreate -> 父 created -> 父 beforeMount -> 子 beforeCreate -> 子 created -> 子 beforeMount -> 子 mounted -> 父 mounted。即子组件先 mounted，父组件后 mounted。 服务端渲染 SSR 中只有 created 之前（含 created）的生命周期会执行，mounted 不会在服务端执行，所以依赖 DOM 的逻辑不能放在 created 里做 SSR。
+在 Vue 2/3 的生命周期中，created 和 mounted 都只执行一次（非 keep-alive 重复激活场景），核心区别在于“有没有真实 DOM”。 1) created：实例已经创建，完成了 data 的响应式处理、computed/watch/methods 的初始化、事件监听配置等，但还没有开始渲染，$el 还不存在（Vue 2 中为 undefined）。因此适合做：初始化非 DOM 依赖的数据、发起接口请求、设置全局状态、注册事件总线监听等。 2) mounted：模板已经编译并渲染成真实 DOM，实例挂载完成，this.$el 可访问，$refs 也能拿到子组件/元素。
+
+适合做：操作 DOM、初始化第三方库（如 ECharts、地图、富文本编辑器）、获取元素尺寸、绑定需要真实节点的监听。
+
+通俗类比：created 像“人已经出生、大脑和记忆都准备好了，但还没搬进房子”；mounted 像“已经住进房子，可以开始装修、摆家具、量尺寸”。 父子组件顺序（Vue 2）：父 beforeCreate -> 父 created -> 父 beforeMount -> 子 beforeCreate -> 子 created -> 子 beforeMount -> 子 mounted -> 父 mounted。
+
+即子组件先 mounted，父组件后 mounted。 服务端渲染 SSR 中只有 created 之前（含 created）的生命周期会执行，mounted 不会在服务端执行，所以依赖 DOM 的逻辑不能放在 created 里做 SSR。
 
 **常见追问**：如何避免「1) 误以为 created 里能操作 DOM 或拿到 $el，实际此时 DOM 尚未生成」？ 「2) 误以为 mounted 一定在父组件 created 之后、子组件之前，实际父子 mounted 顺序是子先父后」在真实项目中应如何规避？
 
@@ -5630,7 +7459,18 @@ Pinia：Vue 官方推荐的新一代状态库，API 更接近组合式函数，�
 
 除 Vuex 外，常见方案有 Pinia、Redux/React 生态、MobX、Zustand、Jotai/Recoil、Vue 的 provide/inject 与组合式函数，以及后端状态库如 TanStack Query/SWR；选型取决于框架、状态类型、团队规模和可维护性。
 
-数据管理方案可以按“状态类型”和“框架生态”来理解。 1) Vue 生态： - Pinia：Vue 官方推荐的新一代状态库，API 更接近组合式函数，去掉了 mutation，支持 TypeScript 推断、模块化天然、devtools 友好。适合中大型 Vue 3 项目。 - Vuex：集中式 store，核心是 state/getters/mutations/actions/modules，适合 Vue 2 或已有历史项目；Vue 3 新项目一般优先 Pinia。 - provide/inject + composables：轻量共享，适合局部跨层级传递或小型应用；缺点是缺少统一调试、持久化和严格状态变更约束。 2) React 生态： - Redux / Redux Toolkit：单一 store、纯函数 reducer、可预测、生态成熟，适合复杂业务和需要时间旅行调试的场景；RTK 降低了模板代码。 - MobX：响应式、面向对象，状态可变，通过 observable/action 自动追踪依赖，代码量少，但调试和可预测性弱于 Redux。 - Zustand：轻量、hook 风格、无 Provider 包裹，适合中小型应用和局部全局状态。 - Jotai/Recoil：原子化状态，适合细粒度更新和派生状态。 - TanStack Query/SWR：严格说不是全局状态库，而是服务端状态管理，负责缓存、请求去重、失效、重试、乐观更新，常与上述库配合。 3) 跨框架/通用： - RxJS：用流管理异步和复杂事件，适合实时数据、复杂交互，但学习曲线陡。 - XState：状态机/状态图，适合流程复杂、状态迁移明确的场景，如订单、表单向导。 通俗类比：Vuex/Redux 像“公司中央仓库”，所有物资统一登记、统一发放；Pinia 像“按部门分仓但共享账本”；MobX 像“自动感应仓库”，东西一动就通知相关人；TanStack Query 像“外卖缓存”，重点不是存全局状态，而是管理服务器数据的取用和保鲜。 选型建议：先区分客户端状态和服务端状态；小项目用组合式函数或 Zustand/Pinia；复杂业务用 Redux/Pinia；服务端数据用 TanStack Query/SWR；流程复杂用 XState。
+数据管理方案可以按“状态类型”和“框架生态”来理解。 1) Vue 生态：
+
+- Pinia：Vue 官方推荐的新一代状态库，API 更接近组合式函数，去掉了 mutation，支持 TypeScript 推断、模块化天然、devtools 友好。适合中大型 Vue 3 项目。
+- Vuex：集中式 store，核心是 state/getters/mutations/actions/modules，适合 Vue 2 或已有历史项目；Vue 3 新项目一般优先 Pinia。
+- provide/inject + composables：轻量共享，适合局部跨层级传递或小型应用；缺点是缺少统一调试、持久化和严格状态变更约束。 2) React 生态：
+- Redux / Redux Toolkit：单一 store、纯函数 reducer、可预测、生态成熟，适合复杂业务和需要时间旅行调试的场景；RTK 降低了模板代码。
+- MobX：响应式、面向对象，状态可变，通过 observable/action 自动追踪依赖，代码量少，但调试和可预测性弱于 Redux。
+- Zustand：轻量、hook 风格、无 Provider 包裹，适合中小型应用和局部全局状态。
+- Jotai/Recoil：原子化状态，适合细粒度更新和派生状态。
+- TanStack Query/SWR：严格说不是全局状态库，而是服务端状态管理，负责缓存、请求去重、失效、重试、乐观更新，常与上述库配合。 3) 跨框架/通用：
+- RxJS：用流管理异步和复杂事件，适合实时数据、复杂交互，但学习曲线陡。
+- XState：状态机/状态图，适合流程复杂、状态迁移明确的场景，如订单、表单向导。 通俗类比：Vuex/Redux 像“公司中央仓库”，所有物资统一登记、统一发放；Pinia 像“按部门分仓但共享账本”；MobX 像“自动感应仓库”，东西一动就通知相关人；TanStack Query 像“外卖缓存”，重点不是存全局状态，而是管理服务器数据的取用和保鲜。 选型建议：先区分客户端状态和服务端状态；小项目用组合式函数或 Zustand/Pinia；复杂业务用 Redux/Pinia；服务端数据用 TanStack Query/SWR；流程复杂用 XState。
 
 **常见追问**：如何避免「1) 只回答“Pinia”，不展开为什么、适用场景和与 Vuex 的差异」？ 「2) 把 TanStack Query/SWR 当成 Redux 的替代品，忽略它们主要解决服务端状态缓存，不负责全局 UI 状态」在真实项目中应如何规避？
 
@@ -5652,7 +7492,18 @@ TypeScript（TS）由微软开发，本质是 JavaScript 的超集：任何合�
 
 TypeScript 是 JavaScript 的超集，在 JS 基础上增加了静态类型系统，编译期做类型检查、运行时擦除类型，用于提升大型项目的可维护性与协作效率。
 
-TypeScript（TS）由微软开发，本质是 JavaScript 的超集：任何合法的 JS 都是合法的 TS。它新增了静态类型标注、接口、泛型、枚举、访问修饰符等语法，通过 tsc 编译器在编译期做类型检查，最终输出纯 JavaScript（类型信息在运行时被擦除，不产生额外运行时开销）。 为什么用它：1）类型即文档，函数签名一眼看懂；2）编译期发现拼写错误、类型不匹配、null/undefined 访问等问题，把 bug 左移；3）IDE 智能提示、跳转、重构更可靠；4）大型多人协作、长期维护项目收益最大。 通俗类比：JS 像没有标签的快递箱，运行时打开才知道里面是什么；TS 像给每个箱子贴了标签（类型），搬运前就能发现‘把易碎品当哑铃扔’这类错误。 适用场景：中大型前端/Node 项目、多人协作、需要长期维护的库或 SDK；小型脚本、一次性 demo 用 TS 收益有限。 实际使用：定义 interface/type 描述数据结构，用泛型写可复用组件与工具函数，用联合类型/字面量类型做状态枚举，配合 tsconfig 的 strict 模式、ESLint、构建工具（vite/webpack/ts-node）落地。
+TypeScript（TS）由微软开发，本质是 JavaScript 的超集：任何合法的 JS 都是合法的 TS。它新增了静态类型标注、接口、泛型、枚举、访问修饰符等语法，通过 tsc 编译器在编译期做类型检查，最终输出纯 JavaScript（类型信息在运行时被擦除，不产生额外运行时开销）。
+
+为什么用它：
+
+- 1）类型即文档，函数签名一眼看懂；
+- 2）编译期发现拼写错误、类型不匹配、null/undefined 访问等问题，把 bug 左移；3）IDE 智能提示、跳转、重构更可靠；4）大型多人协作、长期维护项目收益最大。
+
+通俗类比：JS 像没有标签的快递箱，运行时打开才知道里面是什么；TS 像给每个箱子贴了标签（类型），搬运前就能发现‘把易碎品当哑铃扔’这类错误。
+
+适用场景：中大型前端/Node 项目、多人协作、需要长期维护的库或 SDK；小型脚本、一次性 demo 用 TS 收益有限。
+
+实际使用：定义 interface/type 描述数据结构，用泛型写可复用组件与工具函数，用联合类型/字面量类型做状态枚举，配合 tsconfig 的 strict 模式、ESLint、构建工具（vite/webpack/ts-node）落地。
 
 **常见追问**：如何避免「1）误以为 TS 是运行时类型检查，能防住所有类型错误——它只在编译期生效，外部输入（接口返回、用户输入）仍需运行时校验（如 zod）」？ 「2）以为用了 TS 就不需要写测试」在真实项目中应如何规避？
 
@@ -5674,7 +7525,10 @@ TypeScript（TS）由微软开发，本质是 JavaScript 的超集：任何合�
 
 H5 与 iframe、App 的通信本质是跨上下文消息传递：同源 iframe 可直接操作 DOM/调用函数，跨源 iframe 用 postMessage，H5 与 App 则通过 JSBridge（注入对象或 URL Scheme/拦截 prompt）双向调用。
 
-一、H5 与 iframe 通信 1. 同源 iframe：父页面可直接用 iframe.contentWindow 访问子页面的 window、document，调用其全局函数；子页面用 window.parent / window.top 反向访问。简单但耦合强，且只适合同源。 2. 跨源 iframe：受同源策略限制，必须用 window.postMessage(message, targetOrigin)。父发子：iframe.contentWindow.postMessage(data, 'https://child.com')；子发父：window.parent.postMessage(data, 'https://parent.com')。接收方监听 message 事件，通过 event.origin 校验来源、event.source 判断发送方，再回发。 3. 类比：postMessage 像“寄快递”，必须写清收件地址（targetOrigin）和寄件人（origin），否则可能被冒领（XSS/数据泄露）。 二、H5 与 App 通信（JSBridge） 核心是双向： 1. H5 调 App（JS → Native）： - 注入对象：App 通过 WebView 的 addJavascriptInterface（Android）/ WKScriptMessageHandler（iOS）向 window 注入一个对象，如 window.NativeBridge，H5 直接调用 NativeBridge.method(params)。 - URL Scheme 拦截：H5 发起一个自定义协议请求，如 location.href = 'myapp://action?param=xxx'，Native 拦截该 URL 并解析执行。 - 拦截 prompt/console：H5 调用 prompt('bridge://...')，Native 在 onJsPrompt 中拦截，可同步返回结果，是较优雅的方案。 2. App 调 H5（Native → JS）： - Android：webView.evaluateJavascript('javascript:fn(...)') 或 loadUrl。 - iOS：WKWebView 的 evaluateJavaScript。 - 本质是执行 H5 暴露在 window 上的回调函数。 3. 异步回调：H5 调用 Native 后需要结果，通常生成唯一 callbackId，把回调函数挂在 window 上，Native 执行完通过 evaluateJavascript 调用 window[callbackId](result)，再删除。 三、适用场景 - iframe：微前端、嵌入第三方页面、广告/支付收银台、富文本编辑器隔离。 - JSBridge：Hybrid App 中 H5 需要调用相机、支付、定位、分享等原生能力，或 Native 需要通知 H5 更新状态。 四、安全要点 - postMessage 必须校验 event.origin，targetOrigin 不要用 '*'。 - JSBridge 要校验调用来源白名单，防止恶意页面调用原生能力；Android addJavascriptInterface 在 4.2 以下有远程代码执行漏洞。
+一、H5 与 iframe 通信
+
+1. 同源 iframe：父页面可直接用 iframe.contentWindow 访问子页面的 window、document，调用其全局函数；子页面用 window.parent / window.top 反向访问。简单但耦合强，且只适合同源。
+2. 跨源 iframe：受同源策略限制，必须用 window.postMessage(message, targetOrigin)。父发子：iframe.contentWindow.postMessage(data, 'https://child.com')；子发父：window.parent.postMessage(data, 'https://parent.com')。接收方监听 message 事件，通过 event.origin 校验来源、event.source 判断发送方，再回发。 3. 类比：postMessage 像“寄快递”，必须写清收件地址（targetOrigin）和寄件人（origin），否则可能被冒领（XSS/数据泄露）。 二、H5 与 App 通信（JSBridge） 核心是双向： 1. H5 调 App（JS → Native）： - 注入对象：App 通过 WebView 的 addJavascriptInterface（Android）/ WKScriptMessageHandler（iOS）向 window 注入一个对象，如 window.NativeBridge，H5 直接调用 NativeBridge.method(params)。 - URL Scheme 拦截：H5 发起一个自定义协议请求，如 location.href = 'myapp://action?param=xxx'，Native 拦截该 URL 并解析执行。 - 拦截 prompt/console：H5 调用 prompt('bridge://...')，Native 在 onJsPrompt 中拦截，可同步返回结果，是较优雅的方案。 2. App 调 H5（Native → JS）： - Android：webView.evaluateJavascript('javascript:fn(...)') 或 loadUrl。 - iOS：WKWebView 的 evaluateJavaScript。 - 本质是执行 H5 暴露在 window 上的回调函数。 3. 异步回调：H5 调用 Native 后需要结果，通常生成唯一 callbackId，把回调函数挂在 window 上，Native 执行完通过 evaluateJavascript 调用 window[callbackId](result)，再删除。 三、适用场景 - iframe：微前端、嵌入第三方页面、广告/支付收银台、富文本编辑器隔离。 - JSBridge：Hybrid App 中 H5 需要调用相机、支付、定位、分享等原生能力，或 Native 需要通知 H5 更新状态。 四、安全要点 - postMessage 必须校验 event.origin，targetOrigin 不要用 '*'。 - JSBridge 要校验调用来源白名单，防止恶意页面调用原生能力；Android addJavascriptInterface 在 4.2 以下有远程代码执行漏洞。
 
 **常见追问**：如何避免「以为跨源 iframe 还能直接 contentWindow.document，忽略同源策略。」？ 「postMessage 不校验 origin，或 targetOrigin 写 '*'，造成数据泄露。」在真实项目中应如何规避？
 
@@ -5696,7 +7550,13 @@ Java 中字段（属性）不是多态的，继承时子类对象会包含父类
 
 是，子类继承的是父类引用类型属性的同一个引用（同一对象），除非子类重新赋值或隐藏该属性；继承不会复制对象，只是复制引用。
 
-Java 中字段（属性）不是多态的，继承时子类对象会包含父类定义的字段。若父类字段类型是引用类型，例如 `class A { List<String> list = new ArrayList<>(); }`，`class B extends A {}`，那么 `new B()` 对象中只有一个 `list` 字段，它保存的是父类初始化时创建的那个 `ArrayList` 对象的引用。子类通过继承得到的 `list` 和父类方法中看到的 `list` 指向同一对象，因此对 `b.list.add("x")` 后，父类方法里读到的 `list` 也会包含 "x"。 通俗类比：父类字段像一个盒子，盒子里放的是“遥控器”（引用），子类继承的是同一个盒子里的同一个遥控器，而不是复制一台电视。子类若写 `list = new ArrayList<>()`，只是把子类视角下这个盒子里的遥控器换成新的，父类方法若访问的是父类字段，仍可能看到旧遥控器；若通过多态方法访问，则取决于方法是否被重写以及字段访问规则。 注意：如果子类声明了同名字段，叫字段隐藏（field hiding），不是重写。此时 `b.list` 访问子类字段，`((A)b).list` 访问父类字段，两者可以指向不同对象。
+Java 中字段（属性）不是多态的，继承时子类对象会包含父类定义的字段。若父类字段类型是引用类型，例如 `class A { List<String> list = new ArrayList<>(); }`，`class B extends A {}`，那么 `new B()` 对象中只有一个 `list` 字段，它保存的是父类初始化时创建的那个 `ArrayList` 对象的引用。
+
+子类通过继承得到的 `list` 和父类方法中看到的 `list` 指向同一对象，因此对 `b.list.add("x")` 后，父类方法里读到的 `list` 也会包含 "x"。
+
+通俗类比：父类字段像一个盒子，盒子里放的是“遥控器”（引用），子类继承的是同一个盒子里的同一个遥控器，而不是复制一台电视。子类若写 `list = new ArrayList<>()`，只是把子类视角下这个盒子里的遥控器换成新的，父类方法若访问的是父类字段，仍可能看到旧遥控器；若通过多态方法访问，则取决于方法是否被重写以及字段访问规则。
+
+注意：如果子类声明了同名字段，叫字段隐藏（field hiding），不是重写。此时 `b.list` 访问子类字段，`((A)b).list` 访问父类字段，两者可以指向不同对象。
 
 **常见追问**：如何避免「误以为继承会“复制”父类引用类型属性，导致子类和父类各有一个独立对象。2. 误以为字段也能像方法一样重写，把字段隐藏当成多态。3. 忽略 `static` 字段与实例字段的区别。4. 忽略父类构造器中调用可重写方法时，子类字段可能还未初始化。5. 把“引用类型”和“对象本身”混为一谈：继承的是引用值，不是对象副本。」？ 能否结合「字段没有多态：JVM 指令 getfield/putfield 按编译期符号引用解析，字段访问由引用变量的静态类型决定，方法调用才是动态分派。2. 内存布局：HotSpot 中对象包含父类字段和子类字段，同名字段会各占一个槽位，不是覆盖。3. 构造顺序：父类字段初始化先于子类构造器执行，若父类构造器调用可重写方法并访问该引用字段，可能因子类字段尚未初始化或子类重写导致 NPE/空值，这是经典踩坑。4. 若父类字段是 `private`，子类不能直接访问，但对象里仍有该字段，可通过父类 getter 操作同一引用。5. 若父类字段是 `static`，则属于类变量，子类继承的是同一个静态字段，不是每个子类对象一份。」进一步展开？
 
@@ -5718,7 +7578,17 @@ Java 中字段（属性）不是多态的，继承时子类对象会包含父类
 
 微任务产生的微任务会在当前事件循环的微任务队列中继续执行，直到队列清空，不会等到下一次事件循环。
 
-在浏览器或 Node.js 的事件循环中，每次宏任务（如 script、setTimeout、setInterval、I/O 等）执行完毕后，会进入微任务检查点（microtask checkpoint）。此时会清空整个微任务队列：先执行当前队列中的所有微任务，如果某个微任务又产生了新的微任务，这些新微任务会被追加到当前微任务队列的末尾，然后继续执行，直到队列为空。只有微任务队列彻底清空后，才会进入下一个宏任务（或渲染等阶段）。 通俗类比：把事件循环想象成一场会议。宏任务是“一个议题”，微任务是“该议题下的待办事项”。当议题讨论完，主持人会问“还有没有临时补充？”（微任务检查点）。如果有人提出新补充（微任务产生微任务），就继续讨论这个补充，直到没人再补充，才进入下一个议题。所以微任务产生的微任务是在“本次循环”内被消化掉的，而不是留到下次循环。 例子： ```js Promise.resolve().then(() => { console.log('microtask 1'); Promise.resolve().then(() => console.log('microtask 2')); }); setTimeout(() => console.log('macrotask'), 0); ``` 输出顺序：microtask 1 → microtask 2 → macrotask。microtask 2 是在当前微任务队列清空过程中执行的，不会等到 setTimeout 之后。
+在浏览器或 Node.js 的事件循环中，每次宏任务（如 script、setTimeout、setInterval、I/O 等）执行完毕后，会进入微任务检查点（microtask checkpoint）。此时会清空整个微任务队列：先执行当前队列中的所有微任务，如果某个微任务又产生了新的微任务，这些新微任务会被追加到当前微任务队列的末尾，然后继续执行，直到队列为空。
+
+只有微任务队列彻底清空后，才会进入下一个宏任务（或渲染等阶段）。
+
+通俗类比：把事件循环想象成一场会议。宏任务是“一个议题”，微任务是“该议题下的待办事项”。当议题讨论完，主持人会问“还有没有临时补充？”（微任务检查点）。如果有人提出新补充（微任务产生微任务），就继续讨论这个补充，直到没人再补充，才进入下一个议题。
+
+所以微任务产生的微任务是在“本次循环”内被消化掉的，而不是留到下次循环。
+
+例子： ```js Promise.resolve().then(() => { console.log('microtask 1'); Promise.resolve().then(() => console.log('microtask 2')); }); setTimeout(() => console.log('macrotask'), 0); ``` 输出顺序：microtask 1 → microtask 2 → macrotask。
+
+microtask 2 是在当前微任务队列清空过程中执行的，不会等到 setTimeout 之后。
 
 **常见追问**：如何避免「误以为微任务产生的微任务会放到下一次事件循环，导致与宏任务顺序混淆。」？ 「把 process.nextTick 和 Promise 微任务混为一谈，认为它们在同一队列按顺序执行；实际上 nextTick 队列优先于 Promise 微任务队列。」在真实项目中应如何规避？
 
@@ -5740,7 +7610,15 @@ Java 中字段（属性）不是多态的，继承时子类对象会包含父类
 
 跨域是浏览器同源策略对前端脚本发起的跨源请求的限制，服务端到服务端的 HTTP 请求不经过浏览器，因此不存在跨域问题。
 
-跨域（CORS）本质是浏览器的一种安全机制：浏览器执行页面里的 JS 发起请求时，会检查请求 URL 与当前页面是否同源（协议、域名、端口都相同）。如果不同源，浏览器会拦截响应或先发预检请求（OPTIONS），要求服务端返回 Access-Control-Allow-Origin 等响应头。这个检查发生在浏览器端，而不是服务端。 服务端请求服务端时，比如 Java 用 HttpClient、Python 用 requests、Node 用 axios 调用另一个服务的 API，请求由服务端进程直接发出，没有浏览器参与，也没有页面源（Origin）的概念，所以不会触发同源策略，也就不存在跨域拦截。服务端只要网络可达、端口开放、防火墙允许，就能正常拿到响应。 通俗类比：同源策略像小区门禁，只检查从小区里出去的人（浏览器页面）能不能去隔壁小区拿东西；而服务端之间的调用像两个物业公司直接打电话，不经过门禁，自然不会被拦。 适用场景：微服务之间 RPC/HTTP 调用、后端调用第三方开放平台、定时任务拉取数据等，都不需要考虑 CORS。真正需要处理跨域的是浏览器里的前端代码调用不同源的后端接口。
+跨域（CORS）本质是浏览器的一种安全机制：浏览器执行页面里的 JS 发起请求时，会检查请求 URL 与当前页面是否同源（协议、域名、端口都相同）。如果不同源，浏览器会拦截响应或先发预检请求（OPTIONS），要求服务端返回 Access-Control-Allow-Origin 等响应头。
+
+这个检查发生在浏览器端，而不是服务端。 服务端请求服务端时，比如 Java 用 HttpClient、Python 用 requests、Node 用 axios 调用另一个服务的 API，请求由服务端进程直接发出，没有浏览器参与，也没有页面源（Origin）的概念，所以不会触发同源策略，也就不存在跨域拦截。
+
+服务端只要网络可达、端口开放、防火墙允许，就能正常拿到响应。
+
+通俗类比：同源策略像小区门禁，只检查从小区里出去的人（浏览器页面）能不能去隔壁小区拿东西；而服务端之间的调用像两个物业公司直接打电话，不经过门禁，自然不会被拦。
+
+适用场景：微服务之间 RPC/HTTP 调用、后端调用第三方开放平台、定时任务拉取数据等，都不需要考虑 CORS。真正需要处理跨域的是浏览器里的前端代码调用不同源的后端接口。
 
 **常见追问**：如何避免「误以为跨域是服务端限制，认为服务端调服务端也会被 CORS 拦截。」？ 「把跨域和跨站请求伪造（CSRF）混为一谈。」在真实项目中应如何规避？
 
@@ -5762,7 +7640,28 @@ Java 中字段（属性）不是多态的，继承时子类对象会包含父类
 
 Vite 基于原生 ESM 的按需编译：开发态用 esbuild 预构建依赖 + 浏览器按需请求源码即时转换，生产态用 Rollup 打包，核心是「开发不打包、生产才打包」。
 
-Vite 的构建流程要分「开发态」和「生产态」两条线来看。 一、开发态（Dev Server，核心卖点） 1. 启动阶段：启动一个基于 connect 的 HTTP 服务器，几乎不做打包，所以冷启动极快。 2. 依赖预构建（Pre-bundling）：用 esbuild 扫描入口，把 node_modules 里的第三方依赖（如 lodash、react）打成少量 ESM 文件，缓存到 node_modules/.vite。目的有三个：① 把 CommonJS/UMD 转成 ESM；② 把「一个包几百个文件」合并成单文件，避免浏览器发起海量请求（request waterfall）；③ 处理依赖间的重复引用。 3. 源码按需转换：浏览器请求 /src/main.js 时，Vite 中间件拦截请求，对 .vue/.ts/.jsx/.scss 等做即时编译（Vue 用 @vitejs/plugin-vue，TS 用 esbuild 转译），并把裸模块导入 import 'vue' 重写成 /node_modules/.vite/vue.js 这种可被浏览器解析的路径。 4. HMR：基于 WebSocket，模块图（ModuleGraph）记录模块间依赖，文件改动时只让受影响的模块边界失效，推送更新，不刷新整页。 通俗类比：传统 Webpack 像「先做好一整桌菜再上桌」，Vite 开发态像「自助餐，你点什么我现做」，所以启动快、改哪热更哪。 二、生产态（Build） 1. 用 Rollup 打包（不是 esbuild），因为 Rollup 的产物更小、tree-shaking 和代码分割更成熟。 2. 流程：解析入口 → 构建模块图 → 插件转换（与开发态共用一套插件 API，但走 build 钩子）→ tree-shaking → 代码分割（动态 import 拆 chunk）→ 生成带 hash 的静态资源 → 输出 dist。 3. 产物优化：CSS 代码分割、资源内联（小于 assetsInlineLimit 的转 base64）、gzip/brotli 压缩、legacy 插件做旧浏览器兼容。 三、为什么这么设计 开发态追求「快」：不打包、按需编译、esbuild（Go 编写，比 JS 快 10-100 倍）做重活。 生产态追求「优」：Rollup 生态成熟、产物质量高。 两者通过统一的插件容器（PluginContainer）和一套插件 API 保持一致性。
+Vite 的构建流程要分「开发态」和「生产态」两条线来看。
+
+**一、开发态（Dev Server，核心卖点）**
+
+1. 启动阶段：启动一个基于 connect 的 HTTP 服务器，几乎不做打包，所以冷启动极快。
+2. 依赖预构建（Pre-bundling）：用 esbuild 扫描入口，把 node_modules 里的第三方依赖（如 lodash、react）打成少量 ESM 文件，缓存到 node_modules/.vite。目的有三个：① 把 CommonJS/UMD 转成 ESM；② 把「一个包几百个文件」合并成单文件，避免浏览器发起海量请求（request waterfall）；③ 处理依赖间的重复引用。
+3. 源码按需转换：浏览器请求 /src/main.js 时，Vite 中间件拦截请求，对 .vue/.ts/.jsx/.scss 等做即时编译（Vue 用 @vitejs/plugin-vue，TS 用 esbuild 转译），并把裸模块导入 import 'vue' 重写成 /node_modules/.vite/vue.js 这种可被浏览器解析的路径。
+4. HMR：基于 WebSocket，模块图（ModuleGraph）记录模块间依赖，文件改动时只让受影响的模块边界失效，推送更新，不刷新整页。
+
+通俗类比：传统 Webpack 像「先做好一整桌菜再上桌」，Vite 开发态像「自助餐，你点什么我现做」，所以启动快、改哪热更哪。
+
+**二、生产态（Build）**
+
+1. 用 Rollup 打包（不是 esbuild），因为 Rollup 的产物更小、tree-shaking 和代码分割更成熟。
+2. 流程：解析入口 → 构建模块图 → 插件转换（与开发态共用一套插件 API，但走 build 钩子）→ tree-shaking → 代码分割（动态 import 拆 chunk）→ 生成带 hash 的静态资源 → 输出 dist。
+3. 产物优化：CSS 代码分割、资源内联（小于 assetsInlineLimit 的转 base64）、gzip/brotli 压缩、legacy 插件做旧浏览器兼容。
+
+**三、为什么这么设计**
+
+开发态追求「快」：不打包、按需编译、esbuild（Go 编写，比 JS 快 10-100 倍）做重活。 生产态追求「优」：Rollup 生态成熟、产物质量高。
+
+两者通过统一的插件容器（PluginContainer）和一套插件 API 保持一致性。
 
 **常见追问**：如何避免「误以为 Vite 开发态也打包，或以为生产态也用 esbuild 打包（实际生产用 Rollup）。」？ 「把「依赖预构建」说成「把所有代码都预构建」，其实只针对 node_modules 依赖，源码是按需转换。」在真实项目中应如何规避？
 
@@ -5784,7 +7683,23 @@ Vite 的构建流程要分「开发态」和「生产态」两条线来看。 �
 
 SPA 是单页应用，首次加载后靠前端路由和 JS 局部更新页面，不整页刷新；多页面应用（MPA）每次跳转都由浏览器请求新 HTML 整页刷新。
 
-SPA（Single Page Application，单页应用）指整个应用只有一个 HTML 入口，页面切换由前端路由（如 history/hash）控制，通过 JS 动态渲染组件、按需请求数据，浏览器不会整页刷新。MPA（Multi Page Application，多页面应用）指每个页面都是独立 HTML，点击链接会向服务器请求新的 HTML 文档，浏览器整页重新加载。 通俗类比：MPA 像去餐厅每点一道菜都要重新进一次门、重新找座位；SPA 像坐在一张桌子上，服务员只把新菜端上来，桌子不动。 核心区别： 1. 页面跳转：SPA 前端路由切换，无整页刷新；MPA 服务端返回新 HTML，整页刷新。 2. 资源加载：SPA 首次加载可能较大，之后按需加载；MPA 每次跳转都重新加载公共资源（虽有缓存）。 3. 前后端职责：SPA 前端承担路由和渲染，后端多提供 API；MPA 后端负责路由和页面渲染（如 JSP、PHP、模板引擎）。 4. 用户体验：SPA 切换流畅、接近原生；MPA 切换有白屏和闪烁。 5. SEO：MPA 天然对搜索引擎友好；SPA 需要 SSR/预渲染/动态渲染来优化。 6. 状态保持：SPA 页面切换不丢失全局状态；MPA 每次刷新状态重置，需靠 URL、Cookie、Storage 等传递。 7. 部署与运维：SPA 常为静态资源，可 CDN 部署，但需处理前端路由 fallback；MPA 与后端部署耦合更深。 适用场景：SPA 适合后台管理系统、社交应用、交互复杂、登录后使用的产品；MPA 适合内容型网站、电商商品页、官网、对 SEO 和首屏速度要求高的场景。实际项目常用混合方案，如 Next.js/Nuxt.js 的 SSR/SSG，兼顾首屏、SEO 和 SPA 体验。
+SPA（Single Page Application，单页应用）指整个应用只有一个 HTML 入口，页面切换由前端路由（如 history/hash）控制，通过 JS 动态渲染组件、按需请求数据，浏览器不会整页刷新。MPA（Multi Page Application，多页面应用）指每个页面都是独立 HTML，点击链接会向服务器请求新的 HTML 文档，浏览器整页重新加载。
+
+通俗类比：MPA 像去餐厅每点一道菜都要重新进一次门、重新找座位；SPA 像坐在一张桌子上，服务员只把新菜端上来，桌子不动。
+
+核心区别：
+
+1. 页面跳转：SPA 前端路由切换，无整页刷新；MPA 服务端返回新 HTML，整页刷新。
+2. 资源加载：SPA 首次加载可能较大，之后按需加载；MPA 每次跳转都重新加载公共资源（虽有缓存）。
+3. 前后端职责：SPA 前端承担路由和渲染，后端多提供 API；MPA 后端负责路由和页面渲染（如 JSP、PHP、模板引擎）。
+4. 用户体验：SPA 切换流畅、接近原生；MPA 切换有白屏和闪烁。
+5. SEO：MPA 天然对搜索引擎友好；SPA 需要 SSR/预渲染/动态渲染来优化。
+6. 状态保持：SPA 页面切换不丢失全局状态；MPA 每次刷新状态重置，需靠 URL、Cookie、Storage 等传递。
+7. 部署与运维：SPA 常为静态资源，可 CDN 部署，但需处理前端路由 fallback；MPA 与后端部署耦合更深。
+
+适用场景：SPA 适合后台管理系统、社交应用、交互复杂、登录后使用的产品；MPA 适合内容型网站、电商商品页、官网、对 SEO 和首屏速度要求高的场景。
+
+实际项目常用混合方案，如 Next.js/Nuxt.js 的 SSR/SSG，兼顾首屏、SEO 和 SPA 体验。
 
 **常见追问**：如何避免「误以为 SPA 就是只有一个页面、不能多页面，其实是一个 HTML 入口多个视图。2. 误以为 SPA 一定比 MPA 快，首屏可能更慢。3. 误以为 SPA 完全不能 SEO，SSR/预渲染可解决。4. 忽略 history 模式刷新 404 的服务端配置问题。5. 把 SPA 和前端框架（React/Vue）等同，框架也可做 MPA/SSR。6. 认为 MPA 每次跳转一定重新下载所有资源，实际有 HTTP 缓存。」？ 能否结合「可提 history API 与 hash 路由差异：history 模式需服务端配置 fallback 到 index.html，否则刷新 404。2. 可提 SPA 首屏优化：代码分割、路由懒加载、预加载、SSR/SSG、边缘渲染。3. 可提 MPA 的现代演进：MPA 也可用 PJAX/Turbo/HTMX 做局部更新，并非绝对整页刷新。4. 可提内存与性能：SPA 长时间运行可能内存泄漏，需注意组件销毁和事件解绑。5. 可提 SEO 方案：SSR、SSG、ISR、动态渲染、预渲染，以及 Google 对 JS 渲染的支持但其他爬虫仍弱。」进一步展开？
 
@@ -5806,7 +7721,11 @@ mixin（混入）是一种代码复用设计模式：把一组可复用的属性
 
 mixin 是通用设计模式/语言特性概念，指可复用代码片段；mixins 通常是具体框架（如 Vue 2）中用于声明混入的配置选项名，二者是概念与实现的关系。
 
-mixin（混入）是一种代码复用设计模式：把一组可复用的属性/方法/生命周期逻辑抽成一个独立单元，让多个类或组件“合并”进去，从而避免继承层级过深。它强调“横向复用”，类似把几份调料倒进同一锅汤里，最终汤里既有原味也有调料味。 mixins 则通常是某个框架里的具体 API 名称，最典型的是 Vue 2 的 `mixins: [myMixin]` 选项：组件和 mixin 的选项会按规则合并，data、methods 等以组件自身优先，生命周期钩子则都会执行（mixin 先于组件）。React 早期也常用 `createClass` 的 mixins，后来被 HOC、Render Props、Hooks 取代。 所以区别可以概括为：mixin 是“概念/模式”，mixins 是“某个框架中承载该模式的配置字段或复数形式”。面试中如果问“mixin 和 mixins 区别”，核心是区分抽象概念与具体实现，而不是把两者当成两个完全不同的技术。
+mixin（混入）是一种代码复用设计模式：把一组可复用的属性/方法/生命周期逻辑抽成一个独立单元，让多个类或组件“合并”进去，从而避免继承层级过深。它强调“横向复用”，类似把几份调料倒进同一锅汤里，最终汤里既有原味也有调料味。 mixins 则通常是某个框架里的具体 API 名称，最典型的是 Vue 2 的 `mixins: [myMixin]` 选项：组件和 mixin 的选项会按规则合并，data、methods 等以组件自身优先，生命周期钩子则都会执行（mixin 先于组件）。
+
+React 早期也常用 `createClass` 的 mixins，后来被 HOC、Render Props、Hooks 取代。
+
+所以区别可以概括为：mixin 是“概念/模式”，mixins 是“某个框架中承载该模式的配置字段或复数形式”。面试中如果问“mixin 和 mixins 区别”，核心是区分抽象概念与具体实现，而不是把两者当成两个完全不同的技术。
 
 **常见追问**：如何避免「1) 把 mixin 和 mixins 说成完全无关的两个东西」？ 「2) 认为 mixins 是语言关键字，其实它只是框架约定的选项名」在真实项目中应如何规避？
 
@@ -5828,7 +7747,10 @@ Vue 2：在 initState 中，会按 props -> methods -> data -> computed -> watch
 
 在 Vue 中，created 先于 watch 执行；watch 默认是懒执行的，只有在监听的数据发生变化时才会触发回调，而 created 在实例创建完成后立即调用。
 
-在 Vue 2 和 Vue 3 中，生命周期顺序都是：beforeCreate -> created -> beforeMount -> mounted。而 watch 的初始化时机不同： - Vue 2：在 initState 中，会按 props -> methods -> data -> computed -> watch 的顺序初始化。watch 的创建发生在 created 之前（因为 initState 在 beforeCreate 和 created 之间执行），但 watch 回调默认不会立即执行，只有监听的值变化时才触发。所以 created 钩子先执行，之后如果数据变化，watch 回调才执行。 - Vue 3：在 setup 中调用 watch 只是注册侦听器，默认也是懒执行（除非配置 immediate: true）。onCreated 生命周期钩子会在 setup 之后、挂载之前调用。如果 watch 没有 immediate，那么 created 先执行；如果 watch 设置了 immediate: true，则 watch 回调会在 created 之前执行（因为 watch 注册时立即执行回调，而 created 钩子还没触发）。 通俗类比：created 像是“房子刚建好，还没装修”，watch 像是“装了一个报警器，只有东西被移动时才响”。默认情况下，房子建好（created）先发生，报警器（watch）不会主动响；除非你设置了 immediate，报警器一装上就立刻响一次，那就会在 created 之前。 适用场景：如果需要在实例创建后立即执行某些逻辑（如初始化数据），用 created；如果需要监听数据变化并做出响应，用 watch，并注意是否需要 immediate。
+在 Vue 2 和 Vue 3 中，生命周期顺序都是：beforeCreate -> created -> beforeMount -> mounted。而 watch 的初始化时机不同：
+
+- Vue 2：在 initState 中，会按 props -> methods -> data -> computed -> watch 的顺序初始化。watch 的创建发生在 created 之前（因为 initState 在 beforeCreate 和 created 之间执行），但 watch 回调默认不会立即执行，只有监听的值变化时才触发。所以 created 钩子先执行，之后如果数据变化，watch 回调才执行。
+- Vue 3：在 setup 中调用 watch 只是注册侦听器，默认也是懒执行（除非配置 immediate: true）。onCreated 生命周期钩子会在 setup 之后、挂载之前调用。如果 watch 没有 immediate，那么 created 先执行；如果 watch 设置了 immediate: true，则 watch 回调会在 created 之前执行（因为 watch 注册时立即执行回调，而 created 钩子还没触发）。 通俗类比：created 像是“房子刚建好，还没装修”，watch 像是“装了一个报警器，只有东西被移动时才响”。默认情况下，房子建好（created）先发生，报警器（watch）不会主动响；除非你设置了 immediate，报警器一装上就立刻响一次，那就会在 created 之前。 适用场景：如果需要在实例创建后立即执行某些逻辑（如初始化数据），用 created；如果需要监听数据变化并做出响应，用 watch，并注意是否需要 immediate。
 
 **常见追问**：如何避免「误以为 watch 一定在 created 之后执行，忽略了 immediate 的情况。」？ 「混淆 Vue 2 和 Vue 3 的生命周期顺序，例如认为 Vue 3 的 setup 在 created 之后。」在真实项目中应如何规避？
 
@@ -5850,7 +7772,16 @@ Vue 2：在 initState 中，会按 props -> methods -> data -> computed -> watch
 
 ESM 是编译时静态的模块系统，CJS 是运行时动态的模块系统；前者支持 tree-shaking、异步加载和顶层 await，后者适合 Node 传统生态。
 
-ESM（ECMAScript Modules）和 CJS（CommonJS）是 JavaScript 两种模块规范。 1. 语法与加载时机 - ESM 用 import/export，是静态声明，模块依赖在代码执行前就被解析，形成模块图。 - CJS 用 require/module.exports，是运行时调用，只有执行到 require 那一行才会去加载模块。 2. 值传递方式 - ESM 导出的是“活绑定”（live binding），导入方看到的是导出模块内部变量的实时值。例如 export let count = 0; 之后 count++，导入方 import { count } 也会看到变化。 - CJS 导出的是值的拷贝（对基本类型）或对象引用。module.exports = { count } 后原模块再改 count，导入方拿到的还是旧值。 3. 加载与执行 - ESM 默认异步加载（浏览器中通过 <script type="module"> 或动态 import()），支持顶层 await，适合现代打包和 tree-shaking。 - CJS 是同步加载，Node 中 require 会阻塞直到模块加载完成，适合服务端本地文件读取。 4. 作用域与 this - ESM 模块顶层 this 是 undefined，模块有自己的作用域。 - CJS 模块顶层 this 指向 module.exports，且模块被函数包裹（function(exports, require, module, __filename, __dirname)）。 5. 循环依赖 - ESM 通过静态分析能更好地处理循环依赖，但仍有 TDZ 问题；CJS 循环依赖时可能拿到不完整的 exports 对象。 6. 互操作 - Node 中 ESM 可以 import CJS（默认导入整个 module.exports），CJS 不能直接 require ESM（需动态 import()）。 - 打包工具（Webpack/Rollup）可做转换，但语义有差异。 通俗类比：CJS 像去餐厅点菜，点一道做一道（运行时按需加载）；ESM 像提前把整本菜单定好，厨房一次性备齐（编译时确定依赖），所以能优化掉没点的菜（tree-shaking）。
+ESM（ECMAScript Modules）和 CJS（CommonJS）是 JavaScript 两种模块规范。
+
+1. 语法与加载时机 - ESM 用 import/export，是静态声明，模块依赖在代码执行前就被解析，形成模块图。 - CJS 用 require/module.exports，是运行时调用，只有执行到 require 那一行才会去加载模块。
+2. 值传递方式 - ESM 导出的是“活绑定”（live binding），导入方看到的是导出模块内部变量的实时值。例如 export let count = 0; 之后 count++，导入方 import { count } 也会看到变化。 - CJS 导出的是值的拷贝（对基本类型）或对象引用。module.exports = { count } 后原模块再改 count，导入方拿到的还是旧值。
+3. 加载与执行 - ESM 默认异步加载（浏览器中通过 <script type="module"> 或动态 import()），支持顶层 await，适合现代打包和 tree-shaking。 - CJS 是同步加载，Node 中 require 会阻塞直到模块加载完成，适合服务端本地文件读取。
+4. 作用域与 this - ESM 模块顶层 this 是 undefined，模块有自己的作用域。 - CJS 模块顶层 this 指向 module.exports，且模块被函数包裹（function(exports, require, module, __filename, __dirname)）。
+5. 循环依赖 - ESM 通过静态分析能更好地处理循环依赖，但仍有 TDZ 问题；CJS 循环依赖时可能拿到不完整的 exports 对象。
+6. 互操作 - Node 中 ESM 可以 import CJS（默认导入整个 module.exports），CJS 不能直接 require ESM（需动态 import()）。 - 打包工具（Webpack/Rollup）可做转换，但语义有差异。
+
+通俗类比：CJS 像去餐厅点菜，点一道做一道（运行时按需加载）；ESM 像提前把整本菜单定好，厨房一次性备齐（编译时确定依赖），所以能优化掉没点的菜（tree-shaking）。
 
 **常见追问**：如何避免「误以为 ESM 导出的是引用所以任何情况都能实时更新——实际上对基本类型是 live binding，但重新赋值导出变量在导入方是只读的，不能直接改。」？ 「认为 CJS 完全不能异步——require 本身同步，但可以 require 一个返回 Promise 的模块，只是不能直接 await。」在真实项目中应如何规避？
 
@@ -5872,7 +7803,17 @@ items：DataTransferItemList，表示拖拽项列表，每项有 kind（string �
 
 drag 事件中通过 dataTransfer 拿到的对象是 DataTransfer 类型，它承载拖拽数据、拖拽效果和文件列表等信息。
 
-在 HTML5 拖放 API 中，drag 相关事件（dragstart、dragover、drop 等）的事件对象上有一个 dataTransfer 属性，它的类型是 DataTransfer。可以把它理解成拖拽过程中的“数据包裹/快递箱”：发起拖拽时往里面放数据，拖拽经过和放下时再从里面取数据。 DataTransfer 主要包含： 1. items：DataTransferItemList，表示拖拽项列表，每项有 kind（string 或 file）和 type（MIME 类型）。 2. types：字符串数组，列出当前拖拽数据包含的 MIME 类型，例如 'text/plain'、'text/html'、'Files'。 3. files：FileList，拖入文件时可用，例如从桌面拖文件到浏览器。 4. dropEffect：当前拖拽操作效果，如 'none'、'copy'、'move'、'link'。 5. effectAllowed：允许的效果集合，如 'copy'、'move'、'copyMove' 等。 6. setData(format, data) / getData(format) / clearData(format)：读写拖拽数据。 7. setDragImage(element, x, y)：设置拖拽时跟随鼠标的预览图。 典型用法： ```js element.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', 'hello'); e.dataTransfer.effectAllowed = 'copy'; }); target.addEventListener('dragover', e => { e.preventDefault(); // 必须阻止默认行为才能触发 drop e.dataTransfer.dropEffect = 'copy'; }); target.addEventListener('drop', e => { e.preventDefault(); const text = e.dataTransfer.getData('text/plain'); const files = e.dataTransfer.files; }); ``` 注意：DataTransfer 对象在 dragstart 阶段可写，在 drop 阶段可读；在 dragover/dragenter 阶段出于安全原因通常只能读取 types 和设置 dropEffect，不能读取具体数据。
+在 HTML5 拖放 API 中，drag 相关事件（dragstart、dragover、drop 等）的事件对象上有一个 dataTransfer 属性，它的类型是 DataTransfer。可以把它理解成拖拽过程中的“数据包裹/快递箱”：发起拖拽时往里面放数据，拖拽经过和放下时再从里面取数据。
+
+DataTransfer 主要包含：
+
+1. items：DataTransferItemList，表示拖拽项列表，每项有 kind（string 或 file）和 type（MIME 类型）。
+2. types：字符串数组，列出当前拖拽数据包含的 MIME 类型，例如 'text/plain'、'text/html'、'Files'。
+3. files：FileList，拖入文件时可用，例如从桌面拖文件到浏览器。
+4. dropEffect：当前拖拽操作效果，如 'none'、'copy'、'move'、'link'。
+5. effectAllowed：允许的效果集合，如 'copy'、'move'、'copyMove' 等。
+6. setData(format, data) / getData(format) / clearData(format)：读写拖拽数据。
+7. setDragImage(element, x, y)：设置拖拽时跟随鼠标的预览图。 典型用法： ```js element.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', 'hello'); e.dataTransfer.effectAllowed = 'copy'; }); target.addEventListener('dragover', e => { e.preventDefault(); // 必须阻止默认行为才能触发 drop e.dataTransfer.dropEffect = 'copy'; }); target.addEventListener('drop', e => { e.preventDefault(); const text = e.dataTransfer.getData('text/plain'); const files = e.dataTransfer.files; }); ``` 注意：DataTransfer 对象在 dragstart 阶段可写，在 drop 阶段可读；在 dragover/dragenter 阶段出于安全原因通常只能读取 types 和设置 dropEffect，不能读取具体数据。
 
 **常见追问**：如何避免「误以为 dataTransfer 是普通 Object 或 JSON，直接 JSON.parse 或当字典用；实际是 DataTransfer 实例，数据要通过 getData/setData 访问。」？ 「在 dragover 里调用 getData 拿不到数据，就认为拖拽 API 坏了；其实是保护模式限制，应在 drop 里读。」在真实项目中应如何规避？
 
@@ -5894,7 +7835,19 @@ drag 事件中通过 dataTransfer 拿到的对象是 DataTransfer 类型，它�
 
 React Hooks 的闭包问题是指函数组件每次渲染都会创建新的作用域，事件回调/定时器/异步任务捕获的是当次渲染的 props 和 state，若在后续渲染中读取就会拿到旧值（stale closure），导致状态不同步、逻辑错误。
 
-原理：函数组件本质是一个函数，每次渲染都会重新执行，函数内部定义的变量（包括 useState 返回的 state、props、局部变量）都属于当次渲染的闭包。useEffect、useCallback、useMemo、setTimeout、事件监听器等如果捕获了这些变量，就会把当次渲染的值“冻结”在闭包里。 典型例子： ```jsx function Counter() { const [count, setCount] = useState(0); useEffect(() => { const id = setInterval(() => { console.log(count); // 永远打印 0 setCount(count + 1); // 永远基于 0 计算，结果一直是 1 }, 1000); return () => clearInterval(id); }, []); // 空依赖，effect 只执行一次，闭包捕获首次渲染的 count } ``` 这里 count 被闭包固定在 0，定时器每次执行都读旧值。 为什么会有问题：React 的渲染模型是“快照”，每次渲染对应一个独立的 props/state 版本，闭包让回调与某个快照绑定，而不是与最新状态绑定。 常见解决方式： 1. 正确声明依赖：把 count 放进依赖数组，effect 会在 count 变化时重建，但会导致定时器频繁重建，需配合清理。 2. 使用函数式更新：setCount(c => c + 1)，避免读取旧 state。 3. 使用 useRef 保存最新值：const countRef = useRef(count); 每次渲染后更新 countRef.current = count，回调里读 ref.current。 4. 使用 useReducer 或把逻辑抽到 reducer 中，减少对闭包的依赖。 5. 使用 useEvent（实验性）或 useCallback 配合 ref 模式。 适用场景：定时器、事件监听、WebSocket 回调、异步请求回调、防抖节流、第三方库回调等长期存活的回调最容易踩坑。
+原理：函数组件本质是一个函数，每次渲染都会重新执行，函数内部定义的变量（包括 useState 返回的 state、props、局部变量）都属于当次渲染的闭包。useEffect、useCallback、useMemo、setTimeout、事件监听器等如果捕获了这些变量，就会把当次渲染的值“冻结”在闭包里。
+
+典型例子： ```jsx function Counter() { const [count, setCount] = useState(0); useEffect(() => { const id = setInterval(() => { console.log(count); // 永远打印 0 setCount(count + 1); // 永远基于 0 计算，结果一直是 1 }, 1000); return () => clearInterval(id); }, []); // 空依赖，effect 只执行一次，闭包捕获首次渲染的 count } ``` 这里 count 被闭包固定在 0，定时器每次执行都读旧值。
+
+为什么会有问题：React 的渲染模型是“快照”，每次渲染对应一个独立的 props/state 版本，闭包让回调与某个快照绑定，而不是与最新状态绑定。 常见解决方式：
+
+1. 正确声明依赖：把 count 放进依赖数组，effect 会在 count 变化时重建，但会导致定时器频繁重建，需配合清理。
+2. 使用函数式更新：setCount(c => c + 1)，避免读取旧 state。
+3. 使用 useRef 保存最新值：const countRef = useRef(count); 每次渲染后更新 countRef.current = count，回调里读 ref.current。
+4. 使用 useReducer 或把逻辑抽到 reducer 中，减少对闭包的依赖。
+5. 使用 useEvent（实验性）或 useCallback 配合 ref 模式。
+
+适用场景：定时器、事件监听、WebSocket 回调、异步请求回调、防抖节流、第三方库回调等长期存活的回调最容易踩坑。
 
 **常见追问**：如何避免「误以为“闭包问题”是 React 的 bug，实际上这是 JavaScript 闭包和 React 快照模型的自然结果。」？ 「认为只要把依赖数组写全就万事大吉，忽略了依赖变化导致 effect 频繁重建、性能下降或无限循环。」在真实项目中应如何规避？
 
@@ -5916,7 +7869,15 @@ React Hooks 的闭包问题是指函数组件每次渲染都会创建新的作�
 
 dispatch 本身不知道具体是哪个 reducer，它只负责把 action 广播给 store 里唯一的根 reducer；真正决定哪个子 reducer 处理，是根 reducer 内部通过 switch/if 或 combineReducers 生成的映射表，按 action.type 分发到对应子 reducer。
 
-在 Redux 里，dispatch 的职责非常单一：接收一个 action，把它交给当前 store 的 reducer，并触发订阅通知。它并不维护“action.type -> reducer”的映射。 真正做分发的其实是 reducer 的组合结构。Redux 要求整个应用只有一个根 reducer（rootReducer）。当你用 combineReducers({a: reducerA, b: reducerB}) 时，Redux 会生成一个函数，它接收 (state, action)，然后遍历每个子 reducer，把同一个 action 分别传进去，并用返回结果拼成新的 state 对象。 可以类比成公司前台：dispatch 是访客（action），前台（store）只负责把访客带到“总经办”（rootReducer）；总经办里有一张部门职责表（combineReducers 生成的映射），看到访客证件上的事由（action.type），就把访客转给对应部门（子 reducer）。前台并不需要知道具体找哪个部门。 如果不用 combineReducers，手写根 reducer 通常就是： function rootReducer(state = {}, action) { return { todos: todosReducer(state.todos, action), filter: filterReducer(state.filter, action) }; } 这里每个子 reducer 都会收到 action，但只有关心该 type 的子 reducer 会返回新值，不关心的通常走 default 返回原 state。所以“哪个 reducer 处理”本质上是子 reducer 自己根据 action.type 判断的，而不是 dispatch 指定的。 适用场景：任何 Redux 应用都遵循这个模型。理解这一点后，就能明白为什么 reducer 必须是纯函数、为什么每个 action 会经过所有子 reducer、以及为什么 combineReducers 要求子 reducer 对未知 action 返回原 state。
+在 Redux 里，dispatch 的职责非常单一：接收一个 action，把它交给当前 store 的 reducer，并触发订阅通知。它并不维护“action.type -> reducer”的映射。 真正做分发的其实是 reducer 的组合结构。Redux 要求整个应用只有一个根 reducer（rootReducer）。
+
+当你用 combineReducers({a: reducerA, b: reducerB}) 时，Redux 会生成一个函数，它接收 (state, action)，然后遍历每个子 reducer，把同一个 action 分别传进去，并用返回结果拼成新的 state 对象。 可以类比成公司前台：dispatch 是访客（action），前台（store）只负责把访客带到“总经办”（rootReducer）；总经办里有一张部门职责表（combineReducers 生成的映射），看到访客证件上的事由（action.type），就把访客转给对应部门（子 reducer）。
+
+前台并不需要知道具体找哪个部门。 如果不用 combineReducers，手写根 reducer 通常就是： function rootReducer(state = {}, action) { return { todos: todosReducer(state.todos, action), filter: filterReducer(state.filter, action) }; } 这里每个子 reducer 都会收到 action，但只有关心该 type 的子 reducer 会返回新值，不关心的通常走 default 返回原 state。
+
+所以“哪个 reducer 处理”本质上是子 reducer 自己根据 action.type 判断的，而不是 dispatch 指定的。
+
+适用场景：任何 Redux 应用都遵循这个模型。理解这一点后，就能明白为什么 reducer 必须是纯函数、为什么每个 action 会经过所有子 reducer、以及为什么 combineReducers 要求子 reducer 对未知 action 返回原 state。
 
 **常见追问**：如何避免「常见误解：1）以为 dispatch 内部有 action.type 到 reducer 的注册表，能直接找到某个 reducer」？ 「实际上 dispatch 只认识 store 的根 reducer」在真实项目中应如何规避？
 
@@ -5938,7 +7899,17 @@ dispatch 本身不知道具体是哪个 reducer，它只负责把 action 广播�
 
 不能。const 只保证变量绑定（引用）不可重新赋值，但对象内部属性仍可修改。
 
-在 JavaScript 中，const 声明的变量必须在声明时初始化，并且之后不能再被重新赋值。对于对象来说，const 锁定的是变量名到对象引用之间的绑定关系，而不是对象本身的内容。例如： const obj = { a: 1 }; obj = { b: 2 }; // 报错：Assignment to constant variable. obj.a = 2; // 合法，修改对象内部属性 obj.b = 3; // 合法，新增属性 通俗类比：const 就像给一个盒子贴了固定标签，标签不能撕下来贴到另一个盒子上，但盒子里的东西可以换。如果希望对象完全不可变，需要用 Object.freeze() 冻结对象（浅冻结），或使用深冻结/不可变库。 适用场景：const 适合声明不希望被重新赋值的引用，比如模块导入、常量配置对象、函数引用等；但要注意它并不提供对象内容的不可变性。
+在 JavaScript 中，const 声明的变量必须在声明时初始化，并且之后不能再被重新赋值。对于对象来说，const 锁定的是变量名到对象引用之间的绑定关系，而不是对象本身的内容。
+
+- 例如： const obj = { a: 1 };
+- obj = { b: 2 };
+- // 报错：Assignment to constant variable. obj.a = 2;
+- // 合法，修改对象内部属性 obj.b = 3;
+- // 合法，新增属性 通俗类比：const 就像给一个盒子贴了固定标签，标签不能撕下来贴到另一个盒子上，但盒子里的东西可以换。
+
+如果希望对象完全不可变，需要用 Object.freeze() 冻结对象（浅冻结），或使用深冻结/不可变库。
+
+适用场景：const 适合声明不希望被重新赋值的引用，比如模块导入、常量配置对象、函数引用等；但要注意它并不提供对象内容的不可变性。
 
 **常见追问**：如何避免「误以为 const 定义的对象完全不可变，从而在团队协作中产生隐蔽的副作用。」？ 「混淆 const 与 Object.freeze()，认为 const 就能防止属性修改。」在真实项目中应如何规避？
 
@@ -5960,7 +7931,12 @@ axios 源码可以拆成几层：1）入口 axios.create 生成实例，实例�
 
 axios 是基于 XMLHttpRequest（浏览器）和 http 模块（Node）的 Promise 封装库，核心是适配器模式 + 拦截器链 + 请求/响应转换，封装时通常做统一错误处理、鉴权、取消、重试和业务解耦。
 
-axios 源码可以拆成几层：1）入口 axios.create 生成实例，实例本质是一个函数，同时挂载 get/post 等方法；2）核心是 Axios.prototype.request，它把 config 经过 request 拦截器、dispatchRequest、response 拦截器串成一条 Promise 链；3）dispatchRequest 里根据环境选择 adapter，浏览器用 xhr.js，Node 用 http.js，这就是适配器模式；4）拦截器用 use 注册，内部维护两个数组，request 拦截器按注册顺序执行，response 拦截器按逆序执行，最终通过 Promise 链式调用；5）取消早期用 CancelToken，现在推荐 AbortController；6）转换器 transformRequest/transformResponse 默认做 JSON 序列化和反序列化。封装上，一般会基于 axios.create 创建实例，设置 baseURL、timeout，在请求拦截器里加 token、traceId，在响应拦截器里统一解包 data、按业务 code 抛错，并做 401 刷新 token、错误提示、重试等。通俗类比：axios 像一家快递公司，request 是总调度，拦截器是寄件前和收件后的检查站，adapter 是不同运输方式（陆运/空运），Promise 链就是包裹按顺序经过每个站点。
+axios 源码可以拆成几层：
+
+- 1）入口 axios.create 生成实例，实例本质是一个函数，同时挂载 get/post 等方法；
+- 2）核心是 Axios.prototype.request，它把 config 经过 request 拦截器、dispatchRequest、response 拦截器串成一条 Promise 链；3）dispatchRequest 里根据环境选择 adapter，浏览器用 xhr.js，Node 用 http.js，这就是适配器模式；4）拦截器用 use 注册，内部维护两个数组，request 拦截器按注册顺序执行，response 拦截器按逆序执行，最终通过 Promise 链式调用；5）取消早期用 CancelToken，现在推荐 AbortController；6）转换器 transformRequest/transformResponse 默认做 JSON 序列化和反序列化。封装上，一般会基于 axios.create 创建实例，设置 baseURL、timeout，在请求拦截器里加 token、traceId，在响应拦截器里统一解包 data、按业务 code 抛错，并做 401 刷新 token、错误提示、重试等。
+
+通俗类比：axios 像一家快递公司，request 是总调度，拦截器是寄件前和收件后的检查站，adapter 是不同运输方式（陆运/空运），Promise 链就是包裹按顺序经过每个站点。
 
 **常见追问**：如何避免「1）把 axios 说成基于 fetch，实际上浏览器端默认是 XMLHttpRequest」？ 「2）以为拦截器是按注册顺序同步执行，忽略 Promise 微任务和顺序差异」在真实项目中应如何规避？
 
@@ -5982,7 +7958,18 @@ axios 源码可以拆成几层：1）入口 axios.create 生成实例，实例�
 
 不会在本次宏任务里执行，Promise 的回调属于微任务，会在当前宏任务（setTimeout 回调）执行完后、下一个宏任务之前被清空执行，也就是在“本轮事件循环的微任务阶段”执行，而不是下一次事件循环。
 
-先明确两个概念： 1. 宏任务（macrotask）：script 整体代码、setTimeout/setInterval、setImmediate（Node）、I/O、UI 渲染等。 2. 微任务（microtask）：Promise.then/catch/finally、queueMicrotask、MutationObserver、process.nextTick（Node，优先级更高）。 事件循环的一轮大致是：执行一个宏任务 → 执行过程中产生的所有微任务全部清空 → 可能进行渲染 → 取下一个宏任务。 所以题目场景： setTimeout(() => { console.log('timeout start'); Promise.resolve().then(() => console.log('promise')); console.log('timeout end'); }, 0); 输出顺序是： timeout start timeout end promise 原因：setTimeout 的回调本身是一个宏任务。当它开始执行时，同步代码先跑完，期间 Promise.then 只是把回调注册进微任务队列。当前宏任务的同步代码执行完后，事件循环不会立刻去取下一个宏任务，而是先清空微任务队列，于是 promise 回调在本轮就被执行。 通俗类比：宏任务像“排队办业务”，微任务像“办完当前业务后必须马上处理的便签”。你办完当前业务（setTimeout 回调）后，会先把桌上的便签全部处理掉，才会叫下一个号。 注意：如果 Promise 是在 setTimeout 回调里创建并立即 resolve，then 回调依然是在本轮微任务阶段执行，不是下一次事件循环。只有当下一个宏任务（比如另一个 setTimeout）才会等到下一轮。
+先明确两个概念：
+
+1. 宏任务（macrotask）：script 整体代码、setTimeout/setInterval、setImmediate（Node）、I/O、UI 渲染等。
+2. 微任务（microtask）：Promise.then/catch/finally、queueMicrotask、MutationObserver、process.nextTick（Node，优先级更高）。 事件循环的一轮大致是：执行一个宏任务 → 执行过程中产生的所有微任务全部清空 → 可能进行渲染 → 取下一个宏任务。
+
+所以题目场景： setTimeout(() => { console.log('timeout start'); Promise.resolve().then(() => console.log('promise')); console.log('timeout end'); }, 0); 输出顺序是： timeout start timeout end promise 原因：setTimeout 的回调本身是一个宏任务。
+
+当它开始执行时，同步代码先跑完，期间 Promise.then 只是把回调注册进微任务队列。当前宏任务的同步代码执行完后，事件循环不会立刻去取下一个宏任务，而是先清空微任务队列，于是 promise 回调在本轮就被执行。
+
+通俗类比：宏任务像“排队办业务”，微任务像“办完当前业务后必须马上处理的便签”。你办完当前业务（setTimeout 回调）后，会先把桌上的便签全部处理掉，才会叫下一个号。
+
+注意：如果 Promise 是在 setTimeout 回调里创建并立即 resolve，then 回调依然是在本轮微任务阶段执行，不是下一次事件循环。只有当下一个宏任务（比如另一个 setTimeout）才会等到下一轮。
 
 **常见追问**：如何避免「误以为 Promise 回调会在“下一次事件循环”执行，把它和 setTimeout 混为一谈。」？ 「误以为 Promise 是宏任务。」在真实项目中应如何规避？
 
@@ -6004,7 +7991,18 @@ number：V8 使用「指针标记（pointer tagging）」技术。在 64 位系�
 
 在 V8 中，object 和 number 都存放在堆上；number 若为小整数（Smi）则直接以指针标记形式内联在栈/寄存器中，不额外分配堆内存。
 
-以 V8 为例，JavaScript 的值分为两类：基本类型（number、string、boolean、null、undefined、symbol、bigint）和引用类型（object）。 1. number：V8 使用「指针标记（pointer tagging）」技术。在 64 位系统上，一个值占 8 字节，最低位为 1 表示小整数 Smi（Small Integer），此时高 31/32 位直接存数值本身，不分配堆内存；如果 number 是浮点数或超出 Smi 范围的大整数，则会被包装成 HeapNumber 对象，分配在堆上，变量里存的是指向该对象的指针。 2. object：对象、数组、函数等引用类型，其实际数据都分配在堆（heap）上，变量/栈上保存的是指向堆中对象的指针（引用）。 通俗类比：变量像一张便签。number 如果是小整数，便签上直接写数字；如果是小数，便签上写「去仓库 3 号货架取」；object 则一定是在仓库里放一个箱子，便签上只写箱子的货架号。 适用场景：理解这一点有助于解释为什么大量小整数运算快、为什么对象比较是引用比较、为什么闭包/大对象容易造成内存占用。
+以 V8 为例，JavaScript 的值分为两类：基本类型（number、string、boolean、null、undefined、symbol、bigint）和引用类型（object）。
+
+1. number：V8 使用「指针标记（pointer tagging）」技术。在 64 位系统上，一个值占 8 字节，最低位为 1 表示小整数 Smi（Small Integer），此时高 31/32 位直接存数值本身，不分配堆内存；如果 number 是浮点数或超出 Smi 范围的大整数，则会被包装成 HeapNumber 对象，分配在堆上，变量里存的是指向该对象的指针。
+2. object：对象、数组、函数等引用类型，其实际数据都分配在堆（heap）上，变量/栈上保存的是指向堆中对象的指针（引用）。
+
+通俗类比：变量像一张便签。
+
+- number 如果是小整数，便签上直接写数字；
+- 如果是小数，便签上写「去仓库 3 号货架取」；
+- object 则一定是在仓库里放一个箱子，便签上只写箱子的货架号。
+
+适用场景：理解这一点有助于解释为什么大量小整数运算快、为什么对象比较是引用比较、为什么闭包/大对象容易造成内存占用。
 
 **常见追问**：如何避免「误以为「number 都存在栈上」：只有 Smi 内联在栈/寄存器，浮点和大整数仍在堆上。」？ 「误以为「object 存在栈上」：对象本体一定在堆上，栈上只是引用。」在真实项目中应如何规避？
 
@@ -6026,7 +8024,16 @@ number：V8 使用「指针标记（pointer tagging）」技术。在 64 位系�
 
 debounce 让函数在停止触发 duration 毫秒后才执行，leading 控制是否在首次触发时立即执行一次。
 
-debounce（防抖）的核心是：每次调用都重置计时器，只有连续调用停止超过 duration 后，才真正执行 fn。通俗类比：电梯门，只要还有人按开门键，门就一直不关，直到没人按了才关。 基础实现（trailing 模式）： function debounce(fn, duration, leading = false) { let timer = null; return function(...args) { const context = this; if (timer) clearTimeout(timer); if (leading && !timer) { fn.apply(context, args); } timer = setTimeout(() => { timer = null; if (!leading) fn.apply(context, args); }, duration); }; } 关键点： 1. 用闭包保存 timer，保证多次调用共享同一个计时器。 2. 每次调用先 clearTimeout 再 setTimeout，实现“重新计时”。 3. leading=true 时，首次触发立即执行，之后 duration 内的重复触发被忽略；等停止 duration 后 timer 置空，下一次触发又能立即执行。 4. 必须用 fn.apply(context, args) 保留 this 和参数，否则在对象方法或事件回调中会丢失上下文。 适用场景：搜索框输入联想（停止输入后再请求）、窗口 resize 结束、按钮防重复点击、表单校验。与 throttle（节流）区别：debounce 是“等停止”，throttle 是“按频率”。
+debounce（防抖）的核心是：每次调用都重置计时器，只有连续调用停止超过 duration 后，才真正执行 fn。
+
+通俗类比：电梯门，只要还有人按开门键，门就一直不关，直到没人按了才关。 基础实现（trailing 模式）： function debounce(fn, duration, leading = false) { let timer = null; return function(...args) { const context = this; if (timer) clearTimeout(timer); if (leading && !timer) { fn.apply(context, args); } timer = setTimeout(() => { timer = null; if (!leading) fn.apply(context, args); }, duration); }; } 关键点：
+
+1. 用闭包保存 timer，保证多次调用共享同一个计时器。
+2. 每次调用先 clearTimeout 再 setTimeout，实现“重新计时”。
+3. leading=true 时，首次触发立即执行，之后 duration 内的重复触发被忽略；等停止 duration 后 timer 置空，下一次触发又能立即执行。
+4. 必须用 fn.apply(context, args) 保留 this 和参数，否则在对象方法或事件回调中会丢失上下文。
+
+适用场景：搜索框输入联想（停止输入后再请求）、窗口 resize 结束、按钮防重复点击、表单校验。与 throttle（节流）区别：debounce 是“等停止”，throttle 是“按频率”。
 
 **常见追问**：如何避免「忘记 clearTimeout，导致每次都执行，变成普通延迟调用。」？ 「用箭头函数返回，导致 this 指向外层而非调用者，丢失上下文。」在真实项目中应如何规避？
 
@@ -6046,9 +8053,15 @@ debounce（防抖）的核心是：每次调用都重置计时器，只有连续
 
 **参考回答**：
 
-JSONP 是利用 <script> 标签绕过浏览器同源策略实现跨域 GET 请求的 hack 手段，而 Ajax 是使用 XMLHttpRequest/fetch 进行同源或 CORS 跨域请求的通用异步通信技术；手写 Promise 版 JSONP 需动态创建 script、挂全局回调、清理并 resolve/reject；避免全局函数重名可用唯一前缀 + 自增计数器或 Symbol/随机串。
+- JSONP 是利用 <script> 标签绕过浏览器同源策略实现跨域 GET 请求的 hack 手段，而 Ajax 是使用 XMLHttpRequest/fetch 进行同源或 CORS 跨域请求的通用异步通信技术；
+- 手写 Promise 版 JSONP 需动态创建 script、挂全局回调、清理并 resolve/reject；
+- 避免全局函数重名可用唯一前缀 + 自增计数器或 Symbol/随机串。
 
-1. 本质区别：Ajax（XMLHttpRequest/fetch）受同源策略限制，跨域需服务端返回 CORS 头；JSONP 不是真正的 Ajax，它利用 <script> 标签没有跨域限制的特性，把请求伪装成 JS 脚本加载，服务端返回 `callbackName({...})` 形式的可执行 JS，浏览器执行后即完成数据传递。 2. 限制：JSONP 只能发 GET，无法设置请求头、无法读取 HTTP 状态码、无法捕获服务端错误（只能靠超时），且存在 XSS 风险（服务端返回内容会被执行）；Ajax 支持所有 HTTP 方法、自定义头、状态码、错误处理，现代跨域首选 CORS。 3. 适用场景：JSONP 用于老浏览器或第三方接口只支持 JSONP 的场景；Ajax 用于同源请求或服务端支持 CORS 的跨域请求。 4. 手写 Promise 版 JSONP： ```js function jsonp(url, params = {}, timeout = 5000) { return new Promise((resolve, reject) => { // 1. 生成唯一回调名，避免重名 const cbName = `__jsonp_${Date.now()}_${Math.random().toString(36).slice(2)}`; // 2. 拼接 query const query = new URLSearchParams({ ...params, callback: cbName }).toString(); const script = document.createElement('script'); script.src = `${url}${url.includes('?') ? '&' : '?'}${query}`; // 3. 挂全局回调 window[cbName] = (data) => { cleanup(); resolve(data); }; // 4. 超时处理 const timer = setTimeout(() => { cleanup(); reject(new Error('JSONP timeout')); }, timeout); // 5. 清理函数：删 script、删全局函数、清定时器 function cleanup() { clearTimeout(timer); script.remove(); delete window[cbName]; } script.onerror = () => { cleanup(); reject(new Error('JSONP script error')); }; document.head.appendChild(script); }); } ``` 5. 避免全局函数重名：核心是让回调名全局唯一。常用方案：a) 前缀 + 时间戳 + 随机数/自增计数器，如 `__jsonp_${Date.now()}_${counter++}`；b) 用 Symbol 或 crypto.randomUUID() 生成唯一 key；c) 统一挂到一个命名空间对象下（如 `window.__jsonpCallbacks[cbName]`），减少对 window 的污染；d) 请求完成后立即 `delete window[cbName]`，防止内存泄漏和后续冲突。
+1. 本质区别：Ajax（XMLHttpRequest/fetch）受同源策略限制，跨域需服务端返回 CORS 头；JSONP 不是真正的 Ajax，它利用 <script> 标签没有跨域限制的特性，把请求伪装成 JS 脚本加载，服务端返回 `callbackName({...})` 形式的可执行 JS，浏览器执行后即完成数据传递。
+2. 限制：JSONP 只能发 GET，无法设置请求头、无法读取 HTTP 状态码、无法捕获服务端错误（只能靠超时），且存在 XSS 风险（服务端返回内容会被执行）；Ajax 支持所有 HTTP 方法、自定义头、状态码、错误处理，现代跨域首选 CORS。
+3. 适用场景：JSONP 用于老浏览器或第三方接口只支持 JSONP 的场景；Ajax 用于同源请求或服务端支持 CORS 的跨域请求。
+4. 手写 Promise 版 JSONP： ```js function jsonp(url, params = {}, timeout = 5000) { return new Promise((resolve, reject) => { // 1. 生成唯一回调名，避免重名 const cbName = `__jsonp_${Date.now()}_${Math.random().toString(36).slice(2)}`; // 2. 拼接 query const query = new URLSearchParams({ ...params, callback: cbName }).toString(); const script = document.createElement('script'); script.src = `${url}${url.includes('?') ? '&' : '?'}${query}`; // 3. 挂全局回调 window[cbName] = (data) => { cleanup(); resolve(data); }; // 4. 超时处理 const timer = setTimeout(() => { cleanup(); reject(new Error('JSONP timeout')); }, timeout); // 5. 清理函数：删 script、删全局函数、清定时器 function cleanup() { clearTimeout(timer); script.remove(); delete window[cbName]; } script.onerror = () => { cleanup(); reject(new Error('JSONP script error')); }; document.head.appendChild(script); }); } ```
+5. 避免全局函数重名：核心是让回调名全局唯一。常用方案：a) 前缀 + 时间戳 + 随机数/自增计数器，如 `__jsonp_${Date.now()}_${counter++}`；b) 用 Symbol 或 crypto.randomUUID() 生成唯一 key；c) 统一挂到一个命名空间对象下（如 `window.__jsonpCallbacks[cbName]`），减少对 window 的污染；d) 请求完成后立即 `delete window[cbName]`，防止内存泄漏和后续冲突。
 
 **常见追问**：如何避免「误以为 JSONP 是 Ajax 的一种，或说 JSONP 支持 POST——它只能 GET。2. 忘记清理全局函数和 script 标签，导致内存泄漏和重名覆盖。3. 用固定 callback 名（如 `callback`），并发请求时后一个覆盖前一个，导致回调错乱。4. 认为 JSONP 能拿到 HTTP 状态码或错误详情——不能，只能靠超时和 onerror。5. 忽略 XSS 风险，认为 JSONP 和 CORS 一样安全。6. 手写时忘记处理 URL 已有 query 参数的情况（? 与 & 拼接错误）。」？ 能否结合「源码层面：jQuery 的 JSONP 实现会维护一个全局回调池，用 `jQuery.expando + 自增` 生成唯一名，并在完成后删除；axios 早期也支持 JSONP 适配器。2. 安全：JSONP 返回的是可执行 JS，若服务端被劫持可执行任意代码，且无法校验 Content-Type，因此现代项目应优先 CORS；若必须用，可对 callback 参数做白名单校验。3. 性能：JSONP 无法复用连接池、无法 abort（只能移除 script，但请求可能已发出），而 fetch/XHR 可 abort。4. 兼容：IE 下 script.onerror 不触发，需依赖超时兜底。5. 命名空间方案：把回调挂到 `window.__jsonp__` 对象上，避免直接污染 window，也便于统一清理。」进一步展开？
 
@@ -6070,7 +8083,15 @@ JSONP 是利用 <script> 标签绕过浏览器同源策略实现跨域 GET 请�
 
 用防抖（debounce）或节流（throttle）控制滚动事件回调频率，必要时配合 requestAnimationFrame 或 passive 监听优化。
 
-鼠标滚动（wheel / scroll）在浏览器中触发频率极高，一次滚动可能每秒触发几十到上百次事件。如果每次回调都做重计算（如读取 scrollTop、布局、DOM 操作、发请求），会造成主线程阻塞、掉帧甚至卡顿。 核心思路是“降低回调执行频率”，常见方案： 1. 防抖 debounce：事件停止触发后延迟 N 毫秒才执行一次。适合“滚动结束后再计算”的场景，比如滚动到底部加载更多、滚动停止后保存位置。 ```js function debounce(fn, delay=200){ let timer=null; return function(...args){ clearTimeout(timer); timer=setTimeout(()=>fn.apply(this,args),delay); }; } window.addEventListener('scroll', debounce(onScroll, 200)); ``` 2. 节流 throttle：固定时间窗口内最多执行一次。适合“滚动过程中持续响应”的场景，比如吸顶导航、进度条、懒加载。 ```js function throttle(fn, wait=100){ let last=0; return function(...args){ const now=Date.now(); if(now-last>=wait){ last=now; fn.apply(this,args); } }; } ``` 3. requestAnimationFrame：把回调对齐到浏览器渲染帧（约 16.7ms 一次），天然节流且与渲染同步，适合视觉更新。 ```js let ticking=false; window.addEventListener('scroll', ()=>{ if(!ticking){ ticking=true; requestAnimationFrame(()=>{ onScroll(); ticking=false; }); } }); ``` 4. passive 监听：`addEventListener('scroll', fn, {passive:true})` 或对 touch/wheel 使用 passive，告诉浏览器不会调用 preventDefault，避免滚动等待 JS 执行，提升滚动流畅度。 5. 其他：用 IntersectionObserver 替代滚动监听做曝光/懒加载；用 CSS `position: sticky` 替代吸顶 JS；把重计算放到 Web Worker。 通俗类比：滚动事件像水龙头一直滴水，防抖是“等水停了再擦地”，节流是“每隔一段时间擦一次”，rAF 是“跟着屏幕刷新节奏擦”。
+鼠标滚动（wheel / scroll）在浏览器中触发频率极高，一次滚动可能每秒触发几十到上百次事件。如果每次回调都做重计算（如读取 scrollTop、布局、DOM 操作、发请求），会造成主线程阻塞、掉帧甚至卡顿。 核心思路是“降低回调执行频率”，常见方案：
+
+1. 防抖 debounce：事件停止触发后延迟 N 毫秒才执行一次。适合“滚动结束后再计算”的场景，比如滚动到底部加载更多、滚动停止后保存位置。 ```js function debounce(fn, delay=200){ let timer=null; return function(...args){ clearTimeout(timer); timer=setTimeout(()=>fn.apply(this,args),delay); }; } window.addEventListener('scroll', debounce(onScroll, 200)); ```
+2. 节流 throttle：固定时间窗口内最多执行一次。适合“滚动过程中持续响应”的场景，比如吸顶导航、进度条、懒加载。 ```js function throttle(fn, wait=100){ let last=0; return function(...args){ const now=Date.now(); if(now-last>=wait){ last=now; fn.apply(this,args); } }; } ```
+3. requestAnimationFrame：把回调对齐到浏览器渲染帧（约 16.7ms 一次），天然节流且与渲染同步，适合视觉更新。 ```js let ticking=false; window.addEventListener('scroll', ()=>{ if(!ticking){ ticking=true; requestAnimationFrame(()=>{ onScroll(); ticking=false; }); } }); ```
+4. passive 监听：`addEventListener('scroll', fn, {passive:true})` 或对 touch/wheel 使用 passive，告诉浏览器不会调用 preventDefault，避免滚动等待 JS 执行，提升滚动流畅度。
+5. 其他：用 IntersectionObserver 替代滚动监听做曝光/懒加载；用 CSS `position: sticky` 替代吸顶 JS；把重计算放到 Web Worker。
+
+通俗类比：滚动事件像水龙头一直滴水，防抖是“等水停了再擦地”，节流是“每隔一段时间擦一次”，rAF 是“跟着屏幕刷新节奏擦”。
 
 **常见追问**：如何避免「只回答“用防抖节流”但不区分两者，或把防抖说成“每隔一段时间执行一次”。」？ 「认为防抖能解决所有滚动性能问题，忽略回调内部仍有重排重绘。」在真实项目中应如何规避？
 
@@ -6092,7 +8113,13 @@ JSONP 是利用 <script> 标签绕过浏览器同源策略实现跨域 GET 请�
 
 Promise 是异步状态机与微任务调度器，事件循环是宏/微任务的执行顺序规则，闭包是函数携带其词法作用域变量的能力，三者共同决定 JS 异步与作用域行为。
 
-1) 闭包：函数在定义时就记住了它所在的词法作用域，即使离开该作用域执行，仍能访问其中变量。原理是 JS 采用词法作用域，函数对象内部 [[Environment]] 指向定义时的环境记录，调用时创建执行上下文并以该环境为外层作用域链。例子：function counter(){let n=0;return ()=>++n}，返回函数持有 n，形成私有状态；常用于模块封装、柯里化、防抖节流，但滥用会导致变量无法回收。 2) 事件循环：JS 单线程，靠宿主环境（浏览器/Node）提供事件循环。一次循环：执行同步代码（当前宏任务）→ 清空所有微任务队列 → 取下一个宏任务。浏览器宏任务如 script、setTimeout、setInterval、I/O、UI 渲染；微任务如 Promise.then/catch/finally、queueMicrotask、MutationObserver、process.nextTick（Node，优先级高于 Promise）。因此 setTimeout 0 总在 Promise.then 之后。 3) Promise：本质是一个状态机，状态 pending→fulfilled/rejected 不可逆；then 注册的回调不会立即执行，而是把回调包成微任务放入微任务队列，等当前同步代码跑完再按注册顺序执行。链式 then 每次返回新 Promise，实现值穿透与错误冒泡。async/await 是 Promise 的语法糖，await 后面的代码相当于 then 回调，也进微任务。 通俗类比：事件循环像餐厅服务员，同步代码是当前这桌客人点菜，微任务是客人立刻追加的要求，必须全部处理完才去下一桌（宏任务）；Promise 像取餐号，状态一旦变成已出餐就不能反悔；闭包像函数随身带的背包，里面装着定义时环境里的变量。
+1) 闭包：函数在定义时就记住了它所在的词法作用域，即使离开该作用域执行，仍能访问其中变量。原理是 JS 采用词法作用域，函数对象内部 [[Environment]] 指向定义时的环境记录，调用时创建执行上下文并以该环境为外层作用域链。例子：function counter(){let n=0;return ()=>++n}，返回函数持有 n，形成私有状态；常用于模块封装、柯里化、防抖节流，但滥用会导致变量无法回收。
+2) 事件循环：JS 单线程，靠宿主环境（浏览器/Node）提供事件循环。一次循环：执行同步代码（当前宏任务）→ 清空所有微任务队列 → 取下一个宏任务。浏览器宏任务如 script、setTimeout、setInterval、I/O、UI 渲染；微任务如 Promise.then/catch/finally、queueMicrotask、MutationObserver、process.nextTick（Node，优先级高于 Promise）。因此 setTimeout 0 总在 Promise.then 之后。
+3) Promise：本质是一个状态机，状态 pending→fulfilled/rejected 不可逆；then 注册的回调不会立即执行，而是把回调包成微任务放入微任务队列，等当前同步代码跑完再按注册顺序执行。链式 then 每次返回新 Promise，实现值穿透与错误冒泡。async/await 是 Promise 的语法糖，await 后面的代码相当于 then 回调，也进微任务。
+
+- 通俗类比：事件循环像餐厅服务员，同步代码是当前这桌客人点菜，微任务是客人立刻追加的要求，必须全部处理完才去下一桌（宏任务）；
+- Promise 像取餐号，状态一旦变成已出餐就不能反悔；
+- 闭包像函数随身带的背包，里面装着定义时环境里的变量。
 
 **常见追问**：如何避免「1) 误以为 Promise 是异步执行本身，其实 executor 是同步立即执行的，只有 then 回调异步」？ 「2) 误以为 setTimeout 0 会先于 Promise.then，忽略微任务优先」在真实项目中应如何规避？
 
@@ -6114,7 +8141,13 @@ Promise 是异步状态机与微任务调度器，事件循环是宏/微任务�
 
 Vite 在开发阶段用 esbuild 预构建把 CommonJS 依赖转成 ESM 并缓存，生产构建则用 Rollup + @rollup/plugin-commonjs 做转换，从而让浏览器只面对 ESM。
 
-Vite 的核心前提是浏览器原生 ESM：源码里 import 的模块必须能被浏览器直接加载，而 CommonJS 的 require/module.exports 浏览器不认识。所以 Vite 分两条路处理： 1) 开发阶段（dev server）： - 对项目源码：Vite 假设是 ESM，直接按需 transform 后给浏览器。 - 对 node_modules 里的第三方依赖：Vite 用 esbuild 做「依赖预构建」（optimizeDeps）。esbuild 把 CommonJS/UMD 转成 ESM，并把一个包内部很多小模块合并成一个 bundle，输出到 node_modules/.vite/deps，同时生成 _metadata.json 记录依赖关系。 - 浏览器请求 import 'lodash-es' 时，Vite 把裸模块名重写成 /node_modules/.vite/deps/lodash-es.js，浏览器就能加载。 - 为什么预构建：① 把 CJS 转 ESM；② 减少请求数（一个包几百个文件合并成一个）；③ 处理 bare import；④ 缓存，依赖不变就不重复构建。 - 如果依赖是 ESM 但内部又 import 了 CJS，esbuild 也会递归处理。 - 动态 require、条件导出等复杂情况，esbuild 可能处理不了，Vite 会回退到 @rollup/plugin-commonjs 在 dev 下做转换（较慢），或提示加入 optimizeDeps.include。 2) 生产构建： - 用 Rollup 打包，Rollup 本身只认 ESM，所以通过 @rollup/plugin-commonjs 把 CJS 转成 ESM，再交给 Rollup 做 tree-shaking、chunk 拆分。 - 对 CJS 的 tree-shaking 效果通常不如原生 ESM，因为 require 是运行时行为，静态分析难。 通俗类比：浏览器只懂「普通话」（ESM），而 npm 上很多包只会说「方言」（CJS）。Vite 开发时请了一个翻译（esbuild）提前把常用方言包翻译成普通话并录成磁带（.vite/deps 缓存），浏览器直接播放；生产时请了另一个翻译（Rollup + commonjs 插件）把整场演出重新编排成普通话版本。
+Vite 的核心前提是浏览器原生 ESM：源码里 import 的模块必须能被浏览器直接加载，而 CommonJS 的 require/module.exports 浏览器不认识。
+
+所以 Vite 分两条路处理： 1) 开发阶段（dev server）：
+
+- 对项目源码：Vite 假设是 ESM，直接按需 transform 后给浏览器。
+- 对 node_modules 里的第三方依赖：Vite 用 esbuild 做「依赖预构建」（optimizeDeps）。esbuild 把 CommonJS/UMD 转成 ESM，并把一个包内部很多小模块合并成一个 bundle，输出到 node_modules/.vite/deps，同时生成 _metadata.json 记录依赖关系。 - 浏览器请求 import 'lodash-es' 时，Vite 把裸模块名重写成 /node_modules/.vite/deps/lodash-es.js，浏览器就能加载。
+- 为什么预构建：① 把 CJS 转 ESM；② 减少请求数（一个包几百个文件合并成一个）；③ 处理 bare import；④ 缓存，依赖不变就不重复构建。 - 如果依赖是 ESM 但内部又 import 了 CJS，esbuild 也会递归处理。 - 动态 require、条件导出等复杂情况，esbuild 可能处理不了，Vite 会回退到 @rollup/plugin-commonjs 在 dev 下做转换（较慢），或提示加入 optimizeDeps.include。 2) 生产构建： - 用 Rollup 打包，Rollup 本身只认 ESM，所以通过 @rollup/plugin-commonjs 把 CJS 转成 ESM，再交给 Rollup 做 tree-shaking、chunk 拆分。 - 对 CJS 的 tree-shaking 效果通常不如原生 ESM，因为 require 是运行时行为，静态分析难。 通俗类比：浏览器只懂「普通话」（ESM），而 npm 上很多包只会说「方言」（CJS）。Vite 开发时请了一个翻译（esbuild）提前把常用方言包翻译成普通话并录成磁带（.vite/deps 缓存），浏览器直接播放；生产时请了另一个翻译（Rollup + commonjs 插件）把整场演出重新编排成普通话版本。
 
 **常见追问**：如何避免「1) 以为 Vite 开发时也像 webpack 一样把所有东西打包，其实 dev 是按需 ESM，只有依赖预构建才 bundle」？ 「2) 以为 Vite 能完美 tree-shaking CommonJS，实际上 CJS 的 tree-shaking 很有限」在真实项目中应如何规避？
 
@@ -6136,7 +8169,17 @@ Vite 的核心前提是浏览器原生 ESM：源码里 import 的模块必须能
 
 Three.js 拾取的核心是射线检测（Raycaster）：从相机出发经过鼠标位置发一条射线，与场景中的物体求交，返回被击中的对象列表。
 
-拾取（Picking）就是判断用户点击/悬停时选中了哪个 3D 物体。Three.js 提供 THREE.Raycaster 类，原理是：把屏幕上的二维鼠标坐标转换成标准化设备坐标（NDC，范围 -1 到 1），再用 raycaster.setFromCamera(mouse, camera) 生成一条从相机出发、穿过该屏幕点的射线，最后调用 raycaster.intersectObjects(objects, recursive) 与物体求交，返回按距离排序的相交结果数组，数组第一项就是最近的被拾取对象。 典型代码： const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2(); function onClick(event) { const rect = renderer.domElement.getBoundingClientRect(); mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1; mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1; raycaster.setFromCamera(mouse, camera); const hits = raycaster.intersectObjects(scene.children, true); if (hits.length) console.log('选中', hits[0].object, hits[0].point, hits[0].distance); } 适用场景：鼠标点击选中模型、悬停高亮、拖拽、点击地面放置物体、UI 与 3D 交互等。 通俗类比：就像在房间里用激光笔从眼睛（相机）射出一束光，穿过你手指在窗户（屏幕）上点的位置，看这束光先打到哪个物体，先打到的就是被选中的。 除了 Raycaster，还有几种拾取方式：1) GPU 拾取（颜色拾取）：把每个物体用唯一颜色渲染到离屏 RenderTarget，读取鼠标像素颜色反查物体，适合大量物体或像素级精确拾取；2) 基于包围盒/包围球的快速筛选，先粗测再精测；3) 对于点云/大量实例，可用八叉树（three-mesh-bvh、Octree）加速。
+拾取（Picking）就是判断用户点击/悬停时选中了哪个 3D 物体。Three.js 提供 THREE.Raycaster 类，原理是：把屏幕上的二维鼠标坐标转换成标准化设备坐标（NDC，范围 -1 到 1），再用 raycaster.setFromCamera(mouse, camera) 生成一条从相机出发、穿过该屏幕点的射线，最后调用 raycaster.intersectObjects(objects, recursive) 与物体求交，返回按距离排序的相交结果数组，数组第一项就是最近的被拾取对象。
+
+- 典型代码： const raycaster = new THREE.Raycaster();
+- const mouse = new THREE.Vector2();
+- function onClick(event) { const rect = renderer.domElement.getBoundingClientRect(); mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1; mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1; raycaster.setFromCamera(mouse, camera); const hits = raycaster.intersectObjects(scene.children, true); if (hits.length) console.log('选中', hits[0].object, hits[0].point, hits[0].distance); } 适用场景：鼠标点击选中模型、悬停高亮、拖拽、点击地面放置物体、UI 与 3D 交互等。
+
+通俗类比：就像在房间里用激光笔从眼睛（相机）射出一束光，穿过你手指在窗户（屏幕）上点的位置，看这束光先打到哪个物体，先打到的就是被选中的。 除了 Raycaster，还有几种拾取方式：
+
+1) GPU 拾取（颜色拾取）：把每个物体用唯一颜色渲染到离屏 RenderTarget，读取鼠标像素颜色反查物体，适合大量物体或像素级精确拾取；
+2) 基于包围盒/包围球的快速筛选，先粗测再精测；
+3) 对于点云/大量实例，可用八叉树（three-mesh-bvh、Octree）加速。
 
 **常见追问**：如何避免「1) 忘记把鼠标坐标转成 NDC（-1~1），直接用 clientX/clientY，导致射线方向错误」？ 「2) 忘记减去 canvas 的 getBoundingClientRect 偏移，页面有滚动或 canvas 不占满时拾取偏移」在真实项目中应如何规避？
 
@@ -6158,7 +8201,20 @@ Three.js 拾取的核心是射线检测（Raycaster）：从相机出发经过�
 
 WebGL 渲染流程是：JS 准备顶点/索引数据并上传 GPU，编写并编译着色器程序，设置状态与 uniform，最后调用 drawArrays/drawElements 触发 GPU 顶点着色、图元装配、光栅化、片元着色、逐片元操作，把结果写入帧缓冲并显示。
 
-WebGL 不是 3D 引擎，而是基于 OpenGL ES 的浏览器 GPU 绘图 API，本质是“把数据送到 GPU，让 GPU 按管线画到画布上”。可以类比成一条工厂流水线： 1. 准备数据：JS 用 Float32Array 等准备顶点位置、颜色、UV、法线等，通过 createBuffer/bufferData 上传到 GPU 的 VBO；索引数据上传到 IBO/EBO。 2. 编写着色器：顶点着色器负责把每个顶点从模型空间变换到裁剪空间（MVP 矩阵），可传颜色/UV 给片元；片元着色器负责计算每个像素最终颜色。用 createShader/shaderSource/compileShader 编译，再 createProgram/attachShader/linkProgram 链接成 program。 3. 设置状态：useProgram、bindBuffer、vertexAttribPointer 告诉 GPU 顶点数据怎么读，enableVertexAttribArray 启用属性；设置 viewport、清屏颜色、深度测试、混合、剔除等。 4. 传 uniform：把 MVP 矩阵、纹理、光照参数等每帧或每个物体变化的数据通过 uniformMatrix4fv/uniform1i 等传给着色器。 5. 绘制：drawArrays 或 drawElements 发起绘制。GPU 开始执行图形管线： - 顶点着色器：逐顶点执行，做坐标变换； - 图元装配：把顶点按点/线/三角形组装； - 光栅化：把三角形离散成片元（候选像素），并插值 varying； - 片元着色器：逐片元计算颜色； - 逐片元操作：深度测试、模板测试、混合，决定是否写入帧缓冲； - 帧缓冲：默认是 canvas 的后备缓冲区，浏览器合成后显示到屏幕。 典型最小例子：画一个三角形，顶点着色器里 gl_Position = uMVP * vec4(aPosition,1.0)，片元着色器里 gl_FragColor = vec4(1,0,0,1)，JS 里每帧 clear 后 drawArrays(gl.TRIANGLES,0,3)。 适用场景：3D 场景、数据可视化、图像处理、游戏、AR/VR、GPU 通用计算（WebGL2 的 transform feedback 等）。
+WebGL 不是 3D 引擎，而是基于 OpenGL ES 的浏览器 GPU 绘图 API，本质是“把数据送到 GPU，让 GPU 按管线画到画布上”。可以类比成一条工厂流水线：
+
+1. 准备数据：JS 用 Float32Array 等准备顶点位置、颜色、UV、法线等，通过 createBuffer/bufferData 上传到 GPU 的 VBO；索引数据上传到 IBO/EBO。
+2. 编写着色器：顶点着色器负责把每个顶点从模型空间变换到裁剪空间（MVP 矩阵），可传颜色/UV 给片元；片元着色器负责计算每个像素最终颜色。用 createShader/shaderSource/compileShader 编译，再 createProgram/attachShader/linkProgram 链接成 program。
+3. 设置状态：useProgram、bindBuffer、vertexAttribPointer 告诉 GPU 顶点数据怎么读，enableVertexAttribArray 启用属性；设置 viewport、清屏颜色、深度测试、混合、剔除等。
+4. 传 uniform：把 MVP 矩阵、纹理、光照参数等每帧或每个物体变化的数据通过 uniformMatrix4fv/uniform1i 等传给着色器。
+5. 绘制：drawArrays 或 drawElements 发起绘制。GPU 开始执行图形管线：
+
+- 顶点着色器：逐顶点执行，做坐标变换；
+- 图元装配：把顶点按点/线/三角形组装；
+- 光栅化：把三角形离散成片元（候选像素），并插值 varying；
+- 片元着色器：逐片元计算颜色；
+- 逐片元操作：深度测试、模板测试、混合，决定是否写入帧缓冲；
+- 帧缓冲：默认是 canvas 的后备缓冲区，浏览器合成后显示到屏幕。 典型最小例子：画一个三角形，顶点着色器里 gl_Position = uMVP * vec4(aPosition,1.0)，片元着色器里 gl_FragColor = vec4(1,0,0,1)，JS 里每帧 clear 后 drawArrays(gl.TRIANGLES,0,3)。 适用场景：3D 场景、数据可视化、图像处理、游戏、AR/VR、GPU 通用计算（WebGL2 的 transform feedback 等）。
 
 **常见追问**：如何避免「把 WebGL 当成 3D 引擎，以为它自动处理相机、光照、模型加载；其实这些都要自己写或借助 Three.js 等库。」？ 「混淆顶点着色器和片元着色器的职责，比如在顶点着色器里做逐像素光照，或在片元着色器里改变顶点位置。」在真实项目中应如何规避？
 
@@ -6180,7 +8236,17 @@ WebGL 不是 3D 引擎，而是基于 OpenGL ES 的浏览器 GPU 绘图 API，�
 
 深度测试用深度缓冲比较片元深度决定遮挡关系，模板测试用模板缓冲的位掩码决定片元是否被丢弃，二者都在片元着色器后、混合前按固定顺序执行。
 
-在 WebGL 的渲染管线中，片元着色器输出颜色后，会依次经过：裁剪测试(scissor) → 模板测试(stencil) → 深度测试(depth) → 混合(blend) → 写入帧缓冲。 1) 深度测试(Depth Test)： - 原理：每个像素除了颜色，还有一个深度值(0~1，通常来自 gl_Position.z/w 经视口变换)。开启 gl.DEPTH_TEST 后，GPU 把当前片元的深度与深度缓冲中已有值按 gl.depthFunc 比较，默认 GL_LESS：新片元更近才通过并写入。 - 作用：解决不透明物体的前后遮挡，避免依赖绘制顺序，是 3D 场景正确渲染的基础。 - 类比：像往一个盒子里插卡片，只有比已有卡片更靠前的才能盖上去。 - 关键 API：gl.enable(gl.DEPTH_TEST)、gl.depthFunc(gl.LESS)、gl.depthMask(true/false)、gl.clear(gl.DEPTH_BUFFER_BIT)。 - 适用：不透明几何体；透明物体通常要关闭深度写入(depthMask(false))并按从远到近排序。 2) 模板测试(Stencil Test)： - 原理：每个像素有一个模板缓冲(通常 8 位整数)。开启 gl.STENCIL_TEST 后，GPU 用 gl.stencilFunc(func, ref, mask) 把 ref 与缓冲值按 mask 比较，决定片元是否通过；再按 gl.stencilOp(sfail, dpfail, dppass) 在三种情况(模板失败/深度失败/都通过)下对模板值做 keep/replace/incr/decr 等操作。 - 作用：做遮罩、描边、反射、阴影体、UI 裁剪、传送门等需要“按形状限制绘制区域”的效果。 - 类比：像喷漆时贴一张镂空模板，只有镂空处能上色，且模板本身还能被修改。 - 关键 API：gl.enable(gl.STENCIL_TEST)、gl.stencilFunc、gl.stencilOp、gl.stencilMask、gl.clear(gl.STENCIL_BUFFER_BIT)。 3) 两者关系与顺序：模板测试先于深度测试。模板失败会按 sfail 处理且不进入深度测试；深度失败按 dpfail；都通过按 dppass。深度测试失败默认不影响模板，但可通过 stencilOp 的 dpfail 修改。 4) 典型组合用法：先画一个形状写入模板(如 stencilFunc(ALWAYS,1,0xFF), stencilOp(KEEP,KEEP,REPLACE))，再开启 stencilFunc(EQUAL,1,0xFF) 只在模板为 1 的区域绘制内容，实现遮罩/描边。
+在 WebGL 的渲染管线中，片元着色器输出颜色后，会依次经过：裁剪测试(scissor) → 模板测试(stencil) → 深度测试(depth) → 混合(blend) → 写入帧缓冲。 1) 深度测试(Depth Test)：
+
+- 原理：每个像素除了颜色，还有一个深度值(0~1，通常来自 gl_Position.z/w 经视口变换)。开启 gl.DEPTH_TEST 后，GPU 把当前片元的深度与深度缓冲中已有值按 gl.depthFunc 比较，默认 GL_LESS：新片元更近才通过并写入。
+- 作用：解决不透明物体的前后遮挡，避免依赖绘制顺序，是 3D 场景正确渲染的基础。
+- 类比：像往一个盒子里插卡片，只有比已有卡片更靠前的才能盖上去。
+- 关键 API：gl.enable(gl.DEPTH_TEST)、gl.depthFunc(gl.LESS)、gl.depthMask(true/false)、gl.clear(gl.DEPTH_BUFFER_BIT)。
+- 适用：不透明几何体；透明物体通常要关闭深度写入(depthMask(false))并按从远到近排序。 2) 模板测试(Stencil Test)：
+- 原理：每个像素有一个模板缓冲(通常 8 位整数)。开启 gl.STENCIL_TEST 后，GPU 用 gl.stencilFunc(func, ref, mask) 把 ref 与缓冲值按 mask 比较，决定片元是否通过；再按 gl.stencilOp(sfail, dpfail, dppass) 在三种情况(模板失败/深度失败/都通过)下对模板值做 keep/replace/incr/decr 等操作。
+- 作用：做遮罩、描边、反射、阴影体、UI 裁剪、传送门等需要“按形状限制绘制区域”的效果。
+- 类比：像喷漆时贴一张镂空模板，只有镂空处能上色，且模板本身还能被修改。
+- 关键 API：gl.enable(gl.STENCIL_TEST)、gl.stencilFunc、gl.stencilOp、gl.stencilMask、gl.clear(gl.STENCIL_BUFFER_BIT)。 3) 两者关系与顺序：模板测试先于深度测试。模板失败会按 sfail 处理且不进入深度测试；深度失败按 dpfail；都通过按 dppass。深度测试失败默认不影响模板，但可通过 stencilOp 的 dpfail 修改。 4) 典型组合用法：先画一个形状写入模板(如 stencilFunc(ALWAYS,1,0xFF), stencilOp(KEEP,KEEP,REPLACE))，再开启 stencilFunc(EQUAL,1,0xFF) 只在模板为 1 的区域绘制内容，实现遮罩/描边。
 
 **常见追问**：如何避免「1) 误以为深度测试在片元着色器之前——实际在之后(除非 early-Z 优化)」？ 「2) 混淆深度测试与深度写入：depthFunc 控制比较，depthMask 控制是否写，透明物体要关写入但仍可测试」在真实项目中应如何规避？
 
@@ -6202,7 +8268,9 @@ WebGL 不是 3D 引擎，而是基于 OpenGL ES 的浏览器 GPU 绘图 API，�
 
 能，postMessage 是浏览器提供的跨源通信 API，只要拿到目标窗口的引用并指定目标 origin，就能在不同源（甚至不同进程/iframe/Worker）之间安全地传递消息。
 
-postMessage 是 HTML5 引入的跨文档消息传递机制，定义在 window、MessagePort、Worker、ServiceWorker 等对象上。它的核心能力就是跨域通信：同源策略限制的是脚本直接读取另一个源的 DOM、Cookie、localStorage 等，但 postMessage 提供了一条受控的“消息通道”，允许你把数据序列化后发给另一个窗口，由对方通过 message 事件接收。 典型用法： 1) 父页面向 iframe 发消息： iframe.contentWindow.postMessage({type:'login', token:'abc'}, 'https://other.com'); 2) iframe 接收： window.addEventListener('message', (e) => { if (e.origin !== 'https://parent.com') return; console.log(e.data); }); 3) 反向：iframe 用 window.parent.postMessage(data, 'https://parent.com')。 关键点： - 必须指定 targetOrigin，不要用 '*'，否则任何源都能收到消息，可能泄露敏感数据。 - 接收方必须校验 e.origin 和 e.source，防止恶意页面伪造消息。 - 传递的数据通过结构化克隆算法序列化，支持对象、数组、Map、Set、ArrayBuffer 等，但不能传函数、DOM 节点、Error 等；也可用 transfer 转移 ArrayBuffer 所有权，实现零拷贝。 - 适用场景：iframe 嵌入第三方支付/登录、微前端主子应用通信、跨域 OAuth 弹窗、Web Worker 通信、跨标签页通信（配合 BroadcastChannel 或 SharedWorker）。 通俗类比：同源策略像小区门禁，不允许你直接进别人家翻东西；postMessage 像小区里的“快递柜”——你把包裹放进去，指定收件人地址，对方凭取件码取走，双方不用进对方家门，但能安全交换物品。
+postMessage 是 HTML5 引入的跨文档消息传递机制，定义在 window、MessagePort、Worker、ServiceWorker 等对象上。它的核心能力就是跨域通信：同源策略限制的是脚本直接读取另一个源的 DOM、Cookie、localStorage 等，但 postMessage 提供了一条受控的“消息通道”，允许你把数据序列化后发给另一个窗口，由对方通过 message 事件接收。
+
+典型用法： 1) 父页面向 iframe 发消息： iframe.contentWindow.postMessage({type:'login', token:'abc'}, 'https://other.com'); 2) iframe 接收： window.addEventListener('message', (e) => { if (e.origin !== 'https://parent.com') return; console.log(e.data); }); 3) 反向：iframe 用 window.parent.postMessage(data, 'https://parent.com')。 关键点： - 必须指定 targetOrigin，不要用 '*'，否则任何源都能收到消息，可能泄露敏感数据。 - 接收方必须校验 e.origin 和 e.source，防止恶意页面伪造消息。 - 传递的数据通过结构化克隆算法序列化，支持对象、数组、Map、Set、ArrayBuffer 等，但不能传函数、DOM 节点、Error 等；也可用 transfer 转移 ArrayBuffer 所有权，实现零拷贝。 - 适用场景：iframe 嵌入第三方支付/登录、微前端主子应用通信、跨域 OAuth 弹窗、Web Worker 通信、跨标签页通信（配合 BroadcastChannel 或 SharedWorker）。 通俗类比：同源策略像小区门禁，不允许你直接进别人家翻东西；postMessage 像小区里的“快递柜”——你把包裹放进去，指定收件人地址，对方凭取件码取走，双方不用进对方家门，但能安全交换物品。
 
 **常见追问**：如何避免「1) 误以为 postMessage 能直接跨域读取对方 DOM 或 Cookie——它只能传消息，不能突破同源策略去读数据」？ 「2) 使用 targetOrigin='*' 且接收方不校验 origin，造成敏感信息泄露或 XSS」在真实项目中应如何规避？
 
@@ -6224,7 +8292,28 @@ CORS（推荐，W3C 标准）：服务端返回 Access-Control-Allow-Origin 等�
 
 跨域是浏览器同源策略对脚本发起的跨源请求的限制，解决方式分两类：服务端授权（CORS）或绕过浏览器限制（代理、JSONP、postMessage 等）。
 
-一、什么是跨域 同源策略要求协议、域名、端口三者完全相同。只要有一项不同，浏览器就认为是跨源。注意：跨域限制是浏览器施加给 JS 的安全策略，请求本身往往已经发出并到达服务器，只是响应被浏览器拦截不给 JS 读取。 二、为什么要有同源策略 防止恶意站点用用户已登录的 Cookie 去读取银行/邮箱等站点的数据（CSRF 读取、XSS 窃取）。它保护的是“读取”，不是“发送”。 三、常见解决方案 1. CORS（推荐，W3C 标准）：服务端返回 Access-Control-Allow-Origin 等响应头。简单请求直接发；非简单请求（自定义头、PUT/DELETE、JSON 等）先发 OPTIONS 预检，服务端需返回 Allow-Methods/Allow-Headers。带 Cookie 时前端要 xhr.withCredentials=true，且 Allow-Origin 不能为 *，需 Allow-Credentials: true。 2. 反向代理（Nginx / Node 中间层）：让浏览器只访问同源的前端服务器，由服务器转发到目标服务，浏览器视角无跨域。生产最常用。 3. JSONP：利用 <script> 不受同源限制，服务端返回 callback(data)。只支持 GET，有 XSS 风险，已基本淘汰。 4. postMessage + iframe：用于页面间跨源通信，需校验 event.origin。 5. WebSocket / SSE：WebSocket 不受同源策略限制（但服务端应校验 Origin）。 6. document.domain：仅限主域相同的一级/二级域名，现代浏览器已弱化。 四、类比 同源策略像小区门禁：你可以把信（请求）投到隔壁小区，但隔壁小区的回信必须经过你所在小区的物业（浏览器）审核，物业不认的就不给你看。CORS 就是隔壁小区提前给物业发授权函。
+**一、什么是跨域**
+
+同源策略要求协议、域名、端口三者完全相同。只要有一项不同，浏览器就认为是跨源。
+
+注意：跨域限制是浏览器施加给 JS 的安全策略，请求本身往往已经发出并到达服务器，只是响应被浏览器拦截不给 JS 读取。
+
+**二、为什么要有同源策略**
+
+防止恶意站点用用户已登录的 Cookie 去读取银行/邮箱等站点的数据（CSRF 读取、XSS 窃取）。它保护的是“读取”，不是“发送”。
+
+**三、常见解决方案**
+
+1. CORS（推荐，W3C 标准）：服务端返回 Access-Control-Allow-Origin 等响应头。简单请求直接发；非简单请求（自定义头、PUT/DELETE、JSON 等）先发 OPTIONS 预检，服务端需返回 Allow-Methods/Allow-Headers。带 Cookie 时前端要 xhr.withCredentials=true，且 Allow-Origin 不能为 *，需 Allow-Credentials: true。
+2. 反向代理（Nginx / Node 中间层）：让浏览器只访问同源的前端服务器，由服务器转发到目标服务，浏览器视角无跨域。生产最常用。
+3. JSONP：利用 <script> 不受同源限制，服务端返回 callback(data)。只支持 GET，有 XSS 风险，已基本淘汰。
+4. postMessage + iframe：用于页面间跨源通信，需校验 event.origin。
+5. WebSocket / SSE：WebSocket 不受同源策略限制（但服务端应校验 Origin）。
+6. document.domain：仅限主域相同的一级/二级域名，现代浏览器已弱化。
+
+**四、类比**
+
+同源策略像小区门禁：你可以把信（请求）投到隔壁小区，但隔壁小区的回信必须经过你所在小区的物业（浏览器）审核，物业不认的就不给你看。CORS 就是隔壁小区提前给物业发授权函。
 
 **常见追问**：如何避免「误以为跨域是后端限制或请求没发出去——其实是浏览器拦截响应。2. 认为加 Access-Control-Allow-Origin: * 就能带 Cookie——带凭证时 * 无效。3. 把 JSONP 当万能方案，忽略只支持 GET 和 XSS 风险。4. 混淆 CORS 与 CSRF，认为解决跨域就安全了。5. 用 document.domain 解决所有跨域，忽略端口和协议不同无效。6. 以为前端配置 proxy 就真的跨域了——开发环境 proxy 只是本地代理，生产要另配。」？ 能否结合「能区分“请求发出但响应被拦”与“预检失败请求根本没发”，说明对 CORS 流程理解到位。2. 知道简单请求 vs 预检请求的判定条件（方法、Content-Type 仅限三种、无自定义头）。3. 提到 withCredentials 与 Allow-Origin 不能为 * 的冲突，以及预检结果用 Access-Control-Max-Age 缓存。4. 提到 CSRF 与 CORS 的关系：CORS 放开反而可能扩大攻击面，需配合 CSRF Token、SameSite Cookie。5. 生产实践：Nginx 代理 + CORS 白名单，避免 Allow-Origin 反射任意 Origin 导致漏洞。」进一步展开？
 
@@ -6246,7 +8335,20 @@ CORS（推荐，W3C 标准）：服务端返回 Access-Control-Allow-Origin 等�
 
 跨域限制是浏览器基于同源策略实施的安全机制，用于防止恶意网站读取其他站点的敏感数据；服务端之间的请求不受此限制。
 
-同源策略（Same-Origin Policy）是浏览器的核心安全模型：只有协议、域名、端口三者完全相同才算同源。浏览器允许跨域发起请求（如 img、script、fetch 的简单请求），但默认禁止 JS 读取跨域响应内容。 为什么禁止？核心是保护用户数据。假设你已登录银行网站 bank.com，浏览器保存了 Cookie。此时你访问了恶意网站 evil.com，它用 JS 向 bank.com 发起请求，浏览器会自动带上 bank.com 的 Cookie。如果没有同源策略，evil.com 就能读取你的账户余额、转账记录，甚至发起转账。同源策略把不同源的页面隔离开，让 evil.com 无法读取 bank.com 的响应。 通俗类比：同源策略像小区门禁——你可以走到别人家门口（发请求），但门禁不让你进去拿东西（读响应）。 适用场景与解法： 1. 开发时前后端分离，前端 3000 端口、后端 8080 端口，属于跨域。常用 CORS（服务端设置 Access-Control-Allow-Origin）解决。 2. 简单请求直接发；非简单请求（如 PUT、自定义头）会先发 OPTIONS 预检，服务端需正确响应预检。 3. 携带 Cookie 的跨域请求需服务端设置 Access-Control-Allow-Credentials: true 且 Allow-Origin 不能为 *。 4. 其他方案：JSONP（仅 GET，利用 script 标签）、代理服务器（同源代理转发）、postMessage（窗口间通信）。 注意：跨域是浏览器行为，curl、Postman、服务端之间调用不受限。
+同源策略（Same-Origin Policy）是浏览器的核心安全模型：只有协议、域名、端口三者完全相同才算同源。浏览器允许跨域发起请求（如 img、script、fetch 的简单请求），但默认禁止 JS 读取跨域响应内容。 为什么禁止？核心是保护用户数据。假设你已登录银行网站 bank.com，浏览器保存了 Cookie。
+
+此时你访问了恶意网站 evil.com，它用 JS 向 bank.com 发起请求，浏览器会自动带上 bank.com 的 Cookie。如果没有同源策略，evil.com 就能读取你的账户余额、转账记录，甚至发起转账。同源策略把不同源的页面隔离开，让 evil.com 无法读取 bank.com 的响应。
+
+通俗类比：同源策略像小区门禁——你可以走到别人家门口（发请求），但门禁不让你进去拿东西（读响应）。
+
+适用场景与解法：
+
+1. 开发时前后端分离，前端 3000 端口、后端 8080 端口，属于跨域。常用 CORS（服务端设置 Access-Control-Allow-Origin）解决。
+2. 简单请求直接发；非简单请求（如 PUT、自定义头）会先发 OPTIONS 预检，服务端需正确响应预检。
+3. 携带 Cookie 的跨域请求需服务端设置 Access-Control-Allow-Credentials: true 且 Allow-Origin 不能为 *。
+4. 其他方案：JSONP（仅 GET，利用 script 标签）、代理服务器（同源代理转发）、postMessage（窗口间通信）。
+
+注意：跨域是浏览器行为，curl、Postman、服务端之间调用不受限。
 
 **常见追问**：如何避免「误以为跨域是后端限制或服务器拒绝，实际是浏览器拦截响应。」？ 「认为设置 Access-Control-Allow-Origin: * 且携带 Cookie 也能工作，实际会失败。」在真实项目中应如何规避？
 
@@ -6268,7 +8370,10 @@ CORS（推荐，W3C 标准）：服务端返回 Access-Control-Allow-Origin 等�
 
 Sass 和 Less 都是 CSS 预处理器，用变量、嵌套、混入、函数等编程能力生成 CSS，解决原生 CSS 难维护、难复用的问题。
 
-CSS 预处理器本质是「用更高级的语言写样式，再编译成浏览器能识别的 CSS」。可以类比：原生 CSS 像手写汇编，Sass/Less 像写带变量和函数的高级语言，最后编译回汇编。 核心能力： 1. 变量：$color: #333;（Sass）或 @color: #333;（Less），统一改主题色。 2. 嵌套：.nav { a { color: red; } } 编译成 .nav a { color: red; }，层级清晰。 3. 混入 Mixin：把可复用样式块抽出来，可传参，类似函数。 4. 继承/扩展：@extend 或 :extend 复用选择器。 5. 运算与内置函数：颜色变暗、单位计算等。 6. 模块化：@import / @use 拆分文件。 两者区别： - 语言与实现：Sass 最初是 Ruby 实现，后主流用 Dart Sass；Less 是 JS 实现，可在浏览器端直接运行（引入 less.js）。 - 语法：Sass 有 .sass 缩进语法和 .scss 类 CSS 语法；Less 语法更接近原生 CSS。 - 变量符号：Sass 用 $，Less 用 @。 - 能力：Sass 提供 @function、@if/@for 等完整控制流，逻辑能力更强；Less 相对轻量，混入和守卫（when）也能满足多数需求。 - 生态：Sass 社区和框架支持更广（Bootstrap 4/5 用 Sass），Less 在早期 Ant Design 等项目中常见。 适用场景：中大型项目、需要主题定制/设计系统、组件库样式复用；小项目若构建链简单也可不用。现代 CSS 已有变量、嵌套等能力，但预处理器在混入、函数、模块化上仍有优势。
+CSS 预处理器本质是「用更高级的语言写样式，再编译成浏览器能识别的 CSS」。可以类比：原生 CSS 像手写汇编，Sass/Less 像写带变量和函数的高级语言，最后编译回汇编。 核心能力： 1. 变量：$color: #333;（Sass）或 @color: #333;（Less），统一改主题色。 2. 嵌套：.nav { a { color: red; } } 编译成 .nav a { color: red; }，层级清晰。 3. 混入 Mixin：把可复用样式块抽出来，可传参，类似函数。 4. 继承/扩展：@extend 或 :extend 复用选择器。 5. 运算与内置函数：颜色变暗、单位计算等。 6. 模块化：@import / @use 拆分文件。 两者区别： - 语言与实现：Sass 最初是 Ruby 实现，后主流用 Dart Sass；Less 是 JS 实现，可在浏览器端直接运行（引入 less.js）。 - 语法：Sass 有 .sass 缩进语法和 .scss 类 CSS 语法；Less 语法更接近原生 CSS。 - 变量符号：Sass 用 $，Less 用 @。
+
+- 能力：Sass 提供 @function、@if/@for 等完整控制流，逻辑能力更强；Less 相对轻量，混入和守卫（when）也能满足多数需求。
+- 生态：Sass 社区和框架支持更广（Bootstrap 4/5 用 Sass），Less 在早期 Ant Design 等项目中常见。 适用场景：中大型项目、需要主题定制/设计系统、组件库样式复用；小项目若构建链简单也可不用。现代 CSS 已有变量、嵌套等能力，但预处理器在混入、函数、模块化上仍有优势。
 
 **常见追问**：如何避免「误以为浏览器能直接运行 Sass/Less，忘记必须编译。」？ 「把 Sass 变量和 CSS 自定义属性混为一谈，说 Sass 变量能在运行时被 JS 改。」在真实项目中应如何规避？
 
@@ -6290,7 +8395,19 @@ Canvas 是一个立即模式（immediate mode）的位图绘制接口：你调�
 
 Canvas 本身没有图层概念，所谓“图层”是用多个 canvas 元素、离屏 canvas 或分层绘制策略模拟出来的，用于隔离重绘区域、提升性能。
 
-Canvas 是一个立即模式（immediate mode）的位图绘制接口：你调用 fillRect、drawImage 等命令后，像素立刻被画到同一张画布上，绘制命令本身不保留对象结构，所以无法像 Photoshop 或 SVG 那样直接“选中某个图层”。实际开发中的“图层”通常有三种做法： 1）DOM 多 canvas 叠加：在同一个容器里放多个绝对定位、尺寸相同的 <canvas>，例如底层画背景/网格，中层画图形，顶层画交互控件或光标。每层独立重绘，改哪层只清哪层，避免整屏重画。 2）离屏 canvas（OffscreenCanvas 或 document.createElement('canvas')）：把不常变的内容先画到离屏画布，再一次性 drawImage 到主画布。例如地图底图、复杂图标、粒子纹理，只画一次，后续每帧只做合成。 3）单 canvas 内逻辑分层：维护多个绘制列表/场景图，按 z-index 顺序重绘，或者用脏矩形只清局部再重画。 为什么需要图层？因为 canvas 重绘成本与像素面积、绘制命令数相关。如果不分层，每帧都要清空整张画布并重画所有内容，复杂场景会掉帧。分层后可以做到：静态层不重绘、动态层小面积重绘、交互层独立更新。 适用场景：图表/地图（底图+数据层+交互层）、白板/画板（背景+笔迹+光标）、游戏（背景+角色+UI）、视频弹幕等。 通俗类比：Canvas 像一张纸，画上去就擦不掉结构；多 canvas 像透明胶片叠在一起，动哪张抽哪张；离屏 canvas 像先在小纸上画好图案，再整张贴到大纸上。
+Canvas 是一个立即模式（immediate mode）的位图绘制接口：你调用 fillRect、drawImage 等命令后，像素立刻被画到同一张画布上，绘制命令本身不保留对象结构，所以无法像 Photoshop 或 SVG 那样直接“选中某个图层”。
+
+实际开发中的“图层”通常有三种做法： 1）DOM 多 canvas 叠加：在同一个容器里放多个绝对定位、尺寸相同的 <canvas>，例如底层画背景/网格，中层画图形，顶层画交互控件或光标。每层独立重绘，改哪层只清哪层，避免整屏重画。 2）离屏 canvas（OffscreenCanvas 或 document.createElement('canvas')）：把不常变的内容先画到离屏画布，再一次性 drawImage 到主画布。
+
+例如地图底图、复杂图标、粒子纹理，只画一次，后续每帧只做合成。 3）单 canvas 内逻辑分层：维护多个绘制列表/场景图，按 z-index 顺序重绘，或者用脏矩形只清局部再重画。 为什么需要图层？因为 canvas 重绘成本与像素面积、绘制命令数相关。如果不分层，每帧都要清空整张画布并重画所有内容，复杂场景会掉帧。
+
+分层后可以做到：静态层不重绘、动态层小面积重绘、交互层独立更新。
+
+适用场景：图表/地图（底图+数据层+交互层）、白板/画板（背景+笔迹+光标）、游戏（背景+角色+UI）、视频弹幕等。
+
+- 通俗类比：Canvas 像一张纸，画上去就擦不掉结构；
+- 多 canvas 像透明胶片叠在一起，动哪张抽哪张；
+- 离屏 canvas 像先在小纸上画好图案，再整张贴到大纸上。
 
 **常见追问**：如何避免「1）误以为 Canvas 有类似 PS 的图层 API，可以单独修改某一层」？ 「2）把所有内容画在一个 canvas 上，却声称“用了图层”，实际只是绘制顺序」在真实项目中应如何规避？
 
@@ -6312,7 +8429,15 @@ Promise 的错误捕获分几种情况：；1) 执行器（executor）内同步 
 
 Promise 错误捕获的核心是：同步执行器内抛错会被自动转为 rejected，异步错误必须靠 .catch()/then 第二参或 async/await 的 try/catch 捕获，且 catch 后仍可继续链式返回。
 
-Promise 的错误捕获分几种情况： 1) 执行器（executor）内同步 throw：new Promise((res, rej) => { throw new Error('x') }) 会被 Promise 构造函数内部 try/catch 捕获，自动变成 rejected 状态，等价于调用 rej(err)。所以同步抛错能被 .catch 捕获。 2) 执行器内异步抛错：setTimeout(() => { throw new Error('x') }) 不在 Promise 构造时的同步调用栈里，不会被自动捕获，会变成全局未捕获异常（浏览器 window.onerror / Node uncaughtException），.catch 抓不到。这类错误需要在异步回调里手动 rej(err)，或把异步逻辑包成 Promise。 3) 链式捕获：p.then(onFulfilled).catch(onRejected) 能捕获 p 的 rejection 以及 onFulfilled 中抛出的错误；p.then(onFulfilled, onRejected) 的第二参只能捕获 p 的 rejection，捕获不到 onFulfilled 自己抛的错。所以推荐用 .catch 放在链尾做兜底。 4) async/await：await 一个 rejected Promise 会以异常形式抛出，用 try/catch 捕获；未捕获时等价于返回一个 rejected Promise，需要外层 .catch 或上层 try/catch。 5) 兜底：浏览器 unhandledrejection 事件、Node process.on('unhandledRejection') 可监听漏网的 rejection，用于日志和告警，但不能替代业务层捕获。 通俗类比：Promise 像快递单，同步 throw 是当场拒收（系统自动记录为失败），异步 throw 是快递员半路出事（没人通知单子系统），.catch 是售后窗口，链尾的 catch 是总客服，async/await 的 try/catch 是当面签收验货。
+Promise 的错误捕获分几种情况：
+
+1) 执行器（executor）内同步 throw：new Promise((res, rej) => { throw new Error('x') }) 会被 Promise 构造函数内部 try/catch 捕获，自动变成 rejected 状态，等价于调用 rej(err)。所以同步抛错能被 .catch 捕获。
+2) 执行器内异步抛错：setTimeout(() => { throw new Error('x') }) 不在 Promise 构造时的同步调用栈里，不会被自动捕获，会变成全局未捕获异常（浏览器 window.onerror / Node uncaughtException），.catch 抓不到。这类错误需要在异步回调里手动 rej(err)，或把异步逻辑包成 Promise。
+3) 链式捕获：p.then(onFulfilled).catch(onRejected) 能捕获 p 的 rejection 以及 onFulfilled 中抛出的错误；p.then(onFulfilled, onRejected) 的第二参只能捕获 p 的 rejection，捕获不到 onFulfilled 自己抛的错。所以推荐用 .catch 放在链尾做兜底。
+4) async/await：await 一个 rejected Promise 会以异常形式抛出，用 try/catch 捕获；未捕获时等价于返回一个 rejected Promise，需要外层 .catch 或上层 try/catch。
+5) 兜底：浏览器 unhandledrejection 事件、Node process.on('unhandledRejection') 可监听漏网的 rejection，用于日志和告警，但不能替代业务层捕获。
+
+通俗类比：Promise 像快递单，同步 throw 是当场拒收（系统自动记录为失败），异步 throw 是快递员半路出事（没人通知单子系统），.catch 是售后窗口，链尾的 catch 是总客服，async/await 的 try/catch 是当面签收验货。
 
 **常见追问**：如何避免「1) 以为 .catch 能捕获执行器里 setTimeout/Promise 回调中的异步 throw，实际捕获不到」？ 「2) 以为 then 的第二个参数和 catch 完全等价，忽略它捕获不到 onFulfilled 抛错」在真实项目中应如何规避？
 
@@ -6334,7 +8459,13 @@ Promise 的错误捕获分几种情况： 1) 执行器（executor）内同步 th
 
 给容器设 display:flex、flex-wrap:wrap，并让每个图标宽度为 25%（或 flex-basis:25%），8 个图标就会自动折成两行、每行 4 个。
 
-原理：flex 默认是单行布局（flex-wrap:nowrap），所有子项会挤在一行里被压缩。要让它们换行，必须开启 flex-wrap:wrap，此时容器会按主轴方向依次摆放子项，放不下就换到下一行。 具体做法： 1. 父容器：display:flex; flex-wrap:wrap;（可选 gap:8px 控制间距）。 2. 子项：flex: 0 0 25%; 或 width:25%; box-sizing:border-box。 - flex:0 0 25% 表示不放大、不收缩、基准宽度 25%，这样每行正好 4 个。 - 若用 width:25% 且不设 flex-shrink:0，子项可能被压缩，导致每行数量不稳定。 3. 8 个图标 → 第一行 4 个，第二行 4 个，自动两行。 通俗类比：flex 容器像一排座位，nowrap 是“只排一排，挤一挤也要坐下”；wrap 是“这排坐满就开下一排”。给每个图标 25% 宽度，等于规定每排只能坐 4 个人，8 个人自然坐成两排。 适用场景：图标网格、标签列表、卡片流等需要等宽换行的场景。若需要严格 4 列且间距固定，也可用 CSS Grid：grid-template-columns: repeat(4, 1fr)，但题目要求 flex，所以用 flex-wrap + 25% 基准宽度。
+原理：flex 默认是单行布局（flex-wrap:nowrap），所有子项会挤在一行里被压缩。要让它们换行，必须开启 flex-wrap:wrap，此时容器会按主轴方向依次摆放子项，放不下就换到下一行。 具体做法：
+
+1. 父容器：display:flex; flex-wrap:wrap;（可选 gap:8px 控制间距）。
+2. 子项：flex: 0 0 25%; 或 width:25%; box-sizing:border-box。
+
+- flex:0 0 25% 表示不放大、不收缩、基准宽度 25%，这样每行正好 4 个。
+- 若用 width:25% 且不设 flex-shrink:0，子项可能被压缩，导致每行数量不稳定。 3. 8 个图标 → 第一行 4 个，第二行 4 个，自动两行。 通俗类比：flex 容器像一排座位，nowrap 是“只排一排，挤一挤也要坐下”；wrap 是“这排坐满就开下一排”。给每个图标 25% 宽度，等于规定每排只能坐 4 个人，8 个人自然坐成两排。 适用场景：图标网格、标签列表、卡片流等需要等宽换行的场景。若需要严格 4 列且间距固定，也可用 CSS Grid：grid-template-columns: repeat(4, 1fr)，但题目要求 flex，所以用 flex-wrap + 25% 基准宽度。
 
 **常见追问**：如何避免「只写 display:flex 不写 flex-wrap:wrap，结果 8 个图标挤在一行。」？ 「给子项设 flex:1 而不是 flex:0 0 25%，导致每行数量随内容变化，无法稳定 4 个。」在真实项目中应如何规避？
 
@@ -6356,7 +8487,15 @@ Promise 的错误捕获分几种情况： 1) 执行器（executor）内同步 th
 
 前后端 API 对接的核心是：先约定接口契约（URL、方法、参数、返回结构、错误码），再按契约分别实现，最后通过联调、Mock、抓包和日志定位问题。
 
-自己调前后端 API，本质是让前端和后端围绕一份“接口契约”协作。可以类比成两个人约好暗号：前端负责按暗号发请求，后端负责按暗号回数据。 1. 先定契约。通常用 OpenAPI/Swagger、Apifox、Postman 或团队文档，明确：请求方法（GET/POST/PUT/DELETE）、路径、请求头（Content-Type、Authorization）、请求参数（query/body/path）、响应结构（code、message、data）、错误码和分页格式。 2. 前端调用。以浏览器为例，用 fetch 或 axios 发 HTTP 请求： ```js const res = await fetch('/api/users?page=1', { headers: { 'Authorization': 'Bearer ' + token } }); const json = await res.json(); if (json.code !== 0) throw new Error(json.message); ``` 注意跨域问题：开发环境常用 Vite/webpack devServer 的 proxy 把 /api 转发到后端，生产环境用 Nginx 反向代理或同域部署。 3. 后端实现。后端按契约暴露路由，处理参数校验、鉴权、业务逻辑、数据库访问，并统一返回结构。例如 Spring Boot 用 @RestController，Node 用 Express/Koa，Python 用 FastAPI/Flask。 4. 联调与排错。先确认后端接口单独可用（curl/Postman），再让前端接入。常见排查顺序：网络是否通、URL 是否写错、请求方法/Content-Type 是否匹配、参数是否放在正确位置、CORS 是否配置、鉴权 token 是否有效、后端日志是否有异常。 5. 提效手段。前端可用 Mock（Mock.js、MSW）在后端未完成时先开发；用 Swagger 自动生成文档和调试；用抓包工具（Chrome DevTools、Charles、Fiddler）看真实请求响应；用统一响应体和全局异常处理减少沟通成本。 适用场景：前后端分离项目、微服务间调用、第三方 API 接入。核心原则是“契约先行、职责清晰、可观测”。
+自己调前后端 API，本质是让前端和后端围绕一份“接口契约”协作。可以类比成两个人约好暗号：前端负责按暗号发请求，后端负责按暗号回数据。
+
+1. 先定契约。通常用 OpenAPI/Swagger、Apifox、Postman 或团队文档，明确：请求方法（GET/POST/PUT/DELETE）、路径、请求头（Content-Type、Authorization）、请求参数（query/body/path）、响应结构（code、message、data）、错误码和分页格式。
+2. 前端调用。以浏览器为例，用 fetch 或 axios 发 HTTP 请求： ```js const res = await fetch('/api/users?page=1', { headers: { 'Authorization': 'Bearer ' + token } }); const json = await res.json(); if (json.code !== 0) throw new Error(json.message); ``` 注意跨域问题：开发环境常用 Vite/webpack devServer 的 proxy 把 /api 转发到后端，生产环境用 Nginx 反向代理或同域部署。
+3. 后端实现。后端按契约暴露路由，处理参数校验、鉴权、业务逻辑、数据库访问，并统一返回结构。例如 Spring Boot 用 @RestController，Node 用 Express/Koa，Python 用 FastAPI/Flask。
+4. 联调与排错。先确认后端接口单独可用（curl/Postman），再让前端接入。常见排查顺序：网络是否通、URL 是否写错、请求方法/Content-Type 是否匹配、参数是否放在正确位置、CORS 是否配置、鉴权 token 是否有效、后端日志是否有异常。
+5. 提效手段。前端可用 Mock（Mock.js、MSW）在后端未完成时先开发；用 Swagger 自动生成文档和调试；用抓包工具（Chrome DevTools、Charles、Fiddler）看真实请求响应；用统一响应体和全局异常处理减少沟通成本。
+
+适用场景：前后端分离项目、微服务间调用、第三方 API 接入。核心原则是“契约先行、职责清晰、可观测”。
 
 **常见追问**：如何避免「只写 URL 不约定返回结构，导致前端反复改字段。2. 把跨域当成后端“没返回”，其实浏览器已收到响应但被拦截。3. 混淆 401（未认证）和 403（无权限）。4. 请求方法乱用，比如用 GET 做删除或传敏感数据。5. 忽略 Content-Type，后端收不到 JSON body。6. 前端直接硬编码后端地址，导致环境切换困难。7. 不处理错误码，只判断 HTTP 200，业务失败也当成功。」？ 能否结合「契约先行：用 OpenAPI 生成前端 TS 类型和后端 DTO，减少字段对不齐的问题。2. 统一响应体：如 {code, message, data}，配合全局异常处理器，前端只处理一种结构。3. 跨域本质：CORS 是浏览器同源策略限制，预检请求 OPTIONS 会带 Access-Control-Request-Method；开发代理只是绕过浏览器限制，生产仍需后端或网关配置。4. 幂等与重试：GET 幂等，POST 不一定；支付等场景用幂等键。5. 可观测：给请求加 traceId，前后端日志串联，定位问题更快。6. 版本管理：URL 版本 /api/v1 或 Header 版本，避免破坏性变更。」进一步展开？
 
@@ -6378,7 +8517,30 @@ Promise 的错误捕获分几种情况： 1) 执行器（executor）内同步 th
 
 用 iframe 实现跨域 POST 的核心是：在页面中动态创建一个隐藏 iframe，其 name 属性作为 target，再创建一个 form 设置 method=post、target=该 iframe name、action=目标跨域地址，提交表单后请求由 iframe 发出，从而绕过 XHR 的同源限制；但响应被浏览器同源策略隔离，父页面无法读取 iframe 内的返回内容。
 
-一、为什么需要这种方案 浏览器的同源策略（Same-Origin Policy）限制的是脚本读取跨域响应，而不是限制请求发送。普通 XHR/fetch 发跨域 POST 时，浏览器会发请求，但除非服务端返回正确的 CORS 头，否则 JS 拿不到响应；而 JSONP 只能发 GET。iframe + form 属于 HTML 原生表单提交，不受 XHR 同源策略约束，因此可以跨域 POST。 二、具体做法 1. 在页面中放一个隐藏 iframe：<iframe name="crossPostTarget" style="display:none"></iframe> 2. 创建表单：<form action="https://other.com/api" method="post" target="crossPostTarget" enctype="application/x-www-form-urlencoded"> 3. 把要提交的数据作为 hidden input 加入表单，然后 form.submit()。 4. 浏览器会把表单提交到 action 指定的跨域地址，并且把响应加载到 name 对应的 iframe 中。 三、关键限制 - 父页面无法读取 iframe 内跨域页面的 DOM，因此拿不到服务端返回的 JSON/HTML 内容。 - 如果目标服务端返回 302 跳回同源地址，父页面可以通过 iframe.onload 或轮询 iframe 的 contentWindow.location 变化来间接判断“提交完成”，但读取具体内容仍受同源限制。 - 表单提交会刷新 iframe，不会刷新父页面，这是它比直接 form 提交的优势。 四、适用场景 - 需要向第三方跨域接口 POST 数据，且只关心“提交成功/失败”，不关心响应体。 - 老系统、支付跳转、OAuth 表单 POST、埋点上报等。 - 现代替代方案：CORS、fetch + no-cors（只能发简单请求且读不到响应）、服务端代理、postMessage 配合 iframe 通信。 五、通俗类比 同源策略像小区门禁：你可以把信（请求）投到隔壁小区的信箱（跨域服务器），但隔壁小区的回信（响应）不会让你直接拆开看。iframe + form 就是“用隔壁小区的信箱投信”，信能送到，但回信内容你看不到。
+**一、为什么需要这种方案**
+
+浏览器的同源策略（Same-Origin Policy）限制的是脚本读取跨域响应，而不是限制请求发送。普通 XHR/fetch 发跨域 POST 时，浏览器会发请求，但除非服务端返回正确的 CORS 头，否则 JS 拿不到响应；而 JSONP 只能发 GET。iframe + form 属于 HTML 原生表单提交，不受 XHR 同源策略约束，因此可以跨域 POST。
+
+**二、具体做法**
+
+1. 在页面中放一个隐藏 iframe：<iframe name="crossPostTarget" style="display:none"></iframe>
+2. 创建表单：<form action="https://other.com/api" method="post" target="crossPostTarget" enctype="application/x-www-form-urlencoded">
+3. 把要提交的数据作为 hidden input 加入表单，然后 form.submit()。
+4. 浏览器会把表单提交到 action 指定的跨域地址，并且把响应加载到 name 对应的 iframe 中。
+
+**三、关键限制**
+
+- 父页面无法读取 iframe 内跨域页面的 DOM，因此拿不到服务端返回的 JSON/HTML 内容。 - 如果目标服务端返回 302 跳回同源地址，父页面可以通过 iframe.onload 或轮询 iframe 的 contentWindow.location 变化来间接判断“提交完成”，但读取具体内容仍受同源限制。
+
+- 表单提交会刷新 iframe，不会刷新父页面，这是它比直接 form 提交的优势。
+
+**四、适用场景**
+
+- 需要向第三方跨域接口 POST 数据，且只关心“提交成功/失败”，不关心响应体。 - 老系统、支付跳转、OAuth 表单 POST、埋点上报等。 - 现代替代方案：CORS、fetch + no-cors（只能发简单请求且读不到响应）、服务端代理、postMessage 配合 iframe 通信。
+
+**五、通俗类比**
+
+同源策略像小区门禁：你可以把信（请求）投到隔壁小区的信箱（跨域服务器），但隔壁小区的回信（响应）不会让你直接拆开看。iframe + form 就是“用隔壁小区的信箱投信”，信能送到，但回信内容你看不到。
 
 **常见追问**：如何避免「误以为 iframe + form 可以读取跨域响应内容；实际上响应被同源策略隔离，父页面读不到。」？ 「误以为这是“绕过同源策略”的漏洞；它只是利用 HTML 表单提交不受 XHR 同源限制，响应仍受保护。」在真实项目中应如何规避？
 
@@ -6400,7 +8562,13 @@ Promise 的错误捕获分几种情况： 1) 执行器（executor）内同步 th
 
 Canvas 本身没有原生图层概念，所谓“图层”是通过多个 canvas 元素叠加、离屏 canvas 缓存或手动分层绘制来模拟的。
 
-Canvas 是一块位图画布，所有绘制操作（fillRect、drawImage、路径等）都会直接合成到同一张位图上，后画的覆盖先画的，因此它不像 Photoshop 或 SVG 那样有独立的图层对象。 要“使用图层”，常见有三种做法： 1. 多 canvas 叠加：在同一个容器里放多个绝对定位、尺寸相同的 <canvas>，每个负责一类内容，比如底层画背景、中层画图形、顶层画交互提示。DOM 的 z-index 决定层级，互不干扰。适合需要频繁重绘某一层、又不想重绘全图的场景，例如地图底图 + 标记层 + 弹窗层。 2. 离屏 canvas（OffscreenCanvas 或 document.createElement('canvas')）：把不常变的内容先画到离屏画布上缓存，主画布每帧只 drawImage 一次。这相当于“把图层预合成好再贴上来”，能大幅减少重复绘制开销。 3. 手动分层绘制：在单个 canvas 内，用 save/restore、globalCompositeOperation、globalAlpha 等控制绘制顺序和混合模式，逻辑上把内容分组，但物理上仍是一张位图。 类比：Canvas 像一张纸，画上去就擦不掉；多 canvas 叠加像在纸上盖透明胶片，每张胶片可以单独换；离屏 canvas 像先在小纸上画好图案，再整张复印到大纸上。 适用场景：需要局部高频更新（如游戏 HUD、实时标注）、需要独立控制透明度/混合、或需要缓存静态背景时，用图层思路；如果只是简单一次性绘图，单 canvas 就够。
+Canvas 是一块位图画布，所有绘制操作（fillRect、drawImage、路径等）都会直接合成到同一张位图上，后画的覆盖先画的，因此它不像 Photoshop 或 SVG 那样有独立的图层对象。 要“使用图层”，常见有三种做法：
+
+1. 多 canvas 叠加：在同一个容器里放多个绝对定位、尺寸相同的 <canvas>，每个负责一类内容，比如底层画背景、中层画图形、顶层画交互提示。DOM 的 z-index 决定层级，互不干扰。适合需要频繁重绘某一层、又不想重绘全图的场景，例如地图底图 + 标记层 + 弹窗层。
+2. 离屏 canvas（OffscreenCanvas 或 document.createElement('canvas')）：把不常变的内容先画到离屏画布上缓存，主画布每帧只 drawImage 一次。这相当于“把图层预合成好再贴上来”，能大幅减少重复绘制开销。
+3. 手动分层绘制：在单个 canvas 内，用 save/restore、globalCompositeOperation、globalAlpha 等控制绘制顺序和混合模式，逻辑上把内容分组，但物理上仍是一张位图。 类比：Canvas 像一张纸，画上去就擦不掉；多 canvas 叠加像在纸上盖透明胶片，每张胶片可以单独换；离屏 canvas 像先在小纸上画好图案，再整张复印到大纸上。
+
+适用场景：需要局部高频更新（如游戏 HUD、实时标注）、需要独立控制透明度/混合、或需要缓存静态背景时，用图层思路；如果只是简单一次性绘图，单 canvas 就够。
 
 **常见追问**：如何避免「误以为 Canvas 有类似 SVG 的 <g> 或 Photoshop 的图层对象，可以直接增删改查。」？ 「把“图层”理解成 canvas 的某个 API，比如 ctx.createLayer()，实际上不存在。」在真实项目中应如何规避？
 
@@ -6422,7 +8590,11 @@ undefined：变量声明后未赋值、函数没有 return、访问对象不存�
 
 undefined 表示“声明了但未赋值/访问不到”，null 表示“主动赋的空值”，二者类型不同、语义不同。
 
-在 JavaScript 中，undefined 和 null 都表示“没有值”，但来源和语义不同。 1) 语义与来源 - undefined：变量声明后未赋值、函数没有 return、访问对象不存在的属性、函数调用少传参数时，引擎自动给出的“缺失”状态。它是“系统默认的未定义”。 - null：开发者主动赋值的“空值”，表示“这里有意置空”，例如 let user = null，表示当前没有用户对象。 通俗类比：undefined 像快递单上“收件人信息还没填”，是系统默认的空；null 像你主动在表格里写“无”，表示你明确知道这里应该为空。 2) 类型与判断 - typeof undefined === 'undefined' - typeof null === 'object'（历史遗留 bug，早期用低位标签表示类型，null 的标签为 000，与对象相同） - null == undefined 为 true（宽松相等只比较值且都转为“无”），但 null === undefined 为 false。 3) 使用场景 - 变量声明后暂时没有值，通常保持 undefined，不必手动赋值。 - 需要明确表示“空对象/无结果”时用 null，例如接口返回 data: null。 - JSON.stringify 会忽略对象中值为 undefined 的属性，但保留 null；JSON 标准也不支持 undefined。 - 可选链 obj?.a 和默认参数等场景中，undefined 会触发默认值，null 不会。 4) 实践建议 - 统一约定：只用一种表示空值，通常推荐 null 表示业务空值，undefined 交给引擎。 - 判断时优先用 === null 或 === undefined，或 value == null 同时判断两者。
+在 JavaScript 中，undefined 和 null 都表示“没有值”，但来源和语义不同。 1) 语义与来源
+
+- undefined：变量声明后未赋值、函数没有 return、访问对象不存在的属性、函数调用少传参数时，引擎自动给出的“缺失”状态。它是“系统默认的未定义”。
+- null：开发者主动赋值的“空值”，表示“这里有意置空”，例如 let user = null，表示当前没有用户对象。 通俗类比：undefined 像快递单上“收件人信息还没填”，是系统默认的空；null 像你主动在表格里写“无”，表示你明确知道这里应该为空。 2) 类型与判断 - typeof undefined === 'undefined' - typeof null === 'object'（历史遗留 bug，早期用低位标签表示类型，null 的标签为 000，与对象相同） - null == undefined 为 true（宽松相等只比较值且都转为“无”），但 null === undefined 为 false。 3) 使用场景 - 变量声明后暂时没有值，通常保持 undefined，不必手动赋值。 - 需要明确表示“空对象/无结果”时用 null，例如接口返回 data: null。 - JSON.stringify 会忽略对象中值为 undefined 的属性，但保留 null；JSON 标准也不支持 undefined。 - 可选链 obj?.a 和默认参数等场景中，undefined 会触发默认值，null 不会。 4) 实践建议
+- 统一约定：只用一种表示空值，通常推荐 null 表示业务空值，undefined 交给引擎。 - 判断时优先用 === null 或 === undefined，或 value == null 同时判断两者。
 
 **常见追问**：如何避免「1) 认为 null 和 undefined 完全一样，可以随意互换」？ 「2) 认为 typeof null 返回 'null'，实际是 'object'」在真实项目中应如何规避？
 
@@ -6444,7 +8616,14 @@ undefined 表示“声明了但未赋值/访问不到”，null 表示“主动�
 
 登录态持久化就是把服务端签发的凭证（通常是 sessionId 或 token）通过 Cookie 存到浏览器，并给 Cookie 设置合理的过期时间（Expires/Max-Age），让用户关掉浏览器再打开仍处于登录状态。
 
-核心原理：HTTP 是无状态协议，服务端要识别“你是谁”，就得在客户端存一个凭证，每次请求带上。常见两种做法： 1）Session + Cookie：登录成功后服务端生成 sessionId 存到 Redis/内存，通过 Set-Cookie 下发给浏览器，浏览器后续请求自动带上 Cookie。默认不设过期时间是会话 Cookie，关浏览器就没了；要持久化就设置 Expires 或 Max-Age，比如 Max-Age=604800 表示 7 天。 2）Token（JWT 等）：服务端签发带过期时间（exp）的 token，同样可以放到 Cookie 里，或者放 localStorage 由前端手动带在 Authorization 头。 设置 Cookie 过期时间的方式： - 服务端：Set-Cookie: sid=xxx; Max-Age=604800; Path=/; HttpOnly; Secure; SameSite=Lax - 前端：document.cookie = 'sid=xxx; max-age=604800; path=/'（但 HttpOnly 的 Cookie 前端读不到，也更安全） 通俗类比：Cookie 像一张游乐园手环，Max-Age 就是手环的有效期。不写有效期就是“当天有效，出园作废”；写了 7 天，7 天内再来还能直接进。 适用场景与取舍： - 需要“记住我”的登录，用长过期时间（7 天/30 天）； - 敏感操作（支付、改密码）应要求重新认证，不能只靠长 Cookie； - 安全上要配合 HttpOnly（防 XSS 读取）、Secure（仅 HTTPS）、SameSite（防 CSRF）； - 服务端 session 也要设 TTL，并做滑动续期（每次请求刷新过期时间），否则 Cookie 没过期但服务端 session 先失效，用户还是掉线。
+核心原理：HTTP 是无状态协议，服务端要识别“你是谁”，就得在客户端存一个凭证，每次请求带上。常见两种做法： 1）Session + Cookie：登录成功后服务端生成 sessionId 存到 Redis/内存，通过 Set-Cookie 下发给浏览器，浏览器后续请求自动带上 Cookie。
+
+默认不设过期时间是会话 Cookie，关浏览器就没了；要持久化就设置 Expires 或 Max-Age，比如 Max-Age=604800 表示 7 天。 2）Token（JWT 等）：服务端签发带过期时间（exp）的 token，同样可以放到 Cookie 里，或者放 localStorage 由前端手动带在 Authorization 头。
+
+设置 Cookie 过期时间的方式：
+
+- 服务端：Set-Cookie: sid=xxx; Max-Age=604800; Path=/; HttpOnly; Secure; SameSite=Lax
+- 前端：document.cookie = 'sid=xxx; max-age=604800; path=/'（但 HttpOnly 的 Cookie 前端读不到，也更安全） 通俗类比：Cookie 像一张游乐园手环，Max-Age 就是手环的有效期。不写有效期就是“当天有效，出园作废”；写了 7 天，7 天内再来还能直接进。 适用场景与取舍： - 需要“记住我”的登录，用长过期时间（7 天/30 天）； - 敏感操作（支付、改密码）应要求重新认证，不能只靠长 Cookie； - 安全上要配合 HttpOnly（防 XSS 读取）、Secure（仅 HTTPS）、SameSite（防 CSRF）； - 服务端 session 也要设 TTL，并做滑动续期（每次请求刷新过期时间），否则 Cookie 没过期但服务端 session 先失效，用户还是掉线。
 
 **常见追问**：如何避免「1）只说“设置 cookie 过期时间”就完事，忽略服务端 session/token 自身的过期与续期，导致 Cookie 还在但登录态已失效」？ 「2）把 token 存 localStorage 还声称安全，忽略 XSS 风险」在真实项目中应如何规避？
 
@@ -6466,7 +8645,17 @@ undefined 表示“声明了但未赋值/访问不到”，null 表示“主动�
 
 JSONP 利用 <script> 标签不受同源策略限制的特性，通过动态插入 script 请求跨域接口，服务端返回一段调用前端预定义回调函数的 JS 代码，从而把数据'当代码'传回来。
 
-原理拆解： 1) 同源策略限制的是 XHR/fetch 的响应读取，但 <script>、<img>、<link> 等标签可以跨域加载资源，这是 JSONP 的立足点。 2) 前端流程：先全局注册一个回调函数，例如 window.cb = function(data){...}；然后动态创建 <script src="http://api.com/user?callback=cb"> 插入文档。 3) 服务端流程：识别 callback 参数，把数据包成 JS 调用语句返回，Content-Type 通常是 application/javascript，响应体形如：cb({"name":"tom","age":18}); 4) 浏览器把这段响应当脚本执行，于是 cb 被调用，数据以参数形式进入前端逻辑，实现跨域取数。 5) 收尾：执行完通常移除 script 标签、清理全局回调，避免污染和内存泄漏。 通俗类比：同源策略像小区门禁不让外人进你家（XHR 读不到别家数据），但允许邮递员往你家信箱塞信件（script 可跨域加载）。JSONP 就是让对面把数据写成'一封信+一句指令：请执行 cb(内容)'，你收到后照做，数据就到手了。 关键约束：只支持 GET（script 只能发 GET）；需要服务端配合返回可执行 JS；回调名要可约定。 适用场景：老系统、需要兼容 IE、第三方只提供 JSONP 接口时。现代项目优先 CORS，跨域且需要 POST/自定义头/错误码时 JSONP 无能为力。
+原理拆解：
+
+1) 同源策略限制的是 XHR/fetch 的响应读取，但 <script>、<img>、<link> 等标签可以跨域加载资源，这是 JSONP 的立足点。
+2) 前端流程：先全局注册一个回调函数，例如 window.cb = function(data){...}；然后动态创建 <script src="http://api.com/user?callback=cb"> 插入文档。
+3) 服务端流程：识别 callback 参数，把数据包成 JS 调用语句返回，Content-Type 通常是 application/javascript，响应体形如：cb({"name":"tom","age":18});
+4) 浏览器把这段响应当脚本执行，于是 cb 被调用，数据以参数形式进入前端逻辑，实现跨域取数。
+5) 收尾：执行完通常移除 script 标签、清理全局回调，避免污染和内存泄漏。
+
+通俗类比：同源策略像小区门禁不让外人进你家（XHR 读不到别家数据），但允许邮递员往你家信箱塞信件（script 可跨域加载）。JSONP 就是让对面把数据写成'一封信+一句指令：请执行 cb(内容)'，你收到后照做，数据就到手了。 关键约束：只支持 GET（script 只能发 GET）；需要服务端配合返回可执行 JS；回调名要可约定。
+
+适用场景：老系统、需要兼容 IE、第三方只提供 JSONP 接口时。现代项目优先 CORS，跨域且需要 POST/自定义头/错误码时 JSONP 无能为力。
 
 **常见追问**：如何避免「1) 误以为 JSONP 是 AJAX/XHR 的一种，其实它根本不走 XHR，是脚本加载」？ 「2) 以为 JSONP 能发 POST 或自定义请求头——不能，script 只支持 GET」在真实项目中应如何规避？
 
@@ -6488,7 +8677,29 @@ JSONP 利用 <script> 标签不受同源策略限制的特性，通过动态插�
 
 登录 Cookie 本质是服务端下发的会话凭证（通常是 Session ID 或 JWT），浏览器按域名自动存储并在后续请求中通过 Cookie 请求头回传，服务端据此识别用户身份。
 
-一、基本流程 1. 用户提交账号密码，服务端校验通过后创建会话（Session），生成一个不可猜测的随机 ID（如 32 字节随机串），把用户信息存到服务端存储（内存/Redis/数据库）。 2. 服务端在响应里设置 Set-Cookie 头，例如： Set-Cookie: SESSIONID=abc123; Path=/; Domain=.example.com; Max-Age=3600; HttpOnly; Secure; SameSite=Lax 3. 浏览器收到后按 (domain, path) 维度把 Cookie 存到本地 Cookie 存储（Chrome 存在 SQLite 的 Cookies 文件里，加密保存）。 4. 之后同域请求浏览器自动带上 Cookie: SESSIONID=abc123，服务端解析后查会话，得到用户身份。 二、关键属性 - Domain/Path：决定 Cookie 发给哪些域名和路径，Domain 不能跨顶级域，防止越权。 - Expires/Max-Age：会话 Cookie（不设过期，关浏览器即失效）vs 持久 Cookie。 - HttpOnly：禁止 JS 通过 document.cookie 读取，防 XSS 窃取。 - Secure：只在 HTTPS 下发送，防中间人窃听。 - SameSite=Strict/Lax/None：防 CSRF，None 必须配合 Secure。 三、两种主流存法 1. 有状态：Cookie 只存 Session ID，用户数据在服务端。优点是可随时踢人、撤销；缺点是服务端要存会话，分布式需 Redis 等共享存储。 2. 无状态：Cookie 存 JWT（自包含用户信息和签名）。优点是服务端不存状态、易水平扩展；缺点是难以主动失效、体积大、需注意签名算法和过期。 四、通俗类比 Cookie 就像游乐园手环：进门验票后工作人员给你戴一个手环（Set-Cookie），之后玩每个项目只要亮手环（自动带 Cookie），工作人员看手环编号去系统里查你是谁（查 Session），不用每次重新验票。
+**一、基本流程**
+
+1. 用户提交账号密码，服务端校验通过后创建会话（Session），生成一个不可猜测的随机 ID（如 32 字节随机串），把用户信息存到服务端存储（内存/Redis/数据库）。
+2. 服务端在响应里设置 Set-Cookie 头，例如： Set-Cookie: SESSIONID=abc123; Path=/; Domain=.example.com; Max-Age=3600; HttpOnly; Secure; SameSite=Lax
+3. 浏览器收到后按 (domain, path) 维度把 Cookie 存到本地 Cookie 存储（Chrome 存在 SQLite 的 Cookies 文件里，加密保存）。
+4. 之后同域请求浏览器自动带上 Cookie: SESSIONID=abc123，服务端解析后查会话，得到用户身份。
+
+**二、关键属性**
+
+- Domain/Path：决定 Cookie 发给哪些域名和路径，Domain 不能跨顶级域，防止越权。
+- Expires/Max-Age：会话 Cookie（不设过期，关浏览器即失效）vs 持久 Cookie。
+- HttpOnly：禁止 JS 通过 document.cookie 读取，防 XSS 窃取。
+- Secure：只在 HTTPS 下发送，防中间人窃听。
+- SameSite=Strict/Lax/None：防 CSRF，None 必须配合 Secure。
+
+**三、两种主流存法**
+
+1. 有状态：Cookie 只存 Session ID，用户数据在服务端。优点是可随时踢人、撤销；缺点是服务端要存会话，分布式需 Redis 等共享存储。
+2. 无状态：Cookie 存 JWT（自包含用户信息和签名）。优点是服务端不存状态、易水平扩展；缺点是难以主动失效、体积大、需注意签名算法和过期。
+
+**四、通俗类比**
+
+Cookie 就像游乐园手环：进门验票后工作人员给你戴一个手环（Set-Cookie），之后玩每个项目只要亮手环（自动带 Cookie），工作人员看手环编号去系统里查你是谁（查 Session），不用每次重新验票。
 
 **常见追问**：如何避免「误以为 Cookie 存的是密码或明文用户信息——实际存的是随机 Session ID 或签名 token。」？ 「混淆 Cookie 与 Session：Cookie 是浏览器存储/传输机制，Session 是服务端会话状态，二者常配合但不等同。」在真实项目中应如何规避？
 
@@ -6510,7 +8721,18 @@ Origin: 当前页面源；Access-Control-Request-Method: 实际要用的方法�
 
 跨域请求要携带自定义 header，必须由服务端在 CORS 预检响应中通过 Access-Control-Allow-Headers 明确放行，前端只能设置允许范围内的请求头，不能靠前端单方面绕过浏览器同源策略。
 
-浏览器同源策略规定：协议、域名、端口三者完全相同才算同源，否则发起的 XHR/fetch 就是跨域请求。跨域请求分两类： 1）简单请求：方法为 GET/HEAD/POST，且请求头只包含 Accept、Accept-Language、Content-Language、Content-Type（且值只能是 application/x-www-form-urlencoded、multipart/form-data、text/plain）等安全头。此时浏览器直接发送请求，服务端返回 Access-Control-Allow-Origin 即可。 2）非简单请求：只要带了自定义 header（如 Authorization、X-Token、X-Request-Id），或 Content-Type 为 application/json，或用了 PUT/DELETE 等方法，浏览器就会先发一个 OPTIONS 预检请求（preflight）。预检请求会带上： - Origin: 当前页面源 - Access-Control-Request-Method: 实际要用的方法 - Access-Control-Request-Headers: 实际要带的 header 列表 服务端必须在预检响应里返回： - Access-Control-Allow-Origin: 具体源或 *（带凭证时不能为 *） - Access-Control-Allow-Methods: 允许的方法 - Access-Control-Allow-Headers: 允许的请求头，必须包含前端要用的自定义头 - Access-Control-Max-Age: 预检结果缓存秒数，减少 OPTIONS 次数 - 若带 Cookie，还需 Access-Control-Allow-Credentials: true，且前端 fetch 要设 credentials: 'include'，xhr 设 withCredentials=true 通俗类比：同源策略像小区门禁，只认本小区业主。跨域请求像访客要进小区，浏览器是保安。简单请求相当于访客只带身份证，保安直接放行，但物业（服务端）要在门口贴告示允许访客进入。带自定义 header 相当于访客要带工具箱，保安必须先打电话问物业（OPTIONS 预检）：“他带工具箱能进吗？”物业回复“可以，工具箱放行”（Access-Control-Allow-Headers），保安才让实际请求进去。前端自己改 header 没用，因为保安只听物业的。 实际配置示例（Nginx）： add_header Access-Control-Allow-Origin $http_origin always; add_header Access-Control-Allow-Methods 'GET,POST,PUT,DELETE,OPTIONS' always; add_header Access-Control-Allow-Headers 'Content-Type,Authorization,X-Token' always; add_header Access-Control-Allow-Credentials 'true' always; if ($request_method = OPTIONS) { return 204; } Spring Boot 可用 @CrossOrigin 或 WebMvcConfigurer.addCorsMappings 配置 allowedHeaders。 适用场景：前后端分离、微服务网关、第三方开放 API、CDN 静态资源调用后端接口等。
+浏览器同源策略规定：协议、域名、端口三者完全相同才算同源，否则发起的 XHR/fetch 就是跨域请求。跨域请求分两类：
+
+- 1）简单请求：方法为 GET/HEAD/POST，且请求头只包含 Accept、Accept-Language、Content-Language、Content-Type（且值只能是 application/x-www-form-urlencoded、multipart/form-data、text/plain）等安全头。此时浏览器直接发送请求，服务端返回 Access-Control-Allow-Origin 即可。
+- 2）非简单请求：只要带了自定义 header（如 Authorization、X-Token、X-Request-Id），或 Content-Type 为 application/json，或用了 PUT/DELETE 等方法，浏览器就会先发一个 OPTIONS 预检请求（preflight）。预检请求会带上：
+
+- Origin: 当前页面源
+- Access-Control-Request-Method: 实际要用的方法
+- Access-Control-Request-Headers: 实际要带的 header 列表 服务端必须在预检响应里返回：
+- Access-Control-Allow-Origin: 具体源或 *（带凭证时不能为 *）
+- Access-Control-Allow-Methods: 允许的方法
+- Access-Control-Allow-Headers: 允许的请求头，必须包含前端要用的自定义头
+- Access-Control-Max-Age: 预检结果缓存秒数，减少 OPTIONS 次数 - 若带 Cookie，还需 Access-Control-Allow-Credentials: true，且前端 fetch 要设 credentials: 'include'，xhr 设 withCredentials=true 通俗类比：同源策略像小区门禁，只认本小区业主。跨域请求像访客要进小区，浏览器是保安。简单请求相当于访客只带身份证，保安直接放行，但物业（服务端）要在门口贴告示允许访客进入。带自定义 header 相当于访客要带工具箱，保安必须先打电话问物业（OPTIONS 预检）：“他带工具箱能进吗？”物业回复“可以，工具箱放行”（Access-Control-Allow-Headers），保安才让实际请求进去。前端自己改 header 没用，因为保安只听物业的。 实际配置示例（Nginx）： add_header Access-Control-Allow-Origin $http_origin always; add_header Access-Control-Allow-Methods 'GET,POST,PUT,DELETE,OPTIONS' always; add_header Access-Control-Allow-Headers 'Content-Type,Authorization,X-Token' always; add_header Access-Control-Allow-Credentials 'true' always; if ($request_method = OPTIONS) { return 204; } Spring Boot 可用 @CrossOrigin 或 WebMvcConfigurer.addCorsMappings 配置 allowedHeaders。 适用场景：前后端分离、微服务网关、第三方开放 API、CDN 静态资源调用后端接口等。
 
 **常见追问**：如何避免「1）以为前端设置 header 就能解决跨域，忽略服务端必须返回 Access-Control-Allow-Headers」？ 「2）把 Access-Control-Allow-Origin 写成 * 同时又要带 Cookie，浏览器会直接拒绝」在真实项目中应如何规避？
 
@@ -6532,7 +8754,15 @@ Origin: 当前页面源；Access-Control-Request-Method: 实际要用的方法�
 
 Axios 通过内部维护的拦截器数组（request/response 各一个）在请求真正发出前和响应返回后按顺序执行用户注册的拦截器，本质是 Promise 链式调用。
 
-Axios 的拦截器实现可以拆成三部分： 1. 存储结构：Axios 实例内部有 interceptors.request 和 interceptors.response 两个 InterceptorManager 对象，每个对象里有一个 handlers 数组，用来保存用户通过 use 注册的 {fulfilled, rejected} 对。 2. 注册与移除：axios.interceptors.request.use(onFulfilled, onRejected) 会把这对回调 push 进数组，并返回一个 id；eject(id) 会把对应位置置为 null，从而移除拦截器。 3. 执行流程：真正发请求时，Axios 会构造一条 Promise 链。请求拦截器按“后注册先执行”的顺序（unshift 到链头）插入，响应拦截器按“先注册先执行”的顺序（push 到链尾）插入。最终形成类似： Promise.resolve(config) .then(requestInterceptor2.fulfilled, requestInterceptor2.rejected) .then(requestInterceptor1.fulfilled, requestInterceptor1.rejected) .then(dispatchRequest) // 真正发请求 .then(responseInterceptor1.fulfilled, responseInterceptor1.rejected) .then(responseInterceptor2.fulfilled, responseInterceptor2.rejected) 其中 dispatchRequest 负责调用适配器（xhr 或 http）发请求。 通俗类比：请求拦截器像寄快递前的一排打包台，后放上去的包裹先被处理；响应拦截器像收快递后的一排拆包台，先到的先拆。 适用场景：统一加 token、统一处理 loading、统一错误提示、统一刷新 token、统一转换响应数据等。
+Axios 的拦截器实现可以拆成三部分：
+
+1. 存储结构：Axios 实例内部有 interceptors.request 和 interceptors.response 两个 InterceptorManager 对象，每个对象里有一个 handlers 数组，用来保存用户通过 use 注册的 {fulfilled, rejected} 对。
+2. 注册与移除：axios.interceptors.request.use(onFulfilled, onRejected) 会把这对回调 push 进数组，并返回一个 id；eject(id) 会把对应位置置为 null，从而移除拦截器。
+3. 执行流程：真正发请求时，Axios 会构造一条 Promise 链。请求拦截器按“后注册先执行”的顺序（unshift 到链头）插入，响应拦截器按“先注册先执行”的顺序（push 到链尾）插入。最终形成类似： Promise.resolve(config) .then(requestInterceptor2.fulfilled, requestInterceptor2.rejected) .then(requestInterceptor1.fulfilled, requestInterceptor1.rejected) .then(dispatchRequest) // 真正发请求 .then(responseInterceptor1.fulfilled, responseInterceptor1.rejected) .then(responseInterceptor2.fulfilled, responseInterceptor2.rejected) 其中 dispatchRequest 负责调用适配器（xhr 或 http）发请求。
+
+通俗类比：请求拦截器像寄快递前的一排打包台，后放上去的包裹先被处理；响应拦截器像收快递后的一排拆包台，先到的先拆。
+
+适用场景：统一加 token、统一处理 loading、统一错误提示、统一刷新 token、统一转换响应数据等。
 
 **常见追问**：如何避免「误以为请求拦截器按注册顺序执行，实际是后注册先执行。」？ 「误以为拦截器是同步的，实际上整条链是 Promise，异步拦截器必须 return Promise 才会等待。」在真实项目中应如何规避？
 
@@ -6554,7 +8784,17 @@ then(onFulfilled, onRejected) 返回新 Promise，新 Promise 的状态由回调
 
 可以，Promise 通过 then/catch/finally 返回新 Promise 实现串联，形成链式调用，解决回调地狱并统一错误处理。
 
-Promise 可以串联，核心在于 then、catch、finally 每次调用都会返回一个新的 Promise，而不是原来的 Promise。这样就能把多个异步操作按顺序串起来。 原理： 1. then(onFulfilled, onRejected) 返回新 Promise，新 Promise 的状态由回调的返回值决定。 2. 如果回调返回普通值，新 Promise 以该值 fulfilled。 3. 如果回调返回 Promise，新 Promise 会等待这个 Promise 落定，并采用它的状态和值。 4. 如果回调抛错，新 Promise 以该错误 rejected。 5. 如果 then 没有传对应回调，状态和值会透传到下一个 then。 例子： ```js Promise.resolve(1) .then(v => v + 1) // 返回 2 .then(v => Promise.resolve(v * 2)) // 等待，返回 4 .then(v => { throw new Error('boom') }) .catch(e => { console.log(e.message); return 0 }) .then(v => console.log(v)); // 0 ``` 通俗类比：Promise 链像流水线，每个 then 是一个工位，上一个工位的产出交给下一个工位；如果某个工位出错，会跳到 catch 这个质检工位，之后还能继续往下走。 适用场景：多个有依赖顺序的异步操作，比如先请求用户信息，再根据用户 id 请求订单，再根据订单 id 请求详情；也适合统一错误处理。
+Promise 可以串联，核心在于 then、catch、finally 每次调用都会返回一个新的 Promise，而不是原来的 Promise。这样就能把多个异步操作按顺序串起来。 原理：
+
+1. then(onFulfilled, onRejected) 返回新 Promise，新 Promise 的状态由回调的返回值决定。
+2. 如果回调返回普通值，新 Promise 以该值 fulfilled。
+3. 如果回调返回 Promise，新 Promise 会等待这个 Promise 落定，并采用它的状态和值。
+4. 如果回调抛错，新 Promise 以该错误 rejected。
+5. 如果 then 没有传对应回调，状态和值会透传到下一个 then。
+
+例子： ```js Promise.resolve(1) .then(v => v + 1) // 返回 2 .then(v => Promise.resolve(v * 2)) // 等待，返回 4 .then(v => { throw new Error('boom') }) .catch(e => { console.log(e.message); return 0 }) .then(v => console.log(v)); // 0 ``` 通俗类比：Promise 链像流水线，每个 then 是一个工位，上一个工位的产出交给下一个工位；如果某个工位出错，会跳到 catch 这个质检工位，之后还能继续往下走。
+
+适用场景：多个有依赖顺序的异步操作，比如先请求用户信息，再根据用户 id 请求订单，再根据订单 id 请求详情；也适合统一错误处理。
 
 **常见追问**：如何避免「误以为 then 返回原 Promise，导致认为不能串联或状态会互相影响。」？ 「在 then 里忘记 return，导致下一个 then 拿到 undefined，链式数据传递断裂。」在真实项目中应如何规避？
 
@@ -6576,7 +8816,43 @@ Promise 可以串联，核心在于 then、catch、finally 每次调用都会返
 
 移动端适配的核心是让页面在不同尺寸/DPR/视口下保持一致的视觉与交互体验，主流手段是 viewport 元标签 + 媒体查询 + flex 弹性布局 + rem/vw 动态根字号。
 
-一、先理解三个基础概念： 1) 视口(viewport)：移动浏览器默认有一个 layout viewport（通常 980px 宽，为了让 PC 页面能塞下），还有 visual viewport（用户实际看到的区域）。不加 meta 时页面会被缩小显示，字很小。 2) 设备像素比 DPR = 物理像素 / CSS 像素。iPhone 的 DPR 常见 2 或 3，所以 1px 的 CSS 边框在物理上占 2~3 个像素，这就是 1px 边框问题和图片模糊问题的根源。 3) CSS 像素：布局计算用的逻辑单位，与设备无关。 二、viewport meta： <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"> width=device-width 让 layout viewport 等于设备宽度（CSS 像素），initial-scale=1 保证不缩放。这是所有移动适配的前提。注意 user-scalable=no 会伤害可访问性，iOS 上还可能被忽略，现代实践更推荐只写 width=device-width, initial-scale=1。 三、媒体查询： @media (max-width: 768px) { ... } 根据视口宽度/高度/分辨率/横竖屏切换样式。适合做断点式的响应式布局（如 PC 三栏、平板两栏、手机一栏）。缺点是断点之间是离散的，无法做到完全连续适配。 四、flex： display:flex 让子元素按主轴/交叉轴弹性分配空间，flex:1 表示可伸缩。它解决的是“容器内元素如何按比例/内容自适应排布”，是布局层面的适配，与屏幕尺寸无关，天然适合移动端一行多列、导航栏、卡片列表。 五、rem： rem 是相对于根元素 html 的 font-size。做法是：用 JS 或 CSS 根据视口宽度动态设置 html 的 font-size，例如设计稿 750px 宽、以 100px 为基准，则 html.fontSize = clientWidth / 7.5，然后所有尺寸写 rem。这样整个页面随屏幕等比缩放。 六、vw/vh： 1vw = 视口宽度的 1%。可以直接用 vw 做等比缩放，无需 JS，例如 font-size: calc(100vw / 7.5)。配合 clamp() 可限制最大最小值，避免大屏字过大。 七、选型建议： - 简单活动页/需要严格等比还原设计稿：rem 或 vw。 - 后台/内容型页面：媒体查询 + flex/grid 做响应式。 - 现代项目：优先 flex/grid + 媒体查询 + clamp()，rem 用于字号体系，vw 用于少量全屏元素。 通俗类比：viewport 是“画布尺寸”，媒体查询是“按房间大小换家具摆放方案”，flex 是“家具之间自动分空间”，rem 是“所有家具按同一个比例尺缩放”。
+**一、先理解三个基础概念：**
+
+1) 视口(viewport)：移动浏览器默认有一个 layout viewport（通常 980px 宽，为了让 PC 页面能塞下），还有 visual viewport（用户实际看到的区域）。不加 meta 时页面会被缩小显示，字很小。
+2) 设备像素比 DPR = 物理像素 / CSS 像素。iPhone 的 DPR 常见 2 或 3，所以 1px 的 CSS 边框在物理上占 2~3 个像素，这就是 1px 边框问题和图片模糊问题的根源。
+3) CSS 像素：布局计算用的逻辑单位，与设备无关。
+
+**二、viewport**
+
+meta： <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"> width=device-width 让 layout viewport 等于设备宽度（CSS 像素），initial-scale=1 保证不缩放。
+
+这是所有移动适配的前提。
+
+注意 user-scalable=no 会伤害可访问性，iOS 上还可能被忽略，现代实践更推荐只写 width=device-width, initial-scale=1。
+
+**三、媒体查询：**
+
+@media (max-width: 768px) { ... } 根据视口宽度/高度/分辨率/横竖屏切换样式。适合做断点式的响应式布局（如 PC 三栏、平板两栏、手机一栏）。缺点是断点之间是离散的，无法做到完全连续适配。
+
+**四、flex：**
+
+display:flex 让子元素按主轴/交叉轴弹性分配空间，flex:1 表示可伸缩。它解决的是“容器内元素如何按比例/内容自适应排布”，是布局层面的适配，与屏幕尺寸无关，天然适合移动端一行多列、导航栏、卡片列表。
+
+**五、rem：**
+
+rem 是相对于根元素 html 的 font-size。做法是：用 JS 或 CSS 根据视口宽度动态设置 html 的 font-size，例如设计稿 750px 宽、以 100px 为基准，则 html.fontSize = clientWidth / 7.5，然后所有尺寸写 rem。
+
+这样整个页面随屏幕等比缩放。
+
+**六、vw/vh：**
+
+1vw = 视口宽度的 1%。可以直接用 vw 做等比缩放，无需 JS，例如 font-size: calc(100vw / 7.5)。配合 clamp() 可限制最大最小值，避免大屏字过大。
+
+**七、选型建议：**
+
+- 简单活动页/需要严格等比还原设计稿：rem 或 vw。
+- 后台/内容型页面：媒体查询 + flex/grid 做响应式。
+- 现代项目：优先 flex/grid + 媒体查询 + clamp()，rem 用于字号体系，vw 用于少量全屏元素。 通俗类比：viewport 是“画布尺寸”，媒体查询是“按房间大小换家具摆放方案”，flex 是“家具之间自动分空间”，rem 是“所有家具按同一个比例尺缩放”。
 
 **常见追问**：如何避免「1) 只写媒体查询不做 viewport，导致移动端整体被缩小，是新手最常见错误」？ 「2) 认为 rem 是“相对父元素”，实际是相对根元素 html」在真实项目中应如何规避？
 
@@ -6598,7 +8874,20 @@ Promise 可以串联，核心在于 then、catch、finally 每次调用都会返
 
 绝对居中不止 flex、text-align、padding:auto，还有绝对定位+translate(-50%,-50%)、grid place-items、line-height、table-cell、margin:auto 等，核心是让元素在父容器中水平垂直都居中。
 
-“所有绝对居中的实现”要分场景看： 1) Flex：父容器 display:flex; justify-content:center; align-items:center; 最通用，适合未知宽高。 2) Grid：display:grid; place-items:center; 一行搞定，现代浏览器支持好。 3) 绝对定位 + transform：父 relative，子 position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); 适合脱离文档流、覆盖层、弹窗。 4) 绝对定位 + margin:auto：子 position:absolute; inset:0; margin:auto; 需要子元素有确定宽高，否则会拉伸。 5) 文本水平居中：text-align:center；单行文本垂直居中：line-height 等于容器高度。 6) 表格布局：display:table-cell; vertical-align:middle; text-align:center; 兼容老浏览器。 7) padding:auto 其实不是标准居中方案，auto 在 padding 上不生效（padding 不接受 auto），常见的是 margin:auto 配合固定宽高做水平居中，垂直居中需要绝对定位或 flex。 8) 行内块/图片：父容器 text-align:center + 子 vertical-align:middle，或给父容器设置 line-height。 通俗类比：把父容器想成一个房间，flex/grid 是“房间自动把家具摆中间”；绝对定位+translate 是“先让家具左上角对准房间中心，再往回拉自身一半”；margin:auto 是“左右自动分剩余空间”，但垂直方向默认不分配，所以常要配合绝对定位。
+“所有绝对居中的实现”要分场景看：
+
+1) Flex：父容器 display:flex; justify-content:center; align-items:center; 最通用，适合未知宽高。
+2) Grid：display:grid; place-items:center; 一行搞定，现代浏览器支持好。
+3) 绝对定位 + transform：父 relative，子 position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); 适合脱离文档流、覆盖层、弹窗。
+4) 绝对定位 + margin:auto：子 position:absolute; inset:0; margin:auto; 需要子元素有确定宽高，否则会拉伸。
+5) 文本水平居中：text-align:center；单行文本垂直居中：line-height 等于容器高度。
+6) 表格布局：display:table-cell; vertical-align:middle; text-align:center; 兼容老浏览器。
+7) padding:auto 其实不是标准居中方案，auto 在 padding 上不生效（padding 不接受 auto），常见的是 margin:auto 配合固定宽高做水平居中，垂直居中需要绝对定位或 flex。
+8) 行内块/图片：父容器 text-align:center + 子 vertical-align:middle，或给父容器设置 line-height。
+
+- 通俗类比：把父容器想成一个房间，flex/grid 是“房间自动把家具摆中间”；
+- 绝对定位+translate 是“先让家具左上角对准房间中心，再往回拉自身一半”；
+- margin:auto 是“左右自动分剩余空间”，但垂直方向默认不分配，所以常要配合绝对定位。
 
 **常见追问**：如何避免「把 padding:auto 当成有效居中方式，实际上 padding 不接受 auto；」？ 「只答 flex 和 text-align，漏掉 translate、grid、margin:auto、line-height、table-cell；」在真实项目中应如何规避？
 
@@ -6620,7 +8909,13 @@ Promise 可以串联，核心在于 then、catch、finally 每次调用都会返
 
 动态路由丢失的本质是路由表未持久化，需在应用初始化时根据用户权限重新注册路由，而不是只依赖登录时的内存状态。
 
-动态路由通常指前端根据后端返回的权限菜单，在运行时通过 router.addRoute（Vue Router）或动态生成 RouteObject（React Router）注册的路由。刷新页面后，整个 JS 运行时重新初始化，内存中的路由表被清空，所以会出现 404 或白屏。 处理思路分三步： 1. 持久化权限来源：登录后把 token 存 localStorage/cookie，把用户角色或权限码存 store 并持久化，或每次刷新重新拉取用户信息。 2. 在路由守卫中拦截：在 router.beforeEach 里判断是否已加载动态路由。若未加载，先调用 getUserInfo / getMenuList 接口拿到权限菜单，再动态 addRoute，最后用 next({ ...to, replace: true }) 重新进入目标路由，避免第一次匹配不到。 3. 兜底与重置：退出登录时移除动态路由（Vue Router 3 用 resetRouter 重建 matcher，Vue Router 4 可记录 removeRoute 句柄），防止权限串号；对 404 通配路由要最后注册，否则会抢先匹配。 通俗类比：动态路由像公司门禁卡，登录只是发卡，刷新相当于重新进大楼，必须再刷一次卡（重新拉权限）才能进对应楼层，不能只靠上次的记忆。
+动态路由通常指前端根据后端返回的权限菜单，在运行时通过 router.addRoute（Vue Router）或动态生成 RouteObject（React Router）注册的路由。刷新页面后，整个 JS 运行时重新初始化，内存中的路由表被清空，所以会出现 404 或白屏。 处理思路分三步：
+
+1. 持久化权限来源：登录后把 token 存 localStorage/cookie，把用户角色或权限码存 store 并持久化，或每次刷新重新拉取用户信息。
+2. 在路由守卫中拦截：在 router.beforeEach 里判断是否已加载动态路由。若未加载，先调用 getUserInfo / getMenuList 接口拿到权限菜单，再动态 addRoute，最后用 next({ ...to, replace: true }) 重新进入目标路由，避免第一次匹配不到。
+3. 兜底与重置：退出登录时移除动态路由（Vue Router 3 用 resetRouter 重建 matcher，Vue Router 4 可记录 removeRoute 句柄），防止权限串号；对 404 通配路由要最后注册，否则会抢先匹配。
+
+通俗类比：动态路由像公司门禁卡，登录只是发卡，刷新相当于重新进大楼，必须再刷一次卡（重新拉权限）才能进对应楼层，不能只靠上次的记忆。
 
 **常见追问**：如何避免「只在登录成功后 addRoute，刷新后不做任何恢复，导致 404。2. 在 beforeEach 里直接 next() 而不重新导航，导致首次仍匹配不到。3. 把 404 通配路由写在动态路由之前，导致所有动态路由被通配拦截。4. 退出登录只清 token 不重置路由表，切换账号后权限串号。5. 把权限菜单整个存 localStorage 并直接信任，存在被篡改风险，应以接口返回为准。」？ 能否结合「Vue Router 4 的 addRoute 返回移除函数，可保存起来在登出时精确 removeRoute，比 Vue Router 3 的 resetRouter 重建 matcher 更优雅。2. 用 next({ ...to, replace: true }) 而不是 next()，是因为 addRoute 后当前导航已经匹配过，需要重新触发一次匹配；replace 避免历史记录多一条。3. 可结合路由 meta.requiresAuth 和权限码做细粒度控制，甚至用 pinia 持久化插件只存必要字段，避免 XSS 风险。4. 服务端渲染或微前端场景下，动态路由应在主应用注册子应用路由前完成，否则子应用刷新会丢。」进一步展开？
 
@@ -6642,7 +8937,26 @@ AntV X6 是蚂蚁金服开源的图编辑引擎，定位是“图的渲染与交
 
 AntV X6 是一个基于 SVG 的图编辑引擎，负责图的渲染、交互、布局与数据驱动更新；节点和边通过 JSON 结构描述，节点含 id、shape、position、size、attrs 等，边含 id、source、target、attrs 等，并可通过自定义 shape 扩展。
 
-AntV X6 是蚂蚁金服开源的图编辑引擎，定位是“图的渲染与交互框架”，不负责业务逻辑。它承担：1) 渲染：基于 SVG 绘制节点、边、标签，支持自定义节点/边；2) 交互：拖拽、连线、框选、缩放、平移、对齐线、快捷键等；3) 数据驱动：通过 graph.fromJSON(data) 和 graph.toJSON() 实现图数据与视图的双向同步；4) 布局：集成 Dagre、Force 等布局算法；5) 事件系统：节点/边/画布事件监听。 节点数据结构设计：通常用 JSON 对象表示，核心字段：id（唯一标识）、shape（节点形状，如 'rect'、'circle' 或自定义注册名）、x/y 或 position（位置）、width/height 或 size（尺寸）、label（文本）、attrs（属性，如 body 的 fill/stroke、label 的 fontSize）、ports（连接桩）、data（业务数据）、zIndex（层级）。例如：{ id: 'n1', shape: 'rect', x: 100, y: 100, width: 80, height: 40, label: '节点1', attrs: { body: { fill: '#fff', stroke: '#333' }, label: { fontSize: 12 } }, data: { type: 'user' } }。 边数据结构设计：核心字段：id、shape（如 'edge'、'double-edge' 或自定义）、source（起点，可为节点 id 或 { cell, port, x, y }）、target（终点，同 source）、vertices（折线点）、router（路由，如 'manhattan'、'orth'）、connector（连接器，如 'normal'、'rounded'）、labels（边标签）、attrs（线条样式）、data。例如：{ id: 'e1', shape: 'edge', source: 'n1', target: 'n2', router: 'manhattan', connector: 'rounded', attrs: { line: { stroke: '#999', strokeWidth: 2 } }, labels: [{ attrs: { text: { text: '连接' } } }] }。 设计原则：节点和边都是 Cell 的子类，共享 id、attrs、data 等基础字段；通过 shape 字段区分渲染器；attrs 采用嵌套对象，与 SVG 属性对应，便于自定义；source/target 支持多种形式，灵活表达连接关系。这种设计使得图数据可序列化、可持久化，并支持动态更新。
+AntV X6 是蚂蚁金服开源的图编辑引擎，定位是“图的渲染与交互框架”，不负责业务逻辑。它承担：
+
+1) 渲染：基于 SVG 绘制节点、边、标签，支持自定义节点/边；
+2) 交互：拖拽、连线、框选、缩放、平移、对齐线、快捷键等；
+3) 数据驱动：通过 graph.fromJSON(data) 和 graph.toJSON() 实现图数据与视图的双向同步；
+4) 布局：集成 Dagre、Force 等布局算法；
+5) 事件系统：节点/边/画布事件监听。 节点数据结构设计：通常用 JSON 对象表示，核心字段：id（唯一标识）、shape（节点形状，如 'rect'、'circle' 或自定义注册名）、x/y 或 position（位置）、width/height 或 size（尺寸）、label（文本）、attrs（属性，如 body 的 fill/stroke、label 的 fontSize）、ports（连接桩）、data（业务数据）、zIndex（层级）。
+
+例如：{ id: 'n1', shape: 'rect', x: 100, y: 100, width: 80, height: 40, label: '节点1', attrs: { body: { fill: '#fff', stroke: '#333' }, label: { fontSize: 12 } }, data: { type: 'user' } }。
+
+边数据结构设计：核心字段：id、shape（如 'edge'、'double-edge' 或自定义）、source（起点，可为节点 id 或 { cell, port, x, y }）、target（终点，同 source）、vertices（折线点）、router（路由，如 'manhattan'、'orth'）、connector（连接器，如 'normal'、'rounded'）、labels（边标签）、attrs（线条样式）、data。
+
+例如：{ id: 'e1', shape: 'edge', source: 'n1', target: 'n2', router: 'manhattan', connector: 'rounded', attrs: { line: { stroke: '#999', strokeWidth: 2 } }, labels: [{ attrs: { text: { text: '连接' } } }] }。
+
+- 设计原则：节点和边都是 Cell 的子类，共享 id、attrs、data 等基础字段；
+- 通过 shape 字段区分渲染器；
+- attrs 采用嵌套对象，与 SVG 属性对应，便于自定义；
+- source/target 支持多种形式，灵活表达连接关系。
+
+这种设计使得图数据可序列化、可持久化，并支持动态更新。
 
 **常见追问**：如何避免「1) 误以为 X6 是业务框架，直接在其中写业务逻辑，导致耦合过重」？ 「2) 节点/边数据结构中混淆 position 与 x/y，X6 中节点用 x/y 或 position 对象，边用 source/target，不能混用」在真实项目中应如何规避？
 
@@ -6664,7 +8978,10 @@ AntV X6 是蚂蚁金服开源的图编辑引擎，定位是“图的渲染与交
 
 把 AI 流式输出的 Markdown 增量解析成 AST/块级结构，只对变化部分做增量渲染，并配合虚拟列表、代码高亮懒加载与 XSS 白名单，才能既流畅又安全。
 
-核心矛盾：AI 输出是「流式、逐 token、不完整」的 Markdown，而常规 Markdown 渲染器（marked/markdown-it）假设输入是完整文本，每次全量 parse + 全量 DOM 替换会导致两个问题：1) 性能——长回答下 O(n) 重排，输入框卡顿；2) 正确性——不完整的语法（如只输出了 ``` 或 **）会被渲染成错误结构，出现闪烁、代码块突然变形。 解决思路分四层： 1) 增量解析（Incremental Parsing）：不要每来一个 token 就重新 parse 全文。维护一个「已稳定块」列表 + 一个「尾部未闭合缓冲区」。按块级边界（空行、标题、列表项、代码围栏）切分，只有最后一个未闭合块需要重新解析，前面的块直接复用 AST。类似 markdown-it 的 block tokenizer 思路，或直接用 streaming-markdown、marked 的 lexer 分段。 2) 增量渲染 + 虚拟化：把每个块映射成一个 React/Vue 组件，用 key 稳定标识，配合 memo 只重渲染变化的块。超长对话用虚拟列表（react-virtuoso / 自研）只挂载可视区 DOM。代码块高亮（Shiki/Prism）开销大，应异步、按块懒执行，未闭合时先显示纯文本，闭合后再高亮。 3) 未闭合语法兜底：流式过程中对 ```、`、**、[ 等做「补全或降级」处理——例如检测到未闭合代码围栏就临时按代码块渲染，检测到未闭合行内代码就原样输出，避免闪烁。 4) 安全与体验：AI 输出不可信，必须走 sanitize（DOMPurify）白名单，禁用 raw HTML 或只允许安全标签；链接加 rel=noopener、外链拦截；数学公式用 KaTeX 延迟渲染；表格、Mermaid 等重组件按需加载。 通俗类比：就像字幕组做实时翻译——不会每来一个字就把整段字幕重排，而是把已说完的句子固定下来，只处理正在说的那句；遇到没说完的引号先不急着配对。
+核心矛盾：AI 输出是「流式、逐 token、不完整」的 Markdown，而常规 Markdown 渲染器（marked/markdown-it）假设输入是完整文本，每次全量 parse + 全量 DOM 替换会导致两个问题：
+
+1) 性能——长回答下 O(n) 重排，输入框卡顿；
+2) 正确性——不完整的语法（如只输出了 ``` 或 **）会被渲染成错误结构，出现闪烁、代码块突然变形。 解决思路分四层： 1) 增量解析（Incremental Parsing）：不要每来一个 token 就重新 parse 全文。维护一个「已稳定块」列表 + 一个「尾部未闭合缓冲区」。按块级边界（空行、标题、列表项、代码围栏）切分，只有最后一个未闭合块需要重新解析，前面的块直接复用 AST。类似 markdown-it 的 block tokenizer 思路，或直接用 streaming-markdown、marked 的 lexer 分段。 2) 增量渲染 + 虚拟化：把每个块映射成一个 React/Vue 组件，用 key 稳定标识，配合 memo 只重渲染变化的块。超长对话用虚拟列表（react-virtuoso / 自研）只挂载可视区 DOM。代码块高亮（Shiki/Prism）开销大，应异步、按块懒执行，未闭合时先显示纯文本，闭合后再高亮。 3) 未闭合语法兜底：流式过程中对 ```、`、**、[ 等做「补全或降级」处理——例如检测到未闭合代码围栏就临时按代码块渲染，检测到未闭合行内代码就原样输出，避免闪烁。 4) 安全与体验：AI 输出不可信，必须走 sanitize（DOMPurify）白名单，禁用 raw HTML 或只允许安全标签；链接加 rel=noopener、外链拦截；数学公式用 KaTeX 延迟渲染；表格、Mermaid 等重组件按需加载。 通俗类比：就像字幕组做实时翻译——不会每来一个字就把整段字幕重排，而是把已说完的句子固定下来，只处理正在说的那句；遇到没说完的引号先不急着配对。
 
 **常见追问**：如何避免「1) 直接 v-html/innerHTML 渲染，忽略 XSS」？ 「2) 每来一个 token 就全量 parse + 全量替换 DOM，长文本必卡」在真实项目中应如何规避？
 
@@ -6686,7 +9003,15 @@ AntV X6 是蚂蚁金服开源的图编辑引擎，定位是“图的渲染与交
 
 在 Vue 2 中 v-for 优先级高于 v-if，在 Vue 3 中 v-if 优先级高于 v-for；两者都不建议写在同一元素上。
 
-这个问题要分版本回答。 Vue 2：同一元素上 v-for 的优先级高于 v-if。也就是说会先执行循环，再在每次循环里执行条件判断。例如： ```html <li v-for="item in list" v-if="item.visible">{{ item.name }}</li> ``` Vue 2 编译后大致相当于： ```js list.map(item => { if (item.visible) { return createElement('li', item.name) } }) ``` 所以即使只有少量数据需要渲染，也会把整个 list 遍历一遍，性能较差。 Vue 3：同一元素上 v-if 的优先级高于 v-for。也就是说会先判断 v-if，再执行 v-for。由于 v-if 在 v-for 外层，它无法访问 v-for 的迭代变量，例如： ```html <li v-for="item in list" v-if="item.visible"> ``` 在 Vue 3 中会报错或行为不符合预期，因为 v-if 执行时 item 还不存在。 正确写法是：如果条件依赖循环项，应把 v-if 移到循环内部： ```html <template v-for="item in list" :key="item.id"> <li v-if="item.visible">{{ item.name }}</li> </template> ``` 如果条件不依赖循环项，应把 v-if 移到循环外层： ```html <ul v-if="shouldShowList"> <li v-for="item in list" :key="item.id">{{ item.name }}</li> </ul> ``` 通俗类比：Vue 2 像“先给每个人发一张考卷，再逐个问你要不要答题”；Vue 3 像“先问你要不要答题，再决定给谁发考卷”。前者浪费遍历，后者拿不到具体的人。
+这个问题要分版本回答。 Vue 2：同一元素上 v-for 的优先级高于 v-if。也就是说会先执行循环，再在每次循环里执行条件判断。
+
+例如： ```html <li v-for="item in list" v-if="item.visible">{{ item.name }}</li> ``` Vue 2 编译后大致相当于： ```js list.map(item => { if (item.visible) { return createElement('li', item.name) } }) ``` 所以即使只有少量数据需要渲染，也会把整个 list 遍历一遍，性能较差。
+
+Vue 3：同一元素上 v-if 的优先级高于 v-for。也就是说会先判断 v-if，再执行 v-for。由于 v-if 在 v-for 外层，它无法访问 v-for 的迭代变量，例如： ```html <li v-for="item in list" v-if="item.visible"> ``` 在 Vue 3 中会报错或行为不符合预期，因为 v-if 执行时 item 还不存在。
+
+正确写法是：如果条件依赖循环项，应把 v-if 移到循环内部： ```html <template v-for="item in list" :key="item.id"> <li v-if="item.visible">{{ item.name }}</li> </template> ``` 如果条件不依赖循环项，应把 v-if 移到循环外层： ```html <ul v-if="shouldShowList"> <li v-for="item in list" :key="item.id">{{ item.name }}</li> </ul> ``` 通俗类比：Vue 2 像“先给每个人发一张考卷，再逐个问你要不要答题”；Vue 3 像“先问你要不要答题，再决定给谁发考卷”。
+
+前者浪费遍历，后者拿不到具体的人。
 
 **常见追问**：如何避免「只回答“v-for 优先级高”或“v-if 优先级高”，不区分 Vue 2 和 Vue 3。」？ 「认为两个版本行为一致，忽略 Vue 3 的 breaking change。」在真实项目中应如何规避？
 
@@ -6708,7 +9033,19 @@ Canvas：通过 JavaScript 获取 2D/WebGL 上下文，调用绘图 API 把像�
 
 Canvas 是像素级即时绘制、绘制后无 DOM 记忆；SVG 是基于 XML 的矢量 DOM，图形是对象、可被 CSS/JS 操作和事件绑定。
 
-Canvas 和 SVG 都是浏览器绘图技术，但底层模型完全不同。 1) 渲染模型 - Canvas：通过 JavaScript 获取 2D/WebGL 上下文，调用绘图 API 把像素画到一张位图上。画完即“烧录”进像素，浏览器不保留图形语义。适合大量像素操作、逐帧重绘。 - SVG：用 XML 描述矢量图形，每个 <rect>、<circle>、<path> 都是真实 DOM 节点，浏览器维护场景图，缩放不糊，天然支持 CSS 样式、动画、事件冒泡和可访问性。 2) 通俗类比 - Canvas 像“画布+画笔”：你画完一笔，画布只记得颜色，不记得那是一棵树；要改树的位置，只能擦掉重画。 - SVG 像“乐高积木”：每个图形都是独立积木，可以单独移动、换色、加点击事件，浏览器帮你重新拼装。 3) 性能与适用场景 - Canvas：图形数量极大（上万粒子、游戏、地图瓦片、图像处理、视频滤镜）时性能更稳，因为不创建 DOM；但频繁重绘全屏、高分辨率下也吃 CPU/GPU。 - SVG：图形数量中等、需要交互/动画/缩放/可访问性时更优，如图标、图表、流程图、地图标注；节点过多（几千以上）会因 DOM 和样式计算变慢。 4) 关键差异 - 分辨率：Canvas 依赖像素，缩放会模糊，需处理 devicePixelRatio；SVG 矢量，任意缩放清晰。 - 事件：Canvas 只能监听整个画布，需自己做命中检测（如颜色拾取、几何计算）；SVG 可直接给图形绑事件。 - 可访问性/SEO：SVG 文本可被读屏和搜索引擎识别；Canvas 内容对它们基本不可见。 - 导出：Canvas 可 toDataURL 导出位图；SVG 可序列化为矢量文件。 5) 选型建议 - 需要大量动态像素、游戏、实时滤镜 → Canvas/WebGL。 - 需要矢量清晰、交互丰富、DOM 可维护、可访问 → SVG。 - 混合方案：用 SVG 做 UI 和交互层，Canvas 做背景粒子/高性能层；或 OffscreenCanvas + Worker 提升 Canvas 性能。
+Canvas 和 SVG 都是浏览器绘图技术，但底层模型完全不同。 1) 渲染模型
+
+- Canvas：通过 JavaScript 获取 2D/WebGL 上下文，调用绘图 API 把像素画到一张位图上。画完即“烧录”进像素，浏览器不保留图形语义。适合大量像素操作、逐帧重绘。
+- SVG：用 XML 描述矢量图形，每个 <rect>、<circle>、<path> 都是真实 DOM 节点，浏览器维护场景图，缩放不糊，天然支持 CSS 样式、动画、事件冒泡和可访问性。 2) 通俗类比
+- Canvas 像“画布+画笔”：你画完一笔，画布只记得颜色，不记得那是一棵树；要改树的位置，只能擦掉重画。
+- SVG 像“乐高积木”：每个图形都是独立积木，可以单独移动、换色、加点击事件，浏览器帮你重新拼装。 3) 性能与适用场景
+- Canvas：图形数量极大（上万粒子、游戏、地图瓦片、图像处理、视频滤镜）时性能更稳，因为不创建 DOM；但频繁重绘全屏、高分辨率下也吃 CPU/GPU。
+- SVG：图形数量中等、需要交互/动画/缩放/可访问性时更优，如图标、图表、流程图、地图标注；节点过多（几千以上）会因 DOM 和样式计算变慢。 4) 关键差异
+- 分辨率：Canvas 依赖像素，缩放会模糊，需处理 devicePixelRatio；SVG 矢量，任意缩放清晰。
+- 事件：Canvas 只能监听整个画布，需自己做命中检测（如颜色拾取、几何计算）；SVG 可直接给图形绑事件。
+- 可访问性/SEO：SVG 文本可被读屏和搜索引擎识别；Canvas 内容对它们基本不可见。
+- 导出：Canvas 可 toDataURL 导出位图；SVG 可序列化为矢量文件。 5) 选型建议 - 需要大量动态像素、游戏、实时滤镜 → Canvas/WebGL。 - 需要矢量清晰、交互丰富、DOM 可维护、可访问 → SVG。
+- 混合方案：用 SVG 做 UI 和交互层，Canvas 做背景粒子/高性能层；或 OffscreenCanvas + Worker 提升 Canvas 性能。
 
 **常见追问**：如何避免「1) 误以为 Canvas 不能做矢量/缩放，或 SVG 不能做动画」？ 「2) 认为 Canvas 一定比 SVG 快——小规模图形 SVG 可能更快且更省内存」在真实项目中应如何规避？
 
@@ -6730,7 +9067,15 @@ HTML 元素的默认显示类型由浏览器默认样式表（user agent stylesh
 
 块级元素默认独占一行、可设宽高，如 div/p/h1/ul/li；内联元素默认不换行、宽高由内容决定，如 span/a/em/strong/img/input。
 
-HTML 元素的默认显示类型由浏览器默认样式表（user agent stylesheet）中的 display 值决定。块级元素（display: block）默认从新行开始、尽可能占满父容器宽度，可设置 width/height、上下 margin/padding 会撑开布局，典型有 div、p、h1~h6、ul/ol/li、form、section、article、header、footer、nav、aside、table 等。内联元素（display: inline）默认不换行、按文字流排列，宽高由内容决定，设置 width/height 无效，上下 margin/padding 不撑开行高，典型有 span、a、em、strong、b、i、small、label、code、cite、abbr 等。还有一类常被单独讨论的内联块元素（display: inline-block），如 img、input、button、select、textarea，它们像内联元素一样排在一行，但又能设置宽高，类似“文字中的小盒子”。通俗类比：块级元素像一个个“段落/箱子”，每个都另起一行并尽量占满整行；内联元素像句子里的“词”，跟着文字流走，长度由内容决定。适用场景：需要布局大块区域、控制宽高和盒模型时用块级；需要在文本中局部标记、加链接或强调时用内联；需要横排又要设宽高时用 inline-block 或 flex/grid 子项。
+HTML 元素的默认显示类型由浏览器默认样式表（user agent stylesheet）中的 display 值决定。块级元素（display: block）默认从新行开始、尽可能占满父容器宽度，可设置 width/height、上下 margin/padding 会撑开布局，典型有 div、p、h1~h6、ul/ol/li、form、section、article、header、footer、nav、aside、table 等。
+
+内联元素（display: inline）默认不换行、按文字流排列，宽高由内容决定，设置 width/height 无效，上下 margin/padding 不撑开行高，典型有 span、a、em、strong、b、i、small、label、code、cite、abbr 等。还有一类常被单独讨论的内联块元素（display: inline-block），如 img、input、button、select、textarea，它们像内联元素一样排在一行，但又能设置宽高，类似“文字中的小盒子”。
+
+通俗类比：块级元素像一个个“段落/箱子”，每个都另起一行并尽量占满整行；内联元素像句子里的“词”，跟着文字流走，长度由内容决定。
+
+- 适用场景：需要布局大块区域、控制宽高和盒模型时用块级；
+- 需要在文本中局部标记、加链接或强调时用内联；
+- 需要横排又要设宽高时用 inline-block 或 flex/grid 子项。
 
 **常见追问**：如何避免「常见错误：1）把 img、input、button 说成纯内联元素，忽略它们可设宽高」？ 「2）认为内联元素完全不能设 margin/padding，实际左右有效、上下会绘制但不撑开行高」在真实项目中应如何规避？
 
@@ -6752,7 +9097,16 @@ HTML 元素的默认显示类型由浏览器默认样式表（user agent stylesh
 
 怪异盒子模型（border-box）在需要让元素的 width/height 直接包含 padding 和 border、从而简化布局计算时使用，典型场景是响应式布局、栅格系统、表单控件和任何希望设置宽度后不被内边距撑大的地方。
 
-CSS 盒子模型有两种：标准盒模型（content-box）和怪异盒模型（border-box）。标准盒模型下，width 只表示内容区宽度，元素实际占宽 = width + padding + border；怪异盒模型下，width 表示内容区 + padding + border 的总宽度，元素实际占宽就是 width。 通俗类比：标准盒模型像买一个“净含量”标注的箱子，箱子外还要加泡沫和纸壳，最终占地比标称大；怪异盒模型像买一个“外包装尺寸”标注的箱子，标多少占地就是多少，内部空间自动被 padding/border 挤占。 何时使用： 1. 响应式/流式布局：希望 width: 50% 的两个元素加 padding 后仍能并排，不换行。 2. 栅格系统：Bootstrap 等框架全局设置 * { box-sizing: border-box }，让列宽计算直观。 3. 表单控件：input、textarea、button 设置 width: 100% 时，若用标准盒模型，padding 和 border 会撑破容器。 4. 需要精确控制元素总占位：如固定宽度侧边栏、卡片组件，设置 width 后不希望再手动减 padding/border。 设置方式：box-sizing: border-box; 通常配合全局重置：*, *::before, *::after { box-sizing: border-box; }。 注意：怪异盒模型下，如果 padding + border 之和超过 width，内容区会被压缩到 0，甚至溢出（实际浏览器中内容区最小为 0，元素总宽仍可能大于 width？准确说：当 padding+border > width 时，内容区宽度为 0，元素实际占宽为 padding+border，会大于设定的 width）。
+CSS 盒子模型有两种：标准盒模型（content-box）和怪异盒模型（border-box）。标准盒模型下，width 只表示内容区宽度，元素实际占宽 = width + padding + border；怪异盒模型下，width 表示内容区 + padding + border 的总宽度，元素实际占宽就是 width。
+
+通俗类比：标准盒模型像买一个“净含量”标注的箱子，箱子外还要加泡沫和纸壳，最终占地比标称大；怪异盒模型像买一个“外包装尺寸”标注的箱子，标多少占地就是多少，内部空间自动被 padding/border 挤占。 何时使用：
+
+1. 响应式/流式布局：希望 width: 50% 的两个元素加 padding 后仍能并排，不换行。
+2. 栅格系统：Bootstrap 等框架全局设置 * { box-sizing: border-box }，让列宽计算直观。
+3. 表单控件：input、textarea、button 设置 width: 100% 时，若用标准盒模型，padding 和 border 会撑破容器。
+4. 需要精确控制元素总占位：如固定宽度侧边栏、卡片组件，设置 width 后不希望再手动减 padding/border。 设置方式：box-sizing: border-box; 通常配合全局重置：*, *::before, *::after { box-sizing: border-box; }。
+
+注意：怪异盒模型下，如果 padding + border 之和超过 width，内容区会被压缩到 0，甚至溢出（实际浏览器中内容区最小为 0，元素总宽仍可能大于 width？准确说：当 padding+border > width 时，内容区宽度为 0，元素实际占宽为 padding+border，会大于设定的 width）。
 
 **常见追问**：如何避免「误以为 border-box 会改变 margin 的计算——margin 始终在盒子外部，不受 box-sizing 影响。」？ 「认为设置 border-box 后 width 包含 margin——不包含。」在真实项目中应如何规避？
 
@@ -6774,7 +9128,16 @@ CSS 盒子模型有两种：标准盒模型（content-box）和怪异盒模型�
 
 浅拷贝只复制第一层引用，深拷贝递归复制所有层级，使新旧对象完全独立；手写深拷贝需处理循环引用、Date/RegExp/Map/Set 等类型。
 
-浅拷贝：创建一个新对象，把原对象的第一层属性值复制过去。若属性值是基本类型，则互不影响；若属性值是引用类型（对象、数组），新对象和原对象共享同一个引用，改其中一个会影响另一个。常见实现：Object.assign({}, obj)、{...obj}、arr.slice()、arr.concat()。 深拷贝：递归复制对象的所有层级，生成一个与原对象完全独立的新对象，修改新对象不会影响原对象。常见实现：JSON.parse(JSON.stringify(obj))（简单但有缺陷）、structuredClone（现代浏览器/Node 17+）、递归手写。 通俗类比：浅拷贝像复印一份通讯录，但里面每个联系人仍指向同一张名片；深拷贝是把每张名片也重新印一份。 手写深拷贝核心思路： 1. 判断类型：基本类型直接返回； 2. 处理特殊对象：Date、RegExp、Map、Set、Array； 3. 用 WeakMap 记录已拷贝对象，解决循环引用； 4. 保持原型：可用 Object.create(Object.getPrototypeOf(obj)) 或 new obj.constructor()。 示例代码： function deepClone(obj, map = new WeakMap()) { if (obj === null || typeof obj !== 'object') return obj; if (map.has(obj)) return map.get(obj); let clone; if (obj instanceof Date) clone = new Date(obj); else if (obj instanceof RegExp) clone = new RegExp(obj.source, obj.flags); else if (obj instanceof Map) { clone = new Map(); map.set(obj, clone); obj.forEach((v, k) => clone.set(deepClone(k, map), deepClone(v, map))); return clone; } else if (obj instanceof Set) { clone = new Set(); map.set(obj, clone); obj.forEach(v => clone.add(deepClone(v, map))); return clone; } else { clone = Array.isArray(obj) ? [] : Object.create(Object.getPrototypeOf(obj)); } map.set(obj, clone); for (let key of Reflect.ownKeys(obj)) { clone[key] = deepClone(obj[key], map); } return clone; } 适用场景：浅拷贝适合只读数据、性能敏感且无需隔离嵌套引用的场景；深拷贝适合需要完全独立副本、避免副作用的状态管理、配置合并、撤销/重做等。
+浅拷贝：创建一个新对象，把原对象的第一层属性值复制过去。若属性值是基本类型，则互不影响；若属性值是引用类型（对象、数组），新对象和原对象共享同一个引用，改其中一个会影响另一个。常见实现：Object.assign({}, obj)、{...obj}、arr.slice()、arr.concat()。
+
+深拷贝：递归复制对象的所有层级，生成一个与原对象完全独立的新对象，修改新对象不会影响原对象。常见实现：JSON.parse(JSON.stringify(obj))（简单但有缺陷）、structuredClone（现代浏览器/Node 17+）、递归手写。
+
+通俗类比：浅拷贝像复印一份通讯录，但里面每个联系人仍指向同一张名片；深拷贝是把每张名片也重新印一份。 手写深拷贝核心思路：
+
+1. 判断类型：基本类型直接返回；
+2. 处理特殊对象：Date、RegExp、Map、Set、Array；
+3. 用 WeakMap 记录已拷贝对象，解决循环引用；
+4. 保持原型：可用 Object.create(Object.getPrototypeOf(obj)) 或 new obj.constructor()。 示例代码： function deepClone(obj, map = new WeakMap()) { if (obj === null || typeof obj !== 'object') return obj; if (map.has(obj)) return map.get(obj); let clone; if (obj instanceof Date) clone = new Date(obj); else if (obj instanceof RegExp) clone = new RegExp(obj.source, obj.flags); else if (obj instanceof Map) { clone = new Map(); map.set(obj, clone); obj.forEach((v, k) => clone.set(deepClone(k, map), deepClone(v, map))); return clone; } else if (obj instanceof Set) { clone = new Set(); map.set(obj, clone); obj.forEach(v => clone.add(deepClone(v, map))); return clone; } else { clone = Array.isArray(obj) ? [] : Object.create(Object.getPrototypeOf(obj)); } map.set(obj, clone); for (let key of Reflect.ownKeys(obj)) { clone[key] = deepClone(obj[key], map); } return clone; } 适用场景：浅拷贝适合只读数据、性能敏感且无需隔离嵌套引用的场景；深拷贝适合需要完全独立副本、避免副作用的状态管理、配置合并、撤销/重做等。
 
 **常见追问**：如何避免「认为 Object.assign 或扩展运算符是深拷贝（只浅拷贝第一层）。」？ 「认为 JSON.parse(JSON.stringify()) 是完美深拷贝，忽略其类型丢失和循环引用问题。」在真实项目中应如何规避？
 
@@ -6796,7 +9159,15 @@ nextTick 的本质是“等一等再执行”；在 Vue 中，数据变化并不
 
 nextTick 是把回调推迟到当前调用栈清空后的微任务中执行，从而在 DOM 更新完成后拿到最新视图，核心依赖事件循环的微任务队列。
 
-nextTick 的本质是“等一等再执行”。在 Vue 中，数据变化并不会立刻更新 DOM，而是把 watcher/effect 推入异步更新队列，等同一轮事件循环里的同步代码跑完，再统一执行 DOM 更新。nextTick 就是在这个更新队列之后插入回调，保证回调执行时 DOM 已经是最新的。 通俗类比：你给快递站下了很多改地址的指令，快递员不会每改一次就立刻跑一趟，而是先记下来，等这一轮指令都收完，再统一出发。nextTick 就是“等快递员这一趟送完，再通知你”。 原理上，Vue 2 的 nextTick 维护一个 callbacks 数组，调用 nextTick(cb) 时把 cb 推入数组，并用一个 pending 标志保证只向微任务队列注册一次 flushCallbacks。flushCallbacks 会复制并清空 callbacks，然后依次执行。微任务优先使用 Promise.then，降级到 MutationObserver、setImmediate，最后 setTimeout。Vue 3 则直接使用 Promise.resolve().then() 实现。 为什么用微任务？因为微任务在当前宏任务结束后、下一个宏任务开始前执行，能保证 DOM 更新和 nextTick 回调都在同一轮渲染前完成，既及时又不阻塞渲染。适用场景：修改数据后想立刻获取更新后的 DOM，例如 this.$nextTick(() => { console.log(this.$refs.box.offsetHeight) })。
+nextTick 的本质是“等一等再执行”。在 Vue 中，数据变化并不会立刻更新 DOM，而是把 watcher/effect 推入异步更新队列，等同一轮事件循环里的同步代码跑完，再统一执行 DOM 更新。nextTick 就是在这个更新队列之后插入回调，保证回调执行时 DOM 已经是最新的。
+
+通俗类比：你给快递站下了很多改地址的指令，快递员不会每改一次就立刻跑一趟，而是先记下来，等这一轮指令都收完，再统一出发。nextTick 就是“等快递员这一趟送完，再通知你”。 原理上，Vue 2 的 nextTick 维护一个 callbacks 数组，调用 nextTick(cb) 时把 cb 推入数组，并用一个 pending 标志保证只向微任务队列注册一次 flushCallbacks。
+
+flushCallbacks 会复制并清空 callbacks，然后依次执行。微任务优先使用 Promise.then，降级到 MutationObserver、setImmediate，最后 setTimeout。Vue 3 则直接使用 Promise.resolve().then() 实现。
+
+为什么用微任务？因为微任务在当前宏任务结束后、下一个宏任务开始前执行，能保证 DOM 更新和 nextTick 回调都在同一轮渲染前完成，既及时又不阻塞渲染。
+
+适用场景：修改数据后想立刻获取更新后的 DOM，例如 this.$nextTick(() => { console.log(this.$refs.box.offsetHeight) })。
 
 **常见追问**：如何避免「误以为 nextTick 是 setTimeout 或宏任务，导致认为 DOM 更新会晚于回调。2. 认为 nextTick 会立刻执行回调，实际上它只是注册微任务，当前同步代码没跑完不会执行。3. 混淆 Vue 2 和 Vue 3 的实现：Vue 2 有降级策略，Vue 3 基本只用 Promise。4. 在 nextTick 回调里再次修改数据并期望不会触发更新，实际上会触发新一轮异步更新。5. 把 nextTick 当成“等待所有异步操作完成”的工具，它只保证当前更新队列 flush 后执行，不保证网络请求等外部异步完成。」？ 能否结合「Vue 2 源码中 nextTick 的 pending 标志和 callbacks 数组是关键：多次调用 nextTick 只会注册一次微任务，flush 时统一执行，避免重复调度。2. Vue 3 的 nextTick 返回 Promise，且与 scheduler 的 queueJob 配合：组件更新任务也是微任务，nextTick 回调会排在更新任务之后，所以能拿到最新 DOM。3. 微任务优先级高于宏任务，但如果在 nextTick 里再改数据，会触发新一轮更新，可能形成循环，需要留意。4. 浏览器渲染时机：微任务全部执行完才会进入渲染阶段，所以 nextTick 回调里读 DOM 布局是安全的，但写 DOM 可能触发强制同步布局，影响性能。」进一步展开？
 
@@ -6818,7 +9189,21 @@ nextTick 的本质是“等一等再执行”。在 Vue 中，数据变化并不
 
 用 Performance 面板录制后看主线程火焰图，定位长任务（Long Task）中耗时最长的函数调用栈，区分是 JS 计算、样式重算还是布局抖动。
 
-核心思路是「先测量、再定位、后优化」。卡顿的本质是主线程被长时间占用，导致每帧（16.7ms@60fps）无法及时完成渲染，出现掉帧。 步骤： 1. 打开 Chrome DevTools → Performance 面板，勾选 Screenshots、Memory，点击录制，复现卡顿几秒后停止。 2. 看顶部的 FPS 图表：红色条表示掉帧；看 Main 主线程轨道：出现标红的三角/长条即 Long Task（>50ms）。 3. 展开长任务的 Call Tree（自顶向下）或 Bottom-Up（自底向上）视图，按 Self Time 排序，找到自己业务代码里耗时最长的函数。 4. 结合火焰图判断类型：如果是纯 JS 计算（如大循环、递归、复杂算法），就是 CPU 密集；如果伴随大量紫色 Recalculate Style / Layout，说明计算触发了频繁的样式/布局读写（布局抖动）。 5. 用 console.time/timeEnd 或 performance.mark/measure 在可疑函数前后打点，进一步量化。 通俗类比：主线程像只有一个收银员的超市，每帧就是一位顾客。某个顾客（计算任务）买了 500 件商品，后面所有人都在排队，画面就卡住了。Performance 面板就是监控录像，能看出是哪个顾客、卡在哪一步。 定位后的常见解法：把大计算拆成小块用 requestIdleCallback / setTimeout 分片；放进 Web Worker 后台线程；用时间切片（React 的 concurrent 模式）；缓存计算结果（memo）；避免在循环里读写 DOM 触发强制同步布局。
+核心思路是「先测量、再定位、后优化」。卡顿的本质是主线程被长时间占用，导致每帧（16.7ms@60fps）无法及时完成渲染，出现掉帧。 步骤：
+
+1. 打开 Chrome DevTools → Performance 面板，勾选 Screenshots、Memory，点击录制，复现卡顿几秒后停止。
+2. 看顶部的 FPS 图表：红色条表示掉帧；看 Main 主线程轨道：出现标红的三角/长条即 Long Task（>50ms）。
+3. 展开长任务的 Call Tree（自顶向下）或 Bottom-Up（自底向上）视图，按 Self Time 排序，找到自己业务代码里耗时最长的函数。
+4. 结合火焰图判断类型：如果是纯 JS 计算（如大循环、递归、复杂算法），就是 CPU 密集；如果伴随大量紫色 Recalculate Style / Layout，说明计算触发了频繁的样式/布局读写（布局抖动）。
+5. 用 console.time/timeEnd 或 performance.mark/measure 在可疑函数前后打点，进一步量化。
+
+通俗类比：主线程像只有一个收银员的超市，每帧就是一位顾客。某个顾客（计算任务）买了 500 件商品，后面所有人都在排队，画面就卡住了。Performance 面板就是监控录像，能看出是哪个顾客、卡在哪一步。
+
+- 定位后的常见解法：把大计算拆成小块用 requestIdleCallback / setTimeout 分片；
+- 放进 Web Worker 后台线程；
+- 用时间切片（React 的 concurrent 模式）；
+- 缓存计算结果（memo）；
+- 避免在循环里读写 DOM 触发强制同步布局。
 
 **常见追问**：如何避免「一上来就说「优化代码」而不先测量，凭感觉猜；」？ 「把卡顿归因于「数据多」，但题目已说明是计算多，答非所问；」在真实项目中应如何规避？
 
@@ -6840,7 +9225,22 @@ JavaScript 是单线程事件循环模型；setTimeout(fn, 0) 的 0 只是最小
 
 setTimeout(fn, 0) 并不是立即执行，而是把回调放到宏任务队列，等当前同步代码和已排队的微任务执行完后尽快执行，常用于延后到当前调用栈清空后、或调整执行顺序。
 
-JavaScript 是单线程事件循环模型。setTimeout(fn, 0) 的 0 只是最小延迟提示，浏览器/Node 实际会把它放入定时器阶段或宏任务队列，必须等当前同步代码执行完、并且当前微任务队列清空后才有机会执行。因此它常被用来：1）把一段逻辑推迟到当前调用栈结束后，避免阻塞当前渲染或事件处理；2）让浏览器有机会先完成 DOM 更新/重绘，再读取布局或执行后续操作；3）调整多个异步任务的相对顺序，例如让微任务先跑、宏任务后跑；4）兼容一些旧代码里“等一会儿再执行”的写法。通俗类比：同步代码是正在结账的顾客，微任务是结账后立刻要处理的小票，setTimeout 0 是“等当前这波忙完，下一轮再叫你”。例子：console.log('A'); setTimeout(()=>console.log('B'),0); Promise.resolve().then(()=>console.log('C')); console.log('D'); 输出 A D C B，说明 0 延迟的回调排在微任务之后。
+JavaScript 是单线程事件循环模型。setTimeout(fn, 0) 的 0 只是最小延迟提示，浏览器/Node 实际会把它放入定时器阶段或宏任务队列，必须等当前同步代码执行完、并且当前微任务队列清空后才有机会执行。
+
+因此它常被用来：
+
+- 1）把一段逻辑推迟到当前调用栈结束后，避免阻塞当前渲染或事件处理；
+- 2）让浏览器有机会先完成 DOM 更新/重绘，再读取布局或执行后续操作；
+- 3）调整多个异步任务的相对顺序，例如让微任务先跑、宏任务后跑；
+- 4）兼容一些旧代码里“等一会儿再执行”的写法。
+
+通俗类比：同步代码是正在结账的顾客，微任务是结账后立刻要处理的小票，setTimeout 0 是“等当前这波忙完，下一轮再叫你”。
+
+- 例子：console.log('A');
+- setTimeout(()=>console.log('B'),0);
+- Promise.resolve().then(()=>console.log('C'));
+- console.log('D');
+- 输出 A D C B，说明 0 延迟的回调排在微任务之后。
 
 **常见追问**：如何避免「1）误以为 setTimeout(fn,0) 会立刻同步执行，或保证在 0ms 后精确执行」？ 「2）把它当成“让出主线程”的万能方案，实际上它仍会占用主线程，长任务不会因此变短」在真实项目中应如何规避？
 
@@ -6862,7 +9262,21 @@ JavaScript 是单线程事件循环模型。setTimeout(fn, 0) 的 0 只是最小
 
 能成功。浏览器事件循环中，用户交互产生的任务（如点击）会作为宏任务排队，微任务队列会在当前宏任务结束、渲染前被清空，因此嵌套微任务不会永久阻塞交互，只是会延迟交互回调的执行。
 
-要理解这个问题，先看事件循环的基本模型： 1. 执行一个宏任务（task），比如 script 整体、setTimeout 回调、用户点击回调。 2. 该宏任务执行完后，清空微任务队列（microtask queue），包括 Promise.then、queueMicrotask、MutationObserver 等。 3. 微任务执行过程中如果又产生新的微任务，会继续追加到当前队列并执行，直到队列为空。 4. 然后浏览器可能进行渲染（样式、布局、绘制），再取下一个宏任务。 关键点：用户交互（点击、滚动、键盘）产生的事件回调是宏任务，不是微任务。它会被放进任务队列，等待当前宏任务和所有微任务清空后才有机会执行。 所以“嵌套的微任务”指的是：在一个微任务里又创建微任务，比如： Promise.resolve().then(() => { Promise.resolve().then(() => { // 继续嵌套 }); }); 这种嵌套会不断把新微任务加入当前微任务队列，事件循环会一直清空它，直到没有微任务为止。此时如果用户点击页面，点击事件已经被浏览器捕获并排队，但它的回调不会立即执行，必须等微任务队列清空。 因此结论是： - 能成功交互：浏览器不会因为微任务嵌套而丢失用户事件，事件会被排队。 - 但交互回调会被延迟：如果微任务无限嵌套（死循环），页面会卡死，点击回调永远没机会执行，表现为无响应。 - 如果微任务只是有限嵌套，那么清空后就会执行点击回调，交互成功。 通俗类比：宏任务像排队办业务，微任务像办完当前业务后必须立刻处理的一叠便签。用户点击是另一个排队的人。只要便签不是无限写下去，办完便签就会叫下一个人；如果便签永远写不完，后面的人就永远等不到。
+要理解这个问题，先看事件循环的基本模型：
+
+1. 执行一个宏任务（task），比如 script 整体、setTimeout 回调、用户点击回调。
+2. 该宏任务执行完后，清空微任务队列（microtask queue），包括 Promise.then、queueMicrotask、MutationObserver 等。
+3. 微任务执行过程中如果又产生新的微任务，会继续追加到当前队列并执行，直到队列为空。
+4. 然后浏览器可能进行渲染（样式、布局、绘制），再取下一个宏任务。 关键点：用户交互（点击、滚动、键盘）产生的事件回调是宏任务，不是微任务。它会被放进任务队列，等待当前宏任务和所有微任务清空后才有机会执行。
+
+所以“嵌套的微任务”指的是：在一个微任务里又创建微任务，比如： Promise.resolve().then(() => { Promise.resolve().then(() => { // 继续嵌套 }); }); 这种嵌套会不断把新微任务加入当前微任务队列，事件循环会一直清空它，直到没有微任务为止。
+
+此时如果用户点击页面，点击事件已经被浏览器捕获并排队，但它的回调不会立即执行，必须等微任务队列清空。
+
+因此结论是：
+
+- 能成功交互：浏览器不会因为微任务嵌套而丢失用户事件，事件会被排队。
+- 但交互回调会被延迟：如果微任务无限嵌套（死循环），页面会卡死，点击回调永远没机会执行，表现为无响应。 - 如果微任务只是有限嵌套，那么清空后就会执行点击回调，交互成功。 通俗类比：宏任务像排队办业务，微任务像办完当前业务后必须立刻处理的一叠便签。用户点击是另一个排队的人。只要便签不是无限写下去，办完便签就会叫下一个人；如果便签永远写不完，后面的人就永远等不到。
 
 **常见追问**：如何避免「误以为微任务会在每个宏任务之间“穿插”执行，导致用户点击能插队执行——实际上微任务优先级高于下一个宏任务，点击回调不能插队。」？ 「误以为嵌套微任务会立即阻塞事件循环，导致用户事件丢失——事件通常会被排队，不是丢失，只是延迟。」在真实项目中应如何规避？
 
@@ -6884,7 +9298,16 @@ updateChildren 是 Vue 虚拟 DOM diff 的核心，用于新旧 VNode 都有 chi
 
 Vue 的 updateChildren 用双端指针（旧头/旧尾、新头/新尾）两两比较，配合 key 映射复用节点，尽量原地更新、减少移动，最后批量处理新增和删除。
 
-updateChildren 是 Vue 虚拟 DOM diff 的核心，用于新旧 VNode 都有 children 时对比子节点。它维护四个指针：oldStartIdx/oldEndIdx 指向旧 children 两端，newStartIdx/newEndIdx 指向新 children 两端，循环做四组同层比较： 1) oldStart vs newStart：相同则 patchVnode 并 oldStart++、newStart++； 2) oldEnd vs newEnd：相同则 patchVnode 并 oldEnd--、newEnd--； 3) oldStart vs newEnd：相同则 patchVnode，并把该真实 DOM 移到 oldEnd 之后，oldStart++、newEnd--； 4) oldEnd vs newStart：相同则 patchVnode，并把该真实 DOM 移到 oldStart 之前，oldEnd--、newStart++。 若四组都不匹配，则用旧 children 的 key 建 map（旧版是 {key: index}，Vue 3 是 keyToNewIndexMap 反向映射），拿 newStart 的 key 去查：查不到就新建节点插到 oldStart 前；查到则 patchVnode，并把真实 DOM 移到 oldStart 前，同时把旧位置置为 undefined 标记已用。 循环结束后：若 oldStart>oldEnd，说明新节点还有剩余，把 newStart..newEnd 批量插入；若 newStart>newEnd，说明旧节点有剩余，把 oldStart..oldEnd 批量删除。 通俗类比：两队人排队，只允许从队首队尾两两配对，配上的原地不动或挪到正确位置，配不上的用名单（key）找老队员，找不到就招新人，最后多的人裁掉、少的人补上。这样把 O(n²) 的暴力对比降为 O(n)，且尽量复用真实 DOM，减少重排重绘。 适用场景：列表渲染、v-for 更新、组件 children 变化等。key 稳定且唯一时，节点复用率最高、移动最少；用 index 作 key 在插入/删除时会导致大量错误复用和状态错乱。
+updateChildren 是 Vue 虚拟 DOM diff 的核心，用于新旧 VNode 都有 children 时对比子节点。它维护四个指针：oldStartIdx/oldEndIdx 指向旧 children 两端，newStartIdx/newEndIdx 指向新 children 两端，循环做四组同层比较：
+
+1) oldStart vs newStart：相同则 patchVnode 并 oldStart++、newStart++；
+2) oldEnd vs newEnd：相同则 patchVnode 并 oldEnd--、newEnd--；
+3) oldStart vs newEnd：相同则 patchVnode，并把该真实 DOM 移到 oldEnd 之后，oldStart++、newEnd--；
+4) oldEnd vs newStart：相同则 patchVnode，并把该真实 DOM 移到 oldStart 之前，oldEnd--、newStart++。 若四组都不匹配，则用旧 children 的 key 建 map（旧版是 {key: index}，Vue 3 是 keyToNewIndexMap 反向映射），拿 newStart 的 key 去查：查不到就新建节点插到 oldStart 前；查到则 patchVnode，并把真实 DOM 移到 oldStart 前，同时把旧位置置为 undefined 标记已用。 循环结束后：若 oldStart>oldEnd，说明新节点还有剩余，把 newStart..newEnd 批量插入；若 newStart>newEnd，说明旧节点有剩余，把 oldStart..oldEnd 批量删除。
+
+通俗类比：两队人排队，只允许从队首队尾两两配对，配上的原地不动或挪到正确位置，配不上的用名单（key）找老队员，找不到就招新人，最后多的人裁掉、少的人补上。这样把 O(n²) 的暴力对比降为 O(n)，且尽量复用真实 DOM，减少重排重绘。
+
+适用场景：列表渲染、v-for 更新、组件 children 变化等。key 稳定且唯一时，节点复用率最高、移动最少；用 index 作 key 在插入/删除时会导致大量错误复用和状态错乱。
 
 **常见追问**：如何避免「1) 误以为 diff 是“逐层递归全量比较”，实际同层比较、不跨层」？ 「2) 误以为 key 只是给 React/Vue 看的，随便用 index 也行，导致输入框值错位、动画错乱」在真实项目中应如何规避？
 
@@ -6906,7 +9329,15 @@ updateChildren 是 Vue 虚拟 DOM diff 的核心，用于新旧 VNode 都有 chi
 
 HTML5 原生拖拽由 dragstart→drag→dragenter→dragover→drop→dragend 组成，其中 dragover 必须 preventDefault 才能触发 drop。
 
-HTML5 原生拖拽（Drag and Drop API）的事件顺序可以按“源元素”和“目标元素”两条线理解。 1. 在可拖拽源元素上： - dragstart：用户开始拖动时触发，只触发一次。这里通常用 dataTransfer.setData() 写入数据，并设置 effectAllowed。 - drag：拖动过程中持续触发，类似 mousemove，频率较高。 - dragend：拖动结束（无论是否成功放下）时触发，用于清理状态。 2. 在目标元素上： - dragenter：被拖元素进入目标元素边界时触发，可用来高亮目标。 - dragover：在目标元素上持续触发，频率很高。关键点：必须调用 event.preventDefault()，否则浏览器认为该目标不接受拖放，后续 drop 不会触发。 - drop：用户松开鼠标且目标允许放置时触发，只触发一次。这里用 dataTransfer.getData() 读取数据并处理业务。 - dragleave：离开目标元素时触发，用于取消高亮。 一个典型顺序示例：dragstart → drag → dragenter → dragover → drop → dragend。如果拖动过程中离开目标，则会出现 dragleave，再进入其他目标时重新 dragenter/dragover。 通俗类比：dragstart 是“拿起包裹”，drag 是“搬着走”，dragenter 是“进入某个房间”，dragover 是“在房间上方徘徊”，drop 是“放下包裹”，dragend 是“搬完收工”。而 dragover 的 preventDefault 相当于房间门口挂“允许放件”的牌子，不挂就不让放。 适用场景：文件上传、看板排序、拖拽布局、跨区域复制等。注意移动端支持较差，通常用 touch 事件或第三方库（如 SortableJS、react-dnd）替代。
+HTML5 原生拖拽（Drag and Drop API）的事件顺序可以按“源元素”和“目标元素”两条线理解。 1. 在可拖拽源元素上：
+
+- dragstart：用户开始拖动时触发，只触发一次。这里通常用 dataTransfer.setData() 写入数据，并设置 effectAllowed。
+- drag：拖动过程中持续触发，类似 mousemove，频率较高。
+- dragend：拖动结束（无论是否成功放下）时触发，用于清理状态。 2. 在目标元素上：
+- dragenter：被拖元素进入目标元素边界时触发，可用来高亮目标。
+- dragover：在目标元素上持续触发，频率很高。关键点：必须调用 event.preventDefault()，否则浏览器认为该目标不接受拖放，后续 drop 不会触发。
+- drop：用户松开鼠标且目标允许放置时触发，只触发一次。这里用 dataTransfer.getData() 读取数据并处理业务。
+- dragleave：离开目标元素时触发，用于取消高亮。 一个典型顺序示例：dragstart → drag → dragenter → dragover → drop → dragend。如果拖动过程中离开目标，则会出现 dragleave，再进入其他目标时重新 dragenter/dragover。 通俗类比：dragstart 是“拿起包裹”，drag 是“搬着走”，dragenter 是“进入某个房间”，dragover 是“在房间上方徘徊”，drop 是“放下包裹”，dragend 是“搬完收工”。而 dragover 的 preventDefault 相当于房间门口挂“允许放件”的牌子，不挂就不让放。 适用场景：文件上传、看板排序、拖拽布局、跨区域复制等。注意移动端支持较差，通常用 touch 事件或第三方库（如 SortableJS、react-dnd）替代。
 
 **常见追问**：如何避免「忘记在 dragover 里 preventDefault，导致 drop 永远不触发，这是最常见的错误。」？ 「误以为 drop 一定在 dragend 之前：通常 drop 先于 dragend，但若拖到无效区域则只有 dragend 没有 drop。」在真实项目中应如何规避？
 
@@ -6928,7 +9359,15 @@ HTML5 原生拖拽（Drag and Drop API）的事件顺序可以按“源元素”
 
 渲染引擎解析 JSON Schema 的核心是：先校验数据合法性，再把 Schema 当作“配置蓝图”递归遍历，按 type、properties、$ref、oneOf 等关键字把 JSON 数据映射成组件树或渲染指令。
 
-这道题表面问“怎么解析 JSON Schema”，实际在考察你是否理解 Schema 驱动渲染的完整链路。可以分三层讲： 1) 概念：JSON Schema 本身是一份描述 JSON 数据结构和约束的元数据。渲染引擎里，它通常不是直接渲染，而是先被解析成内部 IR（中间表示），再结合用户传入的 JSON 数据，生成 UI 描述。 2) 解析流程： - 加载与预处理：读取 Schema，处理 $ref、$defs、allOf/anyOf/oneOf，做引用解析和循环引用检测。 - 编译/校验：用 Ajv、Zod 等把 Schema 编译成校验函数，校验数据是否满足 required、type、enum、format 等。 - 遍历映射：递归遍历 Schema 的 properties/items，遇到 type=object 就生成容器节点，type=string 且 format=color 就生成颜色选择器，type=array 就生成列表，oneOf 则根据数据分支选择组件。 - 生成渲染树：把每个字段映射成组件节点，带上 props、校验状态、联动规则，最后交给 React/Vue/Canvas 渲染。 3) 通俗类比：Schema 像“表单模板/乐高说明书”，JSON 数据像“用户填的内容”，渲染引擎像“装配工人”。工人先看说明书确认零件对不对，再按说明书把内容装成成品。 4) 适用场景：低代码表单、配置化页面、AI 生成 UI、API 文档渲染、工作流节点配置等。
+这道题表面问“怎么解析 JSON Schema”，实际在考察你是否理解 Schema 驱动渲染的完整链路。可以分三层讲：
+
+1) 概念：JSON Schema 本身是一份描述 JSON 数据结构和约束的元数据。渲染引擎里，它通常不是直接渲染，而是先被解析成内部 IR（中间表示），再结合用户传入的 JSON 数据，生成 UI 描述。
+2) 解析流程：
+
+- 加载与预处理：读取 Schema，处理 $ref、$defs、allOf/anyOf/oneOf，做引用解析和循环引用检测。
+- 编译/校验：用 Ajv、Zod 等把 Schema 编译成校验函数，校验数据是否满足 required、type、enum、format 等。
+- 遍历映射：递归遍历 Schema 的 properties/items，遇到 type=object 就生成容器节点，type=string 且 format=color 就生成颜色选择器，type=array 就生成列表，oneOf 则根据数据分支选择组件。
+- 生成渲染树：把每个字段映射成组件节点，带上 props、校验状态、联动规则，最后交给 React/Vue/Canvas 渲染。 3) 通俗类比：Schema 像“表单模板/乐高说明书”，JSON 数据像“用户填的内容”，渲染引擎像“装配工人”。工人先看说明书确认零件对不对，再按说明书把内容装成成品。 4) 适用场景：低代码表单、配置化页面、AI 生成 UI、API 文档渲染、工作流节点配置等。
 
 **常见追问**：如何避免「把 JSON Schema 和 JSON 数据混为一谈，说“解析 JSON 就是解析 Schema”；」？ 「以为 Schema 直接决定像素级渲染，忽略中间 IR 和组件映射层；」在真实项目中应如何规避？
 
@@ -6950,7 +9389,15 @@ HTML5 原生拖拽（Drag and Drop API）的事件顺序可以按“源元素”
 
 Hooks 本质是把组件的状态和副作用按调用顺序存进链表/数组，每次渲染按同一顺序读取，从而让函数组件拥有状态。
 
-在 React 中，函数组件每次渲染都会重新执行，普通局部变量无法跨渲染保存。Hooks 通过“按调用顺序存储”的机制解决这个问题。 原理可以拆成三层： 1. 存储位置：每个函数组件对应一个 Fiber 节点，Fiber 上有 memoizedState 字段，指向一条 Hooks 链表。每个 Hook 节点保存自己的状态（memoizedState）、更新队列（queue）和 next 指针。 2. 调用顺序：首次渲染时，每调用一个 Hook（如 useState、useEffect），就按顺序在链表尾部创建一个节点；更新渲染时，React 用一个全局的 currentHook 指针，按同样的顺序依次读取已有节点。所以 Hooks 必须写在顶层，不能放在条件、循环或嵌套函数里，否则顺序错乱，状态就会串位。 3. 状态更新：useState 返回的 setState 会把更新放入该 Hook 的 queue，并触发调度。下次渲染时，React 会遍历 queue 计算新状态。useEffect 则把 effect 函数和依赖数组存在 Hook 节点上，渲染后比较依赖是否变化，决定是否执行。 通俗类比：就像去银行办业务，每个窗口（Hook）按取号顺序服务。你第一次去按顺序开了“存款”“理财”“挂失”三个窗口；第二次去必须还是同样的顺序，柜员才能把上次的记录对应上。如果你中间插队或跳过，记录就全乱了。 适用场景：函数组件中需要状态、副作用、上下文、性能优化等能力时使用。它让逻辑按关注点组织，而不是按生命周期拆分，便于复用（自定义 Hook）。
+在 React 中，函数组件每次渲染都会重新执行，普通局部变量无法跨渲染保存。Hooks 通过“按调用顺序存储”的机制解决这个问题。 原理可以拆成三层：
+
+1. 存储位置：每个函数组件对应一个 Fiber 节点，Fiber 上有 memoizedState 字段，指向一条 Hooks 链表。每个 Hook 节点保存自己的状态（memoizedState）、更新队列（queue）和 next 指针。
+2. 调用顺序：首次渲染时，每调用一个 Hook（如 useState、useEffect），就按顺序在链表尾部创建一个节点；更新渲染时，React 用一个全局的 currentHook 指针，按同样的顺序依次读取已有节点。所以 Hooks 必须写在顶层，不能放在条件、循环或嵌套函数里，否则顺序错乱，状态就会串位。
+3. 状态更新：useState 返回的 setState 会把更新放入该 Hook 的 queue，并触发调度。下次渲染时，React 会遍历 queue 计算新状态。useEffect 则把 effect 函数和依赖数组存在 Hook 节点上，渲染后比较依赖是否变化，决定是否执行。
+
+通俗类比：就像去银行办业务，每个窗口（Hook）按取号顺序服务。你第一次去按顺序开了“存款”“理财”“挂失”三个窗口；第二次去必须还是同样的顺序，柜员才能把上次的记录对应上。如果你中间插队或跳过，记录就全乱了。
+
+适用场景：函数组件中需要状态、副作用、上下文、性能优化等能力时使用。它让逻辑按关注点组织，而不是按生命周期拆分，便于复用（自定义 Hook）。
 
 **常见追问**：如何避免「以为 Hooks 是“魔法”，说不清状态存在哪里，误以为存在函数组件自身。」？ 「认为 Hooks 可以随便放在 if/for 里，只要不报错就行，忽略调用顺序约束。」在真实项目中应如何规避？
 
@@ -6972,7 +9419,17 @@ Hooks 本质是把组件的状态和副作用按调用顺序存进链表/数组�
 
 拖拽本质是一条由浏览器原生 Drag & Drop 事件驱动的状态机，顺序为 dragstart → drag → dragenter → dragover → drop/dragleave → dragend，其中 dragover 必须 preventDefault 才能触发 drop。
 
-浏览器原生拖拽（HTML5 Drag and Drop API）不是一次事件，而是一串按用户操作阶段触发的事件流，可以类比成“搬家”： 1. 拿起箱子（dragstart）：用户按住可拖拽元素（draggable="true"）并移动鼠标，在源元素上触发 dragstart。此时可调用 dataTransfer.setData(format, data) 写入要传递的数据，并设置 effectAllowed（copy/move/link）。 2. 搬运途中（drag）：鼠标移动过程中在源元素上持续触发 drag，频率类似 mousemove，一般只用来做视觉反馈。 3. 进入目标（dragenter）：拖拽物进入某个可放置区域时，在该目标元素上触发 dragenter，通常在这里加高亮样式。 4. 悬停目标（dragover）：在目标上持续触发，约每几百毫秒一次。关键点：必须在 dragover 中调用 event.preventDefault()，否则浏览器认为该区域不接受放置，后续 drop 不会触发。这里也可用 dataTransfer.dropEffect 控制显示“复制/移动”光标。 5. 离开目标（dragleave）：拖出目标区域时触发，用来移除高亮。注意它会在子元素间移动时误触发，需要判断 relatedTarget 或做计数。 6. 放下（drop）：在目标上松开鼠标触发，此时用 dataTransfer.getData(format) 取数据并完成业务逻辑。drop 里通常也要 preventDefault，防止浏览器默认行为（如把链接当页面打开）。 7. 结束（dragend）：无论成功放下还是取消，最后都在源元素上触发 dragend，用来清理状态、复位样式。 完整顺序可记为：dragstart → drag → dragenter → dragover →（重复 dragover）→ drop → dragend；若中途离开则 dragenter → dragleave → dragend。 适用场景：列表排序、看板（Kanban）卡片移动、文件上传、跨窗口/跨应用拖拽。它天然支持跨浏览器窗口甚至跨应用传数据，这是 mousedown/mousemove 手写拖拽做不到的；但移动端支持差、样式定制受限，所以很多库（如 react-dnd、SortableJS）会封装或改用 Pointer Events。
+浏览器原生拖拽（HTML5 Drag and Drop API）不是一次事件，而是一串按用户操作阶段触发的事件流，可以类比成“搬家”：
+
+1. 拿起箱子（dragstart）：用户按住可拖拽元素（draggable="true"）并移动鼠标，在源元素上触发 dragstart。此时可调用 dataTransfer.setData(format, data) 写入要传递的数据，并设置 effectAllowed（copy/move/link）。
+2. 搬运途中（drag）：鼠标移动过程中在源元素上持续触发 drag，频率类似 mousemove，一般只用来做视觉反馈。
+3. 进入目标（dragenter）：拖拽物进入某个可放置区域时，在该目标元素上触发 dragenter，通常在这里加高亮样式。
+4. 悬停目标（dragover）：在目标上持续触发，约每几百毫秒一次。关键点：必须在 dragover 中调用 event.preventDefault()，否则浏览器认为该区域不接受放置，后续 drop 不会触发。这里也可用 dataTransfer.dropEffect 控制显示“复制/移动”光标。
+5. 离开目标（dragleave）：拖出目标区域时触发，用来移除高亮。注意它会在子元素间移动时误触发，需要判断 relatedTarget 或做计数。
+6. 放下（drop）：在目标上松开鼠标触发，此时用 dataTransfer.getData(format) 取数据并完成业务逻辑。drop 里通常也要 preventDefault，防止浏览器默认行为（如把链接当页面打开）。
+7. 结束（dragend）：无论成功放下还是取消，最后都在源元素上触发 dragend，用来清理状态、复位样式。 完整顺序可记为：dragstart → drag → dragenter → dragover →（重复 dragover）→ drop → dragend；若中途离开则 dragenter → dragleave → dragend。
+
+适用场景：列表排序、看板（Kanban）卡片移动、文件上传、跨窗口/跨应用拖拽。它天然支持跨浏览器窗口甚至跨应用传数据，这是 mousedown/mousemove 手写拖拽做不到的；但移动端支持差、样式定制受限，所以很多库（如 react-dnd、SortableJS）会封装或改用 Pointer Events。
 
 **常见追问**：如何避免「1）以为 drop 一定在 dragover 之后立即触发，忽略 dragover 必须 preventDefault」？ 「2）在 drop 里 setData 或在 dragstart 里 getData，方向搞反」在真实项目中应如何规避？
 
@@ -6994,7 +9451,16 @@ Hooks 本质是把组件的状态和副作用按调用顺序存进链表/数组�
 
 setState 本身是同步执行的，但它触发的状态更新与重新渲染在 React 事件处理和生命周期中被批处理，表现为“异步”；在 setTimeout、原生事件等非批处理上下文中则表现为同步。
 
-要分两层看： 1) 调用层面：setState 函数调用本身是同步的，它会立即把更新对象放进当前 Fiber 的更新队列（updateQueue），并可能安排一次调度（scheduleUpdateOnFiber）。所以“setState 是异步的”这个说法不准确。 2) 生效层面：状态合并、重新渲染的时机取决于是否处于批处理上下文。 - 在 React 事件处理函数、生命周期（React 18 之前）中，React 会把同一事件循环内的多次 setState 合并成一次更新，等事件处理结束后统一计算新 state 并渲染，因此 this.state 不会立刻变，看起来像异步。 - 在 setTimeout、Promise.then、原生 addEventListener 等（React 18 之前）不在 React 批处理上下文中，setState 会同步触发重新渲染，因此能立刻读到新值。 - React 18 引入 createRoot 后，所有更新默认自动批处理（Automatic Batching），包括 setTimeout、Promise、原生事件，所以这些场景也表现为“异步”了。 通俗类比：setState 像往购物车里加商品（同步加入），但结账（合并状态、重新渲染）要等这一轮逛完（当前事件/微任务结束）才统一进行；如果不在超市里（非批处理上下文），你加一件就立刻结一次账。 例子： ```js // React 17 及以前 handleClick() { this.setState({ count: this.state.count + 1 }); console.log(this.state.count); // 旧值，批处理 } setTimeout(() => { this.setState({ count: this.state.count + 1 }); console.log(this.state.count); // 新值，非批处理 }, 0); ``` React 18 中 setTimeout 里也会批处理，console 输出旧值。 另外，函数式更新 setState(prev => ...) 不依赖当前 this.state，多次调用会按队列依次执行，能避免合并丢失。
+要分两层看：
+
+1) 调用层面：setState 函数调用本身是同步的，它会立即把更新对象放进当前 Fiber 的更新队列（updateQueue），并可能安排一次调度（scheduleUpdateOnFiber）。所以“setState 是异步的”这个说法不准确。
+2) 生效层面：状态合并、重新渲染的时机取决于是否处于批处理上下文。 - 在 React 事件处理函数、生命周期（React 18 之前）中，React 会把同一事件循环内的多次 setState 合并成一次更新，等事件处理结束后统一计算新 state 并渲染，因此 this.state 不会立刻变，看起来像异步。 - 在 setTimeout、Promise.then、原生 addEventListener 等（React 18 之前）不在 React 批处理上下文中，setState 会同步触发重新渲染，因此能立刻读到新值。 - React 18 引入 createRoot 后，所有更新默认自动批处理（Automatic Batching），包括 setTimeout、Promise、原生事件，所以这些场景也表现为“异步”了。
+
+通俗类比：setState 像往购物车里加商品（同步加入），但结账（合并状态、重新渲染）要等这一轮逛完（当前事件/微任务结束）才统一进行；如果不在超市里（非批处理上下文），你加一件就立刻结一次账。
+
+例子： ```js // React 17 及以前 handleClick() { this.setState({ count: this.state.count + 1 }); console.log(this.state.count); // 旧值，批处理 } setTimeout(() => { this.setState({ count: this.state.count + 1 }); console.log(this.state.count); // 新值，非批处理 }, 0); ``` React 18 中 setTimeout 里也会批处理，console 输出旧值。
+
+另外，函数式更新 setState(prev => ...) 不依赖当前 this.state，多次调用会按队列依次执行，能避免合并丢失。
 
 **常见追问**：如何避免「1) 直接回答“setState 是异步的”或“是同步的”，没有区分调用与生效、没有提批处理上下文」？ 「2) 认为 setState 后立刻 this.state 就是新值，导致连续 setState 时用旧值计算，出现只加一次的问题」在真实项目中应如何规避？
 
@@ -7016,7 +9482,15 @@ setState 本身是同步执行的，但它触发的状态更新与重新渲染�
 
 移动端判断平台的核心是读取 User-Agent 字符串，结合 navigator.platform、微信内置浏览器标识（MicroMessenger）以及特性检测来区分 Android、iOS 和微信环境。
 
-在移动端 Web/H5 开发中，判断平台通常分三步： 1. **判断是否微信**：微信内置浏览器的 User-Agent 中一定包含 `MicroMessenger` 关键字。例如：`Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.0(0x18000000) NetType/WIFI Language/zh_CN`。所以 `navigator.userAgent.toLowerCase().includes('micromessenger')` 即可判断微信。 2. **判断 iOS**：iOS 设备的 UA 中通常包含 `iPhone`、`iPad` 或 `iPod`，且系统标识为 `CPU iPhone OS` 或 `CPU OS`。也可以结合 `navigator.platform` 为 `iPhone`、`iPad`、`iPod` 来判断。注意 iPadOS 13+ 默认请求桌面站点，UA 可能变成 Macintosh，需要额外用 `navigator.maxTouchPoints > 1` 来识别。 3. **判断 Android**：Android 设备的 UA 中一定包含 `Android` 关键字，例如 `Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 ...`。同时 `navigator.platform` 可能是 `Linux armv8l` 或 `Linux aarch64` 等。 通俗类比：User-Agent 就像设备的“身份证”，上面写着操作系统、浏览器、版本等信息。微信则是在这张身份证上额外盖了一个“微信专用”的章（MicroMessenger）。我们只要看身份证上的关键字就能知道对方是谁。 实际代码示例： ```js const ua = navigator.userAgent.toLowerCase(); const isWechat = /micromessenger/.test(ua); const isIOS = /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); const isAndroid = /android/.test(ua); ``` 适用场景：H5 页面需要针对不同平台做差异化处理，比如微信内调用 JS-SDK、iOS 使用 Universal Link 唤起 App、Android 使用 intent scheme、不同平台样式适配等。
+在移动端 Web/H5 开发中，判断平台通常分三步：
+
+1. **判断是否微信**：微信内置浏览器的 User-Agent 中一定包含 `MicroMessenger` 关键字。例如：`Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.0(0x18000000) NetType/WIFI Language/zh_CN`。所以 `navigator.userAgent.toLowerCase().includes('micromessenger')` 即可判断微信。
+2. **判断 iOS**：iOS 设备的 UA 中通常包含 `iPhone`、`iPad` 或 `iPod`，且系统标识为 `CPU iPhone OS` 或 `CPU OS`。也可以结合 `navigator.platform` 为 `iPhone`、`iPad`、`iPod` 来判断。注意 iPadOS 13+ 默认请求桌面站点，UA 可能变成 Macintosh，需要额外用 `navigator.maxTouchPoints > 1` 来识别。
+3. **判断 Android**：Android 设备的 UA 中一定包含 `Android` 关键字，例如 `Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 ...`。同时 `navigator.platform` 可能是 `Linux armv8l` 或 `Linux aarch64` 等。
+
+通俗类比：User-Agent 就像设备的“身份证”，上面写着操作系统、浏览器、版本等信息。微信则是在这张身份证上额外盖了一个“微信专用”的章（MicroMessenger）。我们只要看身份证上的关键字就能知道对方是谁。
+
+实际代码示例： ```js const ua = navigator.userAgent.toLowerCase(); const isWechat = /micromessenger/.test(ua); const isIOS = /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); const isAndroid = /android/.test(ua); ``` 适用场景：H5 页面需要针对不同平台做差异化处理，比如微信内调用 JS-SDK、iOS 使用 Universal Link 唤起 App、Android 使用 intent scheme、不同平台样式适配等。
 
 **常见追问**：如何避免「**只判断 Android 和 iOS 而忽略微信**：微信环境需要单独处理，比如微信内无法直接下载 apk、需要引导用户右上角打开浏览器。」？ 「**用 `navigator.platform` 判断 iOS 时忽略 iPadOS 桌面模式**：导致 iPad 被误判为 Mac。」在真实项目中应如何规避？
 
@@ -7038,7 +9512,20 @@ px：CSS 像素，逻辑像素，不是物理像素。；rem：相对根元素 f
 
 移动端页面尺寸处理的核心是：用 viewport meta 控制布局视口宽度等于设备宽度，用 CSS 像素/rem/vw 等相对单位做等比适配，用 1px 边框、图片、安全区等细节方案解决高清屏与刘海屏问题。
 
-移动端页面尺寸处理可以拆成三层来理解： 1）视口层：为什么需要 viewport meta 手机浏览器默认有一个约 980px 宽的“布局视口”（layout viewport），如果不设置 meta，页面会按桌面宽度渲染再缩小，字很小。加 <meta name="viewport" content="width=device-width, initial-scale=1"> 后，布局视口宽度等于设备宽度（如 375px），CSS 像素与设备独立像素对齐。 2）单位层：宽高用什么单位 - px：CSS 像素，逻辑像素，不是物理像素。 - rem：相对根元素 font-size。常见方案是“动态 rem”：用 JS 把 html 的 font-size 设为 clientWidth/10 或 /75，设计稿 750px 时 1rem=75px，写样式时按设计稿尺寸除以 75。 - vw/vh：1vw=视口宽度的 1%，纯 CSS 就能做等比，不需要 JS，但要注意 vh 在移动端地址栏收起/展开时会变化。 - %：相对父元素，适合局部自适应。 - em：相对当前元素 font-size，容易嵌套混乱，移动端少用。 3）细节层： - 高清屏 1px 边框：devicePixelRatio=2/3 时，1 CSS px 对应 2/3 物理像素，直接 border:1px 会偏粗。可用 transform: scaleY(0.5) 的伪元素、box-shadow、或 0.5px（部分机型支持）实现。 - 图片：用 srcset/sizes 或 2x/3x 图，避免模糊或浪费流量。 - 安全区：iPhone 刘海/底部横条用 env(safe-area-inset-*) + viewport-fit=cover。 - 横竖屏/键盘弹出：监听 resize/orientationchange，注意 100vh 在键盘弹出时不可靠，可用 dvh 或 JS 动态设置。 通俗类比：视口 meta 像给页面定了一个“画布宽度”，rem/vw 像把画布按比例缩放，1px 边框和安全区则是给画布边缘做精细修补。
+移动端页面尺寸处理可以拆成三层来理解：
+
+- 1）视口层：为什么需要 viewport meta 手机浏览器默认有一个约 980px 宽的“布局视口”（layout viewport），如果不设置 meta，页面会按桌面宽度渲染再缩小，字很小。加 <meta name="viewport" content="width=device-width, initial-scale=1"> 后，布局视口宽度等于设备宽度（如 375px），CSS 像素与设备独立像素对齐。
+- 2）单位层：宽高用什么单位
+
+- px：CSS 像素，逻辑像素，不是物理像素。
+- rem：相对根元素 font-size。常见方案是“动态 rem”：用 JS 把 html 的 font-size 设为 clientWidth/10 或 /75，设计稿 750px 时 1rem=75px，写样式时按设计稿尺寸除以 75。
+- vw/vh：1vw=视口宽度的 1%，纯 CSS 就能做等比，不需要 JS，但要注意 vh 在移动端地址栏收起/展开时会变化。
+- %：相对父元素，适合局部自适应。
+- em：相对当前元素 font-size，容易嵌套混乱，移动端少用。 3）细节层：
+- 高清屏 1px 边框：devicePixelRatio=2/3 时，1 CSS px 对应 2/3 物理像素，直接 border:1px 会偏粗。可用 transform: scaleY(0.5) 的伪元素、box-shadow、或 0.5px（部分机型支持）实现。
+- 图片：用 srcset/sizes 或 2x/3x 图，避免模糊或浪费流量。
+- 安全区：iPhone 刘海/底部横条用 env(safe-area-inset-*) + viewport-fit=cover。
+- 横竖屏/键盘弹出：监听 resize/orientationchange，注意 100vh 在键盘弹出时不可靠，可用 dvh 或 JS 动态设置。 通俗类比：视口 meta 像给页面定了一个“画布宽度”，rem/vw 像把画布按比例缩放，1px 边框和安全区则是给画布边缘做精细修补。
 
 **常见追问**：如何避免「1）以为 width=device-width 就是物理像素宽度，混淆 CSS 像素与设备像素」？ 「2）认为 rem 是“屏幕越大字越大”的绝对方案，忽略需要配合 viewport 和最大宽度限制」在真实项目中应如何规避？
 
@@ -7060,7 +9547,16 @@ px：CSS 像素，逻辑像素，不是物理像素。；rem：相对根元素 f
 
 useEffect 里的请求在组件渲染提交后执行，能拿到最新 props/state 且不阻塞渲染；放外面（组件函数体顶层）会在每次渲染时同步触发，造成重复请求、渲染副作用和闭包/竞态问题。
 
-核心区别在于“执行时机”和“执行次数”。 1) 执行时机：React 函数组件每次渲染都会完整执行函数体。写在组件函数体顶层（render 阶段）的 fetch 会在渲染过程中同步发起，属于“渲染副作用”，会阻塞/干扰渲染，且 React 的并发特性（如 StrictMode 双调用、并发渲染中断重试）下可能被多次执行。useEffect 的回调是在浏览器完成 DOM 提交（commit）之后异步执行，属于“提交副作用”，不阻塞渲染，是 React 官方指定的副作用位置。 2) 执行次数与依赖：放外面每次渲染都跑一次，父组件重渲染、自身 setState 都会触发新请求，容易死循环（请求→setState→重渲染→再请求）。useEffect 通过依赖数组控制：[] 只在挂载后跑一次，[id] 只在 id 变化时跑，能精确表达“什么时候该请求”。 3) 闭包与数据一致性：useEffect 回调捕获的是本次渲染的 props/state，配合依赖数组能保证请求参数与渲染一致。放外面虽然也能读到当前值，但无法控制何时重跑，且请求返回后 setState 时组件可能已卸载。 4) 竞态与清理：useEffect 可返回清理函数，用 AbortController 或标志位取消过期请求，避免“后发先至”导致旧数据覆盖新数据。放外面没有统一的清理入口，很难处理。 通俗类比：组件函数体像“做菜的过程”，render 阶段是切菜配菜，useEffect 是“菜端上桌后再去拿饮料”。拿饮料不该在切菜时顺手做，否则每切一次菜就拿一次饮料；而且菜还没上桌，饮料放哪都不对。 适用场景：数据获取、订阅、定时器、手动操作 DOM 等副作用都应放 useEffect；纯计算、派生数据直接在渲染中算，不要放 effect。
+核心区别在于“执行时机”和“执行次数”。
+
+1) 执行时机：React 函数组件每次渲染都会完整执行函数体。写在组件函数体顶层（render 阶段）的 fetch 会在渲染过程中同步发起，属于“渲染副作用”，会阻塞/干扰渲染，且 React 的并发特性（如 StrictMode 双调用、并发渲染中断重试）下可能被多次执行。useEffect 的回调是在浏览器完成 DOM 提交（commit）之后异步执行，属于“提交副作用”，不阻塞渲染，是 React 官方指定的副作用位置。
+2) 执行次数与依赖：放外面每次渲染都跑一次，父组件重渲染、自身 setState 都会触发新请求，容易死循环（请求→setState→重渲染→再请求）。useEffect 通过依赖数组控制：[] 只在挂载后跑一次，[id] 只在 id 变化时跑，能精确表达“什么时候该请求”。
+3) 闭包与数据一致性：useEffect 回调捕获的是本次渲染的 props/state，配合依赖数组能保证请求参数与渲染一致。放外面虽然也能读到当前值，但无法控制何时重跑，且请求返回后 setState 时组件可能已卸载。
+4) 竞态与清理：useEffect 可返回清理函数，用 AbortController 或标志位取消过期请求，避免“后发先至”导致旧数据覆盖新数据。放外面没有统一的清理入口，很难处理。
+
+通俗类比：组件函数体像“做菜的过程”，render 阶段是切菜配菜，useEffect 是“菜端上桌后再去拿饮料”。拿饮料不该在切菜时顺手做，否则每切一次菜就拿一次饮料；而且菜还没上桌，饮料放哪都不对。
+
+适用场景：数据获取、订阅、定时器、手动操作 DOM 等副作用都应放 useEffect；纯计算、派生数据直接在渲染中算，不要放 effect。
 
 **常见追问**：如何避免「1) 认为“放外面只执行一次”——错，函数体每次渲染都执行」？ 「2) 认为 useEffect 是同步的或会在 DOM 更新前执行——它是 commit 后异步执行（useLayoutEffect 才是提交前同步）」在真实项目中应如何规避？
 
@@ -7082,7 +9578,13 @@ useEffect 里的请求在组件渲染提交后执行，能拿到最新 props/sta
 
 VuePress 是基于 Vue 的静态网站生成器，专为技术文档和知识库设计，核心是 Markdown 驱动 + Vue 组件增强，适合搭建结构化知识体系。
 
-静态网站生成器（SSG）在构建时把 Markdown、模板和数据预渲染成纯 HTML/CSS/JS，部署后无需服务端动态渲染，因此加载快、成本低、易托管。VuePress 由 Vue 官方团队维护，最初为 Vue 文档而生，后发展出 VuePress 2（基于 Vite）和社区版 VuePress Theme Hope。它的工作流是：每个 Markdown 文件对应一个页面，通过 frontmatter 配置元信息，用目录结构自动生成侧边栏和导航，同时允许在 Markdown 中直接写 Vue 组件，实现交互式示例、自定义容器等。相比 Hexo、Hugo 等通用博客生成器，VuePress 更偏向文档和知识库：默认主题自带侧边栏、搜索、Git 最后更新时间、多语言等；相比 Docusaurus（React 生态），VuePress 对 Vue 开发者更友好，插件生态也围绕 Vue 展开。适用场景：技术文档、产品手册、个人知识体系、课程笔记等需要清晰层级和搜索的场景。通俗类比：VuePress 像一本会自动排版、自动生成目录和索引的活页笔记本，你只写内容，它负责装订成书并放到网上。
+静态网站生成器（SSG）在构建时把 Markdown、模板和数据预渲染成纯 HTML/CSS/JS，部署后无需服务端动态渲染，因此加载快、成本低、易托管。VuePress 由 Vue 官方团队维护，最初为 Vue 文档而生，后发展出 VuePress 2（基于 Vite）和社区版 VuePress Theme Hope。
+
+它的工作流是：每个 Markdown 文件对应一个页面，通过 frontmatter 配置元信息，用目录结构自动生成侧边栏和导航，同时允许在 Markdown 中直接写 Vue 组件，实现交互式示例、自定义容器等。相比 Hexo、Hugo 等通用博客生成器，VuePress 更偏向文档和知识库：默认主题自带侧边栏、搜索、Git 最后更新时间、多语言等；相比 Docusaurus（React 生态），VuePress 对 Vue 开发者更友好，插件生态也围绕 Vue 展开。
+
+适用场景：技术文档、产品手册、个人知识体系、课程笔记等需要清晰层级和搜索的场景。
+
+通俗类比：VuePress 像一本会自动排版、自动生成目录和索引的活页笔记本，你只写内容，它负责装订成书并放到网上。
 
 **常见追问**：如何避免「误以为 VuePress 是运行时框架，其实它是构建时生成静态文件，部署后不需要 Node 服务；2. 把 VuePress 和 VitePress 混为一谈，两者虽同源但配置和插件不兼容；3. 认为 Markdown 里不能写复杂交互，实际上可以嵌入 Vue 组件；4. 忽略构建时 SSR 与客户端 hydration 的差异，导致在 Markdown 中直接使用 window/document 报错；5. 以为静态网站不能做搜索，其实可通过本地搜索插件或 Algolia 实现。」？ 能否结合「VuePress 2 使用 Vite 作为构建工具，开发时冷启动和 HMR 明显快于 VuePress 1 的 Webpack；2. 构建时通过 vue-server-renderer 或 @vue/server-renderer 做 SSR 预渲染，生成静态 HTML，同时客户端 hydration 接管交互；3. 插件机制基于 markdown-it 和 Vue 插件系统，可自定义容器、代码高亮、PWA、SEO 等；4. 与 VitePress 的区别：VitePress 是 VuePress 的轻量重写，更专注文档，API 更简洁，但插件生态不如 VuePress 丰富；5. 知识体系搭建可结合自动侧边栏插件、Algolia DocSearch、Mermaid 图表、KaTeX 公式等。」进一步展开？
 
@@ -7104,7 +9606,25 @@ VuePress 是基于 Vue 的静态网站生成器，专为技术文档和知识库
 
 手写 Promise/EventEmitter 的考察重点已从“能否默写实现”转为“能否讲清设计原理、状态机/事件循环机制与适用场景”。
 
-一、Promise 原理 1. 本质：Promise 是一个状态机 + 发布订阅。它有三种状态：pending、fulfilled、rejected，状态只能从 pending 单向流转到 fulfilled 或 rejected，且一旦落定不可再变。 2. 核心结构：内部维护 state、value/reason、以及回调队列（onFulfilledCallbacks / onRejectedCallbacks）。then 在 pending 时把回调推入队列，在已落定时用微任务（queueMicrotask / MutationObserver / process.nextTick）异步执行回调。 3. 为什么异步：规范要求 then 回调必须异步执行，保证回调顺序一致、避免 Zalgo（同步异步混用导致不可预测）。 4. 链式调用：then 返回一个新 Promise，回调返回值 x 会经过 resolvePromise 处理：若 x 是 thenable，则递归展开；若 x 是普通值，则 resolve；若抛错则 reject。这解释了为什么 then 能一直链下去。 5. 静态方法：all 是计数器 + 结果数组，任一 reject 即整体 reject；race 是第一个落定者胜出；allSettled 收集所有结果；any 是第一个 fulfilled 胜出、全 reject 才 reject。 6. 适用场景：串行异步流程、并发聚合、错误统一捕获。 二、EventEmitter 原理 1. 本质：一个事件名到监听器数组的映射（Map/对象），核心 API 是 on/addListener、emit、off/removeListener、once、removeAllListeners。 2. emit 时同步依次调用监听器，this 指向 emitter；once 通过包装函数调用后自动 off 实现。 3. 边界：监听器数量超过 maxListeners 时打印警告，防止内存泄漏；removeListener 时若正在 emit，需注意数组拷贝或索引处理，避免漏调/错调。 4. 适用场景：解耦模块、插件系统、观察者模式、Node 流的基础。 三、通俗类比 Promise 像外卖订单：下单后状态是“进行中”，要么“已送达”要么“已取消”，不能反悔；then 像留电话，状态变了就通知你。EventEmitter 像微信群：on 是进群，emit 是发消息，所有在群里的人都会收到，once 是只收第一条就退群。
+**一、Promise 原理**
+
+1. 本质：Promise 是一个状态机 + 发布订阅。它有三种状态：pending、fulfilled、rejected，状态只能从 pending 单向流转到 fulfilled 或 rejected，且一旦落定不可再变。
+2. 核心结构：内部维护 state、value/reason、以及回调队列（onFulfilledCallbacks / onRejectedCallbacks）。then 在 pending 时把回调推入队列，在已落定时用微任务（queueMicrotask / MutationObserver / process.nextTick）异步执行回调。
+3. 为什么异步：规范要求 then 回调必须异步执行，保证回调顺序一致、避免 Zalgo（同步异步混用导致不可预测）。
+4. 链式调用：then 返回一个新 Promise，回调返回值 x 会经过 resolvePromise 处理：若 x 是 thenable，则递归展开；若 x 是普通值，则 resolve；若抛错则 reject。这解释了为什么 then 能一直链下去。
+5. 静态方法：all 是计数器 + 结果数组，任一 reject 即整体 reject；race 是第一个落定者胜出；allSettled 收集所有结果；any 是第一个 fulfilled 胜出、全 reject 才 reject。
+6. 适用场景：串行异步流程、并发聚合、错误统一捕获。
+
+**二、EventEmitter 原理**
+
+1. 本质：一个事件名到监听器数组的映射（Map/对象），核心 API 是 on/addListener、emit、off/removeListener、once、removeAllListeners。
+2. emit 时同步依次调用监听器，this 指向 emitter；once 通过包装函数调用后自动 off 实现。
+3. 边界：监听器数量超过 maxListeners 时打印警告，防止内存泄漏；removeListener 时若正在 emit，需注意数组拷贝或索引处理，避免漏调/错调。
+4. 适用场景：解耦模块、插件系统、观察者模式、Node 流的基础。
+
+**三、通俗类比**
+
+Promise 像外卖订单：下单后状态是“进行中”，要么“已送达”要么“已取消”，不能反悔；then 像留电话，状态变了就通知你。EventEmitter 像微信群：on 是进群，emit 是发消息，所有在群里的人都会收到，once 是只收第一条就退群。
 
 **常见追问**：如何避免「认为 then 回调是同步执行，忽略微任务语义。」？ 「认为状态可以多次改变，或 resolve 后 reject 还能生效。」在真实项目中应如何规避？
 
@@ -7126,7 +9646,15 @@ Promise/A+规范规定：若then的onFulfilled或onRejected返回一个Promise�
 
 AI生成的Promise实现常在then回调返回自身时陷入死循环，需检测并抛出TypeError。
 
-Promise/A+规范规定：若then的onFulfilled或onRejected返回一个Promise（或thenable），需递归解析其状态；但若返回的是当前Promise自身，则必须抛出TypeError，否则会无限递归。AI生成的代码常忽略此边界。例如： ```js class MyPromise { then(onFulfilled) { return new MyPromise((resolve) => { this.onFulfilled = (value) => { const result = onFulfilled(value); resolve(result); // 若result是当前新Promise，则resolve会再次触发then，形成死循环 }; }); } } ``` 正确做法是在resolve函数中检查：若value === 当前Promise，则reject(new TypeError('Chaining cycle detected'))。原理：Promise链式调用要求每个then返回新Promise，但若回调返回自身，则状态解析会无限循环。适用场景：任何实现Promise/A+规范的库（如原生Promise、bluebird）都必须处理。通俗类比：就像你告诉别人‘等我说完这句话，你就重复我这句话’，结果永远说不完。
+Promise/A+规范规定：若then的onFulfilled或onRejected返回一个Promise（或thenable），需递归解析其状态；但若返回的是当前Promise自身，则必须抛出TypeError，否则会无限递归。AI生成的代码常忽略此边界。
+
+例如： ```js class MyPromise { then(onFulfilled) { return new MyPromise((resolve) => { this.onFulfilled = (value) => { const result = onFulfilled(value); resolve(result); // 若result是当前新Promise，则resolve会再次触发then，形成死循环 }; }); } } ``` 正确做法是在resolve函数中检查：若value === 当前Promise，则reject(new TypeError('Chaining cycle detected'))。
+
+原理：Promise链式调用要求每个then返回新Promise，但若回调返回自身，则状态解析会无限循环。
+
+适用场景：任何实现Promise/A+规范的库（如原生Promise、bluebird）都必须处理。
+
+通俗类比：就像你告诉别人‘等我说完这句话，你就重复我这句话’，结果永远说不完。
 
 **常见追问**：如何避免「常见错误：1) 认为返回自身会直接resolve为自身，忽略循环」？ 「2) 只在then内检查，未在resolve内检查，导致通过其他路径（如resolve(promise)）仍循环」在真实项目中应如何规避？
 
@@ -7148,7 +9676,13 @@ Promise/A+规范规定：若then的onFulfilled或onRejected返回一个Promise�
 
 用 await 串行、或 reduce 链式 then、或 for...of + await，让下一个任务在上一个 resolve 后才启动。
 
-核心是“串行”而非“并发”：10 个异步任务必须一个接一个执行，前一个完成（resolve/reject 被处理）后才启动下一个。 1) async/await + for 循环（最推荐）： ```js async function run(tasks) { const results = []; for (const task of tasks) { results.push(await task()); // 每次 await 阻塞循环，直到当前任务完成 } return results; } ``` 注意必须用 for/for...of，不能用 forEach/map，因为 forEach 的回调不会等待 await，会瞬间并发启动全部任务。 2) reduce 链式 then： ```js const run = tasks => tasks.reduce( (p, task) => p.then(() => task()), Promise.resolve() ); ``` 原理是把每个任务挂到前一个 Promise 的 then 上，形成一条链。 3) 递归/队列：维护一个 index，任务完成后调用 next()，适合动态追加任务或需要控制并发数的场景。 为什么需要串行：任务之间有依赖（后一个要用前一个的结果）、共享资源需要互斥（如写同一个文件/数据库连接）、限流避免打爆下游。 通俗类比：并发像 10 个人同时挤一扇门，串行像排队过安检——前一个人检查完，下一个人再进。 如果只是“等 10 个都完成但可以并发”，应该用 Promise.all；如果“谁先完成先处理”，用 Promise.race/any。
+核心是“串行”而非“并发”：10 个异步任务必须一个接一个执行，前一个完成（resolve/reject 被处理）后才启动下一个。
+
+1) async/await + for 循环（最推荐）： ```js async function run(tasks) { const results = []; for (const task of tasks) { results.push(await task()); // 每次 await 阻塞循环，直到当前任务完成 } return results; } ``` 注意必须用 for/for...of，不能用 forEach/map，因为 forEach 的回调不会等待 await，会瞬间并发启动全部任务。
+2) reduce 链式 then： ```js const run = tasks => tasks.reduce( (p, task) => p.then(() => task()), Promise.resolve() ); ``` 原理是把每个任务挂到前一个 Promise 的 then 上，形成一条链。
+3) 递归/队列：维护一个 index，任务完成后调用 next()，适合动态追加任务或需要控制并发数的场景。 为什么需要串行：任务之间有依赖（后一个要用前一个的结果）、共享资源需要互斥（如写同一个文件/数据库连接）、限流避免打爆下游。
+
+通俗类比：并发像 10 个人同时挤一扇门，串行像排队过安检——前一个人检查完，下一个人再进。 如果只是“等 10 个都完成但可以并发”，应该用 Promise.all；如果“谁先完成先处理”，用 Promise.race/any。
 
 **常见追问**：如何避免「1) 用 tasks.forEach(async t => await t()) 或 map(async...) 以为会串行，实际是并发启动、无法 await 整体结果」？ 「2) 把 Promise.all 当成顺序执行——它只是并发后按顺序返回结果」在真实项目中应如何规避？
 
@@ -7170,7 +9704,13 @@ Promise/A+规范规定：若then的onFulfilled或onRejected返回一个Promise�
 
 用 asyncio.gather 或 as_completed 并发调度所有协程任务，前者按传入顺序返回全部结果，后者按完成顺序逐个产出结果。
 
-核心思路是先把「遍历 list」和「创建任务」解耦，再统一等待。 1) 基本写法（asyncio.gather）： ```python import asyncio async def handle(item): await asyncio.sleep(0.1) return item * 2 async def main(items): tasks = [asyncio.create_task(handle(x)) for x in items] results = await asyncio.gather(*tasks) return results ``` 注意：create_task 只是把协程注册到事件循环并立即开始调度，不会阻塞；gather 会等待全部完成，返回顺序与传入的 tasks 顺序一致（不是完成顺序）。 2) 按完成顺序处理（asyncio.as_completed）： ```python for coro in asyncio.as_completed([handle(x) for x in items]): result = await coro print(result) ``` 适合「谁先完成先处理」的流式场景，比如边下载边写盘。 3) 需要容错时用 return_exceptions=True： ```python results = await asyncio.gather(*tasks, return_exceptions=True) for r in results: if isinstance(r, Exception): ... ``` 否则任意一个任务抛异常，gather 会立刻向外抛出，其余任务不会被取消但结果拿不到。 4) 控制并发量：任意长度 list 可能上万条，直接全量 create_task 会瞬间创建大量任务、占用内存并压垮下游。用 asyncio.Semaphore 限流： ``` sem = asyncio.Semaphore(100) async def handle(x): async with sem: ... ``` 或分批 gather。 5) 如果 list 元素本身是同步阻塞函数（如 requests、文件 IO），不能直接 await，要用 asyncio.to_thread / run_in_executor 包装，否则会阻塞整个事件循环。 类比：gather 像「等全班同学都交卷后按学号收齐」，as_completed 像「谁先交卷先批谁的」。
+核心思路是先把「遍历 list」和「创建任务」解耦，再统一等待。
+
+1) 基本写法（asyncio.gather）： ```python import asyncio async def handle(item): await asyncio.sleep(0.1) return item * 2 async def main(items): tasks = [asyncio.create_task(handle(x)) for x in items] results = await asyncio.gather(*tasks) return results ``` 注意：create_task 只是把协程注册到事件循环并立即开始调度，不会阻塞；gather 会等待全部完成，返回顺序与传入的 tasks 顺序一致（不是完成顺序）。
+2) 按完成顺序处理（asyncio.as_completed）： ```python for coro in asyncio.as_completed([handle(x) for x in items]): result = await coro print(result) ``` 适合「谁先完成先处理」的流式场景，比如边下载边写盘。
+3) 需要容错时用 return_exceptions=True： ```python results = await asyncio.gather(*tasks, return_exceptions=True) for r in results: if isinstance(r, Exception): ... ``` 否则任意一个任务抛异常，gather 会立刻向外抛出，其余任务不会被取消但结果拿不到。
+4) 控制并发量：任意长度 list 可能上万条，直接全量 create_task 会瞬间创建大量任务、占用内存并压垮下游。用 asyncio.Semaphore 限流： ``` sem = asyncio.Semaphore(100) async def handle(x): async with sem: ... ``` 或分批 gather。
+5) 如果 list 元素本身是同步阻塞函数（如 requests、文件 IO），不能直接 await，要用 asyncio.to_thread / run_in_executor 包装，否则会阻塞整个事件循环。 类比：gather 像「等全班同学都交卷后按学号收齐」，as_completed 像「谁先交卷先批谁的」。
 
 **常见追问**：如何避免「1) 在列表推导里直接 await，导致变成串行执行，失去并发意义」？ 「2) 只 create_task 不 await/gather，任务可能在 main 结束时被取消或结果丢失」在真实项目中应如何规避？
 
@@ -7192,7 +9732,15 @@ Promise/A+规范规定：若then的onFulfilled或onRejected返回一个Promise�
 
 弹窗拆分本质是把「弹窗」从页面里抽离成可复用的独立组件，通过状态驱动、内容插槽、命令式调用三层解耦，避免每个页面重复写遮罩、层级、动画和关闭逻辑。
 
-弹窗拆分的核心思路是：把弹窗拆成「容器」和「内容」两部分。容器负责遮罩、层级(z-index)、定位、动画、点击遮罩关闭、ESC 关闭、滚动锁定、焦点管理等通用能力；内容负责具体业务 UI。 常见拆法有三层： 1. 基础组件层：一个通用 Modal/Dialog 组件，接收 visible、title、footer、onClose 等 props，内部用 slot/children 渲染内容。类似「一个空盒子 + 标准开关」。 2. 业务弹窗层：把「用户选择弹窗」「订单确认弹窗」等封装成独立组件，内部组合基础 Modal，暴露 open/close 或受控 visible。这样业务页面只写 <UserSelectModal visible={...} onOk={...}/>。 3. 命令式调用层：对于「点击按钮弹一个确认框」这种场景，提供 useModal / Modal.confirm 这类 API，内部维护一个全局弹窗队列或 Portal 容器，调用方不用在 JSX 里写状态。 为什么这么拆？因为弹窗的通用逻辑（遮罩、层级、动画、无障碍）和业务逻辑（展示什么、确认后干什么）变化频率不同。通用逻辑稳定，业务逻辑多变，混在一起会导致每个页面复制粘贴，改一个交互要改几十处。 适用场景： - 弹窗样式/交互统一的后台系统，适合抽基础组件 + 业务弹窗。 - 弹窗数量多、调用零散（如各种确认框），适合命令式 API。 - 弹窗内容差异极大（如富文本编辑器、复杂表单），适合容器 + 插槽，内容完全自定义。 通俗类比：弹窗拆分就像「装修」。基础 Modal 是毛坯房（墙、门、水电），业务弹窗是精装房（家具按场景摆），命令式 API 是「一键叫保洁」——你不需要知道保洁怎么进门，只要说一声。
+弹窗拆分的核心思路是：把弹窗拆成「容器」和「内容」两部分。容器负责遮罩、层级(z-index)、定位、动画、点击遮罩关闭、ESC 关闭、滚动锁定、焦点管理等通用能力；内容负责具体业务 UI。 常见拆法有三层：
+
+1. 基础组件层：一个通用 Modal/Dialog 组件，接收 visible、title、footer、onClose 等 props，内部用 slot/children 渲染内容。类似「一个空盒子 + 标准开关」。
+2. 业务弹窗层：把「用户选择弹窗」「订单确认弹窗」等封装成独立组件，内部组合基础 Modal，暴露 open/close 或受控 visible。这样业务页面只写 <UserSelectModal visible={...} onOk={...}/>。
+3. 命令式调用层：对于「点击按钮弹一个确认框」这种场景，提供 useModal / Modal.confirm 这类 API，内部维护一个全局弹窗队列或 Portal 容器，调用方不用在 JSX 里写状态。 为什么这么拆？因为弹窗的通用逻辑（遮罩、层级、动画、无障碍）和业务逻辑（展示什么、确认后干什么）变化频率不同。通用逻辑稳定，业务逻辑多变，混在一起会导致每个页面复制粘贴，改一个交互要改几十处。
+
+适用场景： - 弹窗样式/交互统一的后台系统，适合抽基础组件 + 业务弹窗。 - 弹窗数量多、调用零散（如各种确认框），适合命令式 API。 - 弹窗内容差异极大（如富文本编辑器、复杂表单），适合容器 + 插槽，内容完全自定义。
+
+通俗类比：弹窗拆分就像「装修」。基础 Modal 是毛坯房（墙、门、水电），业务弹窗是精装房（家具按场景摆），命令式 API 是「一键叫保洁」——你不需要知道保洁怎么进门，只要说一声。
 
 **常见追问**：如何避免「只抽样式不抽逻辑：把 Modal 做成纯 UI 组件，遮罩关闭、ESC、焦点管理仍散落在各页面，等于没拆干净。」？ 「过度抽象：把所有弹窗强行塞进一个组件，用大量 props 控制差异，导致组件臃肿难维护。应按「基础容器 + 业务组合」分层。」在真实项目中应如何规避？
 
@@ -7214,7 +9762,20 @@ this 绑定：普通函数的 this 由调用方式决定（直接调用指向 un
 
 箭头函数没有自己的 this、arguments、super、new.target，不能作为构造函数，且不能使用 yield；它的 this 在定义时词法绑定到外层作用域，普通函数的 this 在调用时动态决定。
 
-核心区别有四点： 1. this 绑定：普通函数的 this 由调用方式决定（直接调用指向 undefined/全局，方法调用指向调用者，new 调用指向新对象，call/apply/bind 可显式指定）；箭头函数没有自己的 this，定义时捕获外层作用域的 this，之后永远不变。类比：普通函数的 this 像“谁请我干活我就听谁的”，箭头函数的 this 像“我出生在谁家就认谁当爹”。 2. arguments：普通函数有 arguments 对象；箭头函数没有，需要用剩余参数 ...args。 3. 构造函数：普通函数可用 new 调用，有 prototype；箭头函数没有 prototype，不能 new，new 会抛 TypeError。 4. 其他：箭头函数没有 super、new.target，不能用作 generator（不能 yield）。 适用场景：需要动态 this 的回调（如事件处理器里想用 this 指向 DOM 元素）、对象方法、构造函数、需要 arguments 时用普通函数；需要固定外层 this 的回调（如 setTimeout、数组 map/filter、React 类组件方法）用箭头函数更简洁。 例子： const obj = { name: 'a', f: function(){ return this.name; }, g: () => this.name }; obj.f() // 'a'；obj.g() // 外层 this（模块里是 undefined） function F(){ this.x = 1; } const A = () => {}; new F() // ok；new A() // TypeError: A is not a constructor
+核心区别有四点：
+
+1. this 绑定：普通函数的 this 由调用方式决定（直接调用指向 undefined/全局，方法调用指向调用者，new 调用指向新对象，call/apply/bind 可显式指定）；箭头函数没有自己的 this，定义时捕获外层作用域的 this，之后永远不变。类比：普通函数的 this 像“谁请我干活我就听谁的”，箭头函数的 this 像“我出生在谁家就认谁当爹”。
+2. arguments：普通函数有 arguments 对象；箭头函数没有，需要用剩余参数 ...args。
+3. 构造函数：普通函数可用 new 调用，有 prototype；箭头函数没有 prototype，不能 new，new 会抛 TypeError。
+4. 其他：箭头函数没有 super、new.target，不能用作 generator（不能 yield）。
+
+适用场景：需要动态 this 的回调（如事件处理器里想用 this 指向 DOM 元素）、对象方法、构造函数、需要 arguments 时用普通函数；需要固定外层 this 的回调（如 setTimeout、数组 map/filter、React 类组件方法）用箭头函数更简洁。
+
+- 例子： const obj = { name: 'a', f: function(){ return this.name; }, g: () => this.name };
+- obj.f() // 'a'；
+- obj.g() // 外层 this（模块里是 undefined） function F(){ this.x = 1; } const A = () => {};
+- new F() // ok；
+- new A() // TypeError: A is not a constructor
 
 **常见追问**：如何避免「误以为箭头函数的 this 指向函数自身或调用者。」？ 「误以为箭头函数可以用 new，或以为它有 prototype。」在真实项目中应如何规避？
 
@@ -7236,7 +9797,21 @@ this 绑定：普通函数的 this 由调用方式决定（直接调用指向 un
 
 虚拟列表的核心是只渲染可视区域内的列表项，通过滚动偏移计算可视区间并动态替换 DOM，从而把渲染量从 O(n) 降到 O(可视项数)，重点要处理高度测量、滚动同步、缓冲区与滚动容器选择。
 
-虚拟列表（Virtual List / Windowing）解决的问题是：当列表有几千上万条数据时，全量渲染 DOM 会导致首屏慢、内存高、滚动卡顿。原理类比：像看一卷很长的胶片，你只把镜头对准的那一小段剪下来贴在屏幕上，滚动时不断换贴纸，而不是把整卷胶片都铺在桌上。 实现步骤： 1. 确定滚动容器（window 或某个 overflow:auto 的 div），监听 scroll 事件。 2. 计算可视区间：startIndex = floor(scrollTop / itemHeight)，endIndex = ceil((scrollTop + viewportHeight) / itemHeight)。 3. 用绝对定位或 transform 把渲染出的项偏移到正确位置，通常外层容器高度设为 total = itemCount * itemHeight，撑出滚动条。 4. 只渲染 [startIndex - buffer, endIndex + buffer] 的项，buffer 用于减少快速滚动时的白屏。 5. 滚动时用 requestAnimationFrame 节流，只更新变化的区间，避免频繁重排。 需要考虑的点： - 定高 vs 不定高：定高最简单，直接乘除；不定高需要测量每项真实高度，维护位置缓存（如 prefix sum 或 Fenwick 树），支持二分查找定位。 - 滚动容器：window 滚动和局部 div 滚动计算方式不同，要统一坐标系。 - 缓冲区：上下各多渲染几项，防止快速滚动出现空白。 - 滚动锚定：数据插入/删除时保持当前视口位置不跳动。 - 动态高度变化：图片加载、展开收起导致高度变化，需要重新测量并修正偏移。 - 性能：避免每帧都 setState，用 ref 直接改 style 或虚拟 DOM diff 最小化。 - 可访问性与 SEO：虚拟列表会丢失未渲染内容，需要配合 aria 或服务端渲染。 - 横向虚拟列表、网格虚拟列表、树形虚拟列表是变体。 适用场景：长列表、聊天记录、日志、表格、下拉选择器、无限滚动。数据量小（如 < 100）时没必要用，反而增加复杂度。
+虚拟列表（Virtual List / Windowing）解决的问题是：当列表有几千上万条数据时，全量渲染 DOM 会导致首屏慢、内存高、滚动卡顿。原理类比：像看一卷很长的胶片，你只把镜头对准的那一小段剪下来贴在屏幕上，滚动时不断换贴纸，而不是把整卷胶片都铺在桌上。 实现步骤：
+
+1. 确定滚动容器（window 或某个 overflow:auto 的 div），监听 scroll 事件。
+2. 计算可视区间：startIndex = floor(scrollTop / itemHeight)，endIndex = ceil((scrollTop + viewportHeight) / itemHeight)。
+3. 用绝对定位或 transform 把渲染出的项偏移到正确位置，通常外层容器高度设为 total = itemCount * itemHeight，撑出滚动条。
+4. 只渲染 [startIndex - buffer, endIndex + buffer] 的项，buffer 用于减少快速滚动时的白屏。
+5. 滚动时用 requestAnimationFrame 节流，只更新变化的区间，避免频繁重排。 需要考虑的点：
+
+- 定高 vs 不定高：定高最简单，直接乘除；不定高需要测量每项真实高度，维护位置缓存（如 prefix sum 或 Fenwick 树），支持二分查找定位。
+- 滚动容器：window 滚动和局部 div 滚动计算方式不同，要统一坐标系。
+- 缓冲区：上下各多渲染几项，防止快速滚动出现空白。
+- 滚动锚定：数据插入/删除时保持当前视口位置不跳动。
+- 动态高度变化：图片加载、展开收起导致高度变化，需要重新测量并修正偏移。
+- 性能：避免每帧都 setState，用 ref 直接改 style 或虚拟 DOM diff 最小化。
+- 可访问性与 SEO：虚拟列表会丢失未渲染内容，需要配合 aria 或服务端渲染。 - 横向虚拟列表、网格虚拟列表、树形虚拟列表是变体。 适用场景：长列表、聊天记录、日志、表格、下拉选择器、无限滚动。数据量小（如 < 100）时没必要用，反而增加复杂度。
 
 **常见追问**：如何避免「以为虚拟列表就是「懒加载」：懒加载是数据分页，虚拟列表是 DOM 渲染优化，两者常配合但不等价。2. 忽略不定高场景，直接假设所有项等高，遇到文本换行、图片就错位。3. 只在 scroll 里直接 setState 且不做节流，导致滚动卡顿。4. 忘记设置外层容器总高度，滚动条无法正确反映总数据量。5. 缓冲区设得过大，失去虚拟化意义；设得过小，快速滚动白屏。6. 数据增删时不做滚动锚定，视口跳动。7. 认为虚拟列表能解决所有性能问题，实际上如果单项渲染本身很重，仍需 memo 和 key 优化。」？ 能否结合「不定高实现可用「位置缓存 + 二分查找」：维护每个 item 的 top 和 height，滚动时二分找到 startIndex，复杂度 O(log n)；也可用 Fenwick 树支持动态更新。2. React 生态可参考 react-window / react-virtualized 的 FixedSizeList、VariableSizeList、CellMeasurer 设计；Vue 可参考 vue-virtual-scroller。3. 滚动事件用 passive:true 提升滚动性能，更新用 rAF 合并。4. 处理「滚动白屏」：buffer 大小要结合滚动速度和帧率估算，或使用 IntersectionObserver 预渲染。5. 大数据量下 total height 可能超过浏览器最大高度（约 33,554,432px），需要做「滚动位置映射」或分段虚拟化。6. 服务端渲染时首屏可先渲染前 N 条，客户端 hydrate 后再接管虚拟化。」进一步展开？
 
@@ -7258,7 +9833,17 @@ this 绑定：普通函数的 this 由调用方式决定（直接调用指向 un
 
 link 是 HTML 标签，@import 是 CSS 语法；link 并行加载且可被 JS 操作，@import 串行加载、兼容性差，实际项目应优先用 link。
 
-两者都能引入外部 CSS，但本质不同。 1. 归属与加载机制 - link 是 HTML 标签，属于文档结构的一部分，浏览器解析 HTML 时就会发起请求，通常与页面其他资源并行加载。 - @import 是 CSS 规则，只能写在 CSS 文件或 <style> 中，浏览器必须先下载并解析到包含它的 CSS，才会去请求被导入的 CSS，因此容易形成串行加载，增加首屏渲染时间。 2. 兼容性 - link 所有浏览器都支持。 - @import 在 IE5 以下不支持，现代浏览器虽支持，但早期兼容性差。 3. 可控性 - link 是 DOM 节点，可以用 JavaScript 动态创建、修改 href、禁用/启用样式表，也可以配合 media 属性做响应式加载。 - @import 是 CSS 规则，JS 不能直接操作，只能通过改样式表内容间接控制。 4. 功能范围 - link 除了 CSS，还能引入 favicon、预加载资源、RSS 等。 - @import 只能引入 CSS。 5. 优先级/层叠 - 两者引入的样式在层叠顺序上取决于出现位置，但 @import 必须写在样式表最前面（除 @charset 外），否则会被忽略。 通俗类比：link 像直接在 HTML 里贴了一张“资源清单”，浏览器一看到就派人去取；@import 像在 CSS 里写了一句“请再去看另一份文件”，浏览器得先读完当前文件才知道还要取什么，自然慢一步。 适用场景：常规项目用 link；需要按媒体查询条件加载、或老式 CSS 模块化拆分时可能用 @import，但现代构建工具（Webpack/Vite）通常会把 @import 内联打包，运行时已不是浏览器原生 @import。
+两者都能引入外部 CSS，但本质不同。
+
+1. 归属与加载机制 - link 是 HTML 标签，属于文档结构的一部分，浏览器解析 HTML 时就会发起请求，通常与页面其他资源并行加载。 - @import 是 CSS 规则，只能写在 CSS 文件或 <style> 中，浏览器必须先下载并解析到包含它的 CSS，才会去请求被导入的 CSS，因此容易形成串行加载，增加首屏渲染时间。
+2. 兼容性 - link 所有浏览器都支持。 - @import 在 IE5 以下不支持，现代浏览器虽支持，但早期兼容性差。
+3. 可控性 - link 是 DOM 节点，可以用 JavaScript 动态创建、修改 href、禁用/启用样式表，也可以配合 media 属性做响应式加载。 - @import 是 CSS 规则，JS 不能直接操作，只能通过改样式表内容间接控制。
+4. 功能范围 - link 除了 CSS，还能引入 favicon、预加载资源、RSS 等。 - @import 只能引入 CSS。
+5. 优先级/层叠 - 两者引入的样式在层叠顺序上取决于出现位置，但 @import 必须写在样式表最前面（除 @charset 外），否则会被忽略。
+
+通俗类比：link 像直接在 HTML 里贴了一张“资源清单”，浏览器一看到就派人去取；@import 像在 CSS 里写了一句“请再去看另一份文件”，浏览器得先读完当前文件才知道还要取什么，自然慢一步。
+
+适用场景：常规项目用 link；需要按媒体查询条件加载、或老式 CSS 模块化拆分时可能用 @import，但现代构建工具（Webpack/Vite）通常会把 @import 内联打包，运行时已不是浏览器原生 @import。
 
 **常见追问**：如何避免「误以为 @import 和 link 完全等价，只是写法不同。」？ 「说 @import 会阻塞 HTML 解析——它主要影响 CSS 加载和渲染，不是直接阻塞 HTML 解析。」在真实项目中应如何规避？
 
@@ -7280,7 +9865,33 @@ for...in 适用于普通对象（Object），也可用于数组/字符串，但�
 
 for...in 遍历对象的可枚举属性名（键，含原型链），for...of 遍历可迭代对象的值（依赖 Symbol.iterator）。
 
-一、本质区别 1) for...in 是 ES5 的语句，遍历的是「键」。它会枚举对象自身以及原型链上所有 enumerable 为 true 的属性名（字符串），顺序不保证（数字键按升序，其余按插入顺序，规范未强制）。 2) for...of 是 ES6 引入的，遍历的是「值」。它要求目标实现可迭代协议，即拥有 [Symbol.iterator] 方法，每次调用返回一个迭代器，迭代器有 next() 返回 {value, done}。 二、适用对象 - for...in 适用于普通对象（Object），也可用于数组/字符串，但会拿到索引字符串，且会遍历到原型上的可枚举属性。 - for...of 适用于内置可迭代对象：Array、String、Map、Set、TypedArray、arguments、NodeList，以及 generator 返回的迭代器；普通对象默认不可迭代，直接 for...of 会抛 TypeError: obj is not iterable。 三、通俗类比 把对象想成一个「抽屉柜」：for...in 是挨个报出抽屉上的标签（键），连柜子继承来的标签也报；for...of 是挨个把抽屉里的东西拿出来（值），但前提是这个柜子装了「传送带」（Symbol.iterator），能按顺序吐东西。 四、典型例子 const arr = ['a','b']; arr.foo = 'x'; for (const k in arr) console.log(k); // '0','1','foo' for (const v of arr) console.log(v); // 'a','b' const obj = {a:1,b:2}; for (const k in obj) console.log(k); // 'a','b' // for (const v of obj) {} // TypeError 五、为什么这样设计 for...in 面向「属性枚举」，所以包含原型链、可枚举性这些对象属性系统的语义；for...of 面向「顺序消费数据」，用统一的迭代器协议解耦了数据结构与遍历逻辑，任何对象只要实现 Symbol.iterator 就能被 for...of、扩展运算符、解构、Array.from 等消费。 六、使用建议 - 遍历对象键值：用 Object.keys/values/entries + for...of，或 for...in 配 hasOwnProperty。 - 遍历数组/类数组：优先 for...of（或 forEach/map），不要用 for...in。 - 需要索引：用 arr.entries() 配合 for...of。 - 遍历时删除/修改：for...of 对数组是值拷贝，改元素可，增删长度行为类似索引遍历，需谨慎。
+**一、本质区别**
+
+1) for...in 是 ES5 的语句，遍历的是「键」。它会枚举对象自身以及原型链上所有 enumerable 为 true 的属性名（字符串），顺序不保证（数字键按升序，其余按插入顺序，规范未强制）。
+2) for...of 是 ES6 引入的，遍历的是「值」。它要求目标实现可迭代协议，即拥有 [Symbol.iterator] 方法，每次调用返回一个迭代器，迭代器有 next() 返回 {value, done}。
+
+**二、适用对象**
+
+- for...in 适用于普通对象（Object），也可用于数组/字符串，但会拿到索引字符串，且会遍历到原型上的可枚举属性。 - for...of 适用于内置可迭代对象：Array、String、Map、Set、TypedArray、arguments、NodeList，以及 generator 返回的迭代器；普通对象默认不可迭代，直接 for...of 会抛 TypeError: obj is not iterable。
+
+**三、通俗类比**
+
+把对象想成一个「抽屉柜」：for...in 是挨个报出抽屉上的标签（键），连柜子继承来的标签也报；for...of 是挨个把抽屉里的东西拿出来（值），但前提是这个柜子装了「传送带」（Symbol.iterator），能按顺序吐东西。
+
+**四、典型例子**
+
+const arr = ['a','b']; arr.foo = 'x'; for (const k in arr) console.log(k); // '0','1','foo' for (const v of arr) console.log(v); // 'a','b' const obj = {a:1,b:2}; for (const k in obj) console.log(k); // 'a','b' // for (const v of obj) {} // TypeError
+
+**五、为什么这样设计**
+
+for...in 面向「属性枚举」，所以包含原型链、可枚举性这些对象属性系统的语义；for...of 面向「顺序消费数据」，用统一的迭代器协议解耦了数据结构与遍历逻辑，任何对象只要实现 Symbol.iterator 就能被 for...of、扩展运算符、解构、Array.from 等消费。
+
+**六、使用建议**
+
+- 遍历对象键值：用 Object.keys/values/entries + for...of，或 for...in 配 hasOwnProperty。
+- 遍历数组/类数组：优先 for...of（或 forEach/map），不要用 for...in。
+- 需要索引：用 arr.entries() 配合 for...of。
+- 遍历时删除/修改：for...of 对数组是值拷贝，改元素可，增删长度行为类似索引遍历，需谨慎。
 
 **常见追问**：如何避免「1) 说 for...of 能遍历普通对象——错，普通对象没有 Symbol.iterator，会报 TypeError」？ 「2) 说 for...in 只遍历自身属性——错，会遍历原型链上可枚举属性，需 hasOwnProperty 过滤」在真实项目中应如何规避？
 
@@ -7302,7 +9913,21 @@ for...in 遍历对象的可枚举属性名（键，含原型链），for...of �
 
 Vuex 是一个基于 Vue 响应式系统实现的集中式状态管理库，核心是单一状态树 + 单向数据流，通过 mutation 同步修改 state，action 处理异步，getter 派生状态。
 
-Vuex 的原理可以拆成三部分理解： 1. 单一状态树与响应式：Vuex 把应用所有共享状态集中到一个 store 对象里，内部用 new Vue({ data: state }) 或 Vue.observable 把 state 变成响应式。这样任何组件通过 this.$store.state.xxx 读取时都会收集依赖，state 变化时自动触发组件重新渲染。 2. 单向数据流：组件不能直接改 state，必须提交 mutation。mutation 是同步函数，内部执行 state.xxx = newVal。Vuex 在 commit 时调用 mutation 并触发响应式更新。action 类似 mutation，但可以包含异步操作，异步完成后 commit mutation。getter 相当于 store 的 computed，基于 state 派生新状态并缓存。 3. 模块化：当 state 很大时，用 modules 拆分，每个模块有自己的 state、mutation、action、getter，甚至嵌套子模块。Vuex 通过递归注册和命名空间（namespaced）来管理模块，避免命名冲突。 通俗类比：Vuex 像一个公司的中央数据库。state 是数据库里的数据；mutation 是唯一能写数据库的存储过程，且必须同步执行；action 是业务逻辑层，可以调用外部 API，拿到结果后再调用存储过程写库；getter 是数据库视图，只读且可缓存；组件是各个部门，只能读数据库或调用业务逻辑，不能直接改库。 适用场景：多个组件共享状态、跨组件通信复杂、需要可预测的状态变更追踪（如时间旅行调试）时使用。小型应用或简单父子通信不需要 Vuex，用 props/events 或 provide/inject 即可。
+Vuex 的原理可以拆成三部分理解：
+
+1. 单一状态树与响应式：Vuex 把应用所有共享状态集中到一个 store 对象里，内部用 new Vue({ data: state }) 或 Vue.observable 把 state 变成响应式。这样任何组件通过 this.$store.state.xxx 读取时都会收集依赖，state 变化时自动触发组件重新渲染。
+2. 单向数据流：组件不能直接改 state，必须提交 mutation。mutation 是同步函数，内部执行 state.xxx = newVal。Vuex 在 commit 时调用 mutation 并触发响应式更新。action 类似 mutation，但可以包含异步操作，异步完成后 commit mutation。getter 相当于 store 的 computed，基于 state 派生新状态并缓存。
+3. 模块化：当 state 很大时，用 modules 拆分，每个模块有自己的 state、mutation、action、getter，甚至嵌套子模块。Vuex 通过递归注册和命名空间（namespaced）来管理模块，避免命名冲突。
+
+通俗类比：Vuex 像一个公司的中央数据库。
+
+- state 是数据库里的数据；
+- mutation 是唯一能写数据库的存储过程，且必须同步执行；
+- action 是业务逻辑层，可以调用外部 API，拿到结果后再调用存储过程写库；
+- getter 是数据库视图，只读且可缓存；
+- 组件是各个部门，只能读数据库或调用业务逻辑，不能直接改库。
+
+适用场景：多个组件共享状态、跨组件通信复杂、需要可预测的状态变更追踪（如时间旅行调试）时使用。小型应用或简单父子通信不需要 Vuex，用 props/events 或 provide/inject 即可。
 
 **常见追问**：如何避免「误以为可以直接修改 state：直接赋值 this.$store.state.count = 1 在严格模式下会报错，且破坏可追踪性。」？ 「混淆 mutation 和 action：mutation 必须同步，action 可以异步；action 不能直接改 state，必须 commit mutation。」在真实项目中应如何规避？
 
@@ -7324,7 +9949,38 @@ Vuex 的原理可以拆成三部分理解： 1. 单一状态树与响应式：Vu
 
 动态表单联动的核心是把表单建模为「字段配置 + 依赖关系 + 响应式状态」，由 A 的值变化触发对 B 的显隐、C 的必填等规则的重新计算，而不是写死 if-else 直接操作 DOM。
 
-一、本质理解 动态表单联动 = 表单的「结构/校验规则」是状态的函数。可以类比成 Excel：A1 单元格改了，依赖 A1 的公式单元格自动重算。表单里 A 字段就是那个输入单元格，B 的显隐、C 的必填就是「公式」。 二、三种主流实现层次 1) 命令式（最朴素）：在 A 的 onChange 里写 if (value === '报销') { setShowB(true); setCRequired(true) }。 - 优点：直观、上手快。 - 缺点：字段一多就变成 N×M 的 if 网，规则散落、难维护、难复用，改一个字段要翻遍所有 onChange。 2) 声明式规则表（推荐，工程上最常用）：把联动抽成配置数据，例如： { field: 'B', visibleWhen: { A: '报销' } } { field: 'C', requiredWhen: { A: '报销' } } 运行时用一个「依赖图/依赖索引」：先扫描所有规则，建立 A -> [B, C] 的反向依赖表；A 变化时只重算依赖它的字段，而不是全表重算。 - 优点：规则集中、可配置化、可后端下发、可做低代码表单引擎。 - 关键点：显隐和必填要区分「UI 隐藏」与「数据/校验是否参与提交」。 3) 响应式/依赖追踪（Vue computed、MobX、React + 状态库）：把每个字段的 visible/required 写成依赖 A 的派生值，框架自动追踪依赖并重算。 - 类比：computed 就是「自动重算的 Excel 公式」。 - 注意：React 里要避免在 render 中直接改 state 造成循环更新，应使用 useMemo 派生或受控状态 + effect。 三、必须处理的细节 1) 隐藏字段的数据处理：隐藏时通常要「清空值 + 从校验中移除 + 不参与提交」，否则会出现「看不见但校验报错」或脏数据提交。 2) 必填是动态的：校验规则要随状态重算，不能初始化时固定。 3) 级联与循环依赖：A 影响 B，B 又影响 C，要按拓扑顺序重算；要检测循环依赖并报错，避免死循环。 4) 联动触发时机：初始化回填（编辑态）时也要跑一遍规则，否则编辑已有数据时显隐/必填不对。 5) 性能：字段多时用依赖索引做增量重算，避免每次全量遍历所有规则。 四、伪代码示例 rules = [ { field:'B', visible: v => v.A === '报销' }, { field:'C', required: v => v.A === '报销' }, ] // 建立反向依赖：A -> [B, C] function recompute(changedField, values) { for (const r of deps[changedField]) { const next = r.visible ? r.visible(values) : r.required(values); apply(r.field, next); } } 五、适用场景 - 简单 2~3 个字段：命令式即可，别过度设计。 - 中大型表单/低代码平台：声明式规则表 + 依赖图，规则可配置、可持久化、可后端下发。 - 强响应式框架：直接用 computed/派生状态，最省心。
+**一、本质理解**
+
+动态表单联动 = 表单的「结构/校验规则」是状态的函数。可以类比成 Excel：A1 单元格改了，依赖 A1 的公式单元格自动重算。表单里 A 字段就是那个输入单元格，B 的显隐、C 的必填就是「公式」。
+
+**二、三种主流实现层次**
+
+1) 命令式（最朴素）：在 A 的 onChange 里写 if (value === '报销') { setShowB(true); setCRequired(true) }。
+
+- 优点：直观、上手快。
+- 缺点：字段一多就变成 N×M 的 if 网，规则散落、难维护、难复用，改一个字段要翻遍所有 onChange。 2) 声明式规则表（推荐，工程上最常用）：把联动抽成配置数据，例如： { field: 'B', visibleWhen: { A: '报销' } } { field: 'C', requiredWhen: { A: '报销' } } 运行时用一个「依赖图/依赖索引」：先扫描所有规则，建立 A -> [B, C] 的反向依赖表；A 变化时只重算依赖它的字段，而不是全表重算。
+- 优点：规则集中、可配置化、可后端下发、可做低代码表单引擎。
+- 关键点：显隐和必填要区分「UI 隐藏」与「数据/校验是否参与提交」。 3) 响应式/依赖追踪（Vue computed、MobX、React + 状态库）：把每个字段的 visible/required 写成依赖 A 的派生值，框架自动追踪依赖并重算。
+- 类比：computed 就是「自动重算的 Excel 公式」。
+- 注意：React 里要避免在 render 中直接改 state 造成循环更新，应使用 useMemo 派生或受控状态 + effect。
+
+**三、必须处理的细节**
+
+1) 隐藏字段的数据处理：隐藏时通常要「清空值 + 从校验中移除 + 不参与提交」，否则会出现「看不见但校验报错」或脏数据提交。
+2) 必填是动态的：校验规则要随状态重算，不能初始化时固定。
+3) 级联与循环依赖：A 影响 B，B 又影响 C，要按拓扑顺序重算；要检测循环依赖并报错，避免死循环。
+4) 联动触发时机：初始化回填（编辑态）时也要跑一遍规则，否则编辑已有数据时显隐/必填不对。
+5) 性能：字段多时用依赖索引做增量重算，避免每次全量遍历所有规则。
+
+**四、伪代码示例**
+
+rules = [ { field:'B', visible: v => v.A === '报销' }, { field:'C', required: v => v.A === '报销' }, ] // 建立反向依赖：A -> [B, C] function recompute(changedField, values) { for (const r of deps[changedField]) { const next = r.visible ? r.visible(values) : r.required(values); apply(r.field, next); } }
+
+**五、适用场景**
+
+- 简单 2~3 个字段：命令式即可，别过度设计。
+- 中大型表单/低代码平台：声明式规则表 + 依赖图，规则可配置、可持久化、可后端下发。
+- 强响应式框架：直接用 computed/派生状态，最省心。
 
 **常见追问**：如何避免「1) 只会写 if-else 直接 setState 控制显隐，规则散落各处，字段一多就崩，且无法复用/配置化」？ 「2) 隐藏字段只做 display:none 或 visible=false，但值没清、校验没移除，导致「看不见却报必填」或脏数据提交」在真实项目中应如何规避？
 
@@ -7346,7 +10002,16 @@ Vuex 的原理可以拆成三部分理解： 1. 单一状态树与响应式：Vu
 
 watch 需显式指定监听源且默认懒执行，watchEffect 自动收集依赖并立即执行，二者在依赖收集、执行时机和回调参数上不同。
 
-watch 和 watchEffect 都是 Vue 3 组合式 API 中用于响应式副作用的函数，核心区别如下： 1. 依赖收集方式：watch 必须显式传入监听源（ref、reactive 对象、getter 函数或数组），Vue 只追踪你指定的源；watchEffect 不需要指定源，它会立即执行一次回调，在执行过程中自动收集所有被访问的响应式依赖，之后任一依赖变化都会重新执行。 2. 执行时机：watch 默认是懒执行的，只有监听源变化时才触发回调（除非设置 immediate: true）；watchEffect 会立即执行一次，相当于自带 immediate。 3. 回调参数：watch 的回调能拿到新值、旧值以及 onCleanup 清理函数；watchEffect 的回调只能拿到 onCleanup，拿不到新旧值，因为它不针对某个具体源。 4. 适用场景：需要明确知道哪个数据变了、需要旧值做对比、需要懒执行或精确控制监听源时用 watch；副作用逻辑依赖多个响应式数据、且不需要旧值、希望自动追踪依赖时用 watchEffect，代码更简洁。 通俗类比：watch 像“定点监控”，你告诉保安盯住某几个摄像头，只有这些画面变化才报警；watchEffect 像“智能感应器”，它自己扫描当前环境里所有会动的物体，任何被它扫到的物体一动就报警。 两者都返回停止函数，组件卸载时也会自动停止。
+watch 和 watchEffect 都是 Vue 3 组合式 API 中用于响应式副作用的函数，核心区别如下：
+
+1. 依赖收集方式：watch 必须显式传入监听源（ref、reactive 对象、getter 函数或数组），Vue 只追踪你指定的源；watchEffect 不需要指定源，它会立即执行一次回调，在执行过程中自动收集所有被访问的响应式依赖，之后任一依赖变化都会重新执行。
+2. 执行时机：watch 默认是懒执行的，只有监听源变化时才触发回调（除非设置 immediate: true）；watchEffect 会立即执行一次，相当于自带 immediate。
+3. 回调参数：watch 的回调能拿到新值、旧值以及 onCleanup 清理函数；watchEffect 的回调只能拿到 onCleanup，拿不到新旧值，因为它不针对某个具体源。
+4. 适用场景：需要明确知道哪个数据变了、需要旧值做对比、需要懒执行或精确控制监听源时用 watch；副作用逻辑依赖多个响应式数据、且不需要旧值、希望自动追踪依赖时用 watchEffect，代码更简洁。
+
+通俗类比：watch 像“定点监控”，你告诉保安盯住某几个摄像头，只有这些画面变化才报警；watchEffect 像“智能感应器”，它自己扫描当前环境里所有会动的物体，任何被它扫到的物体一动就报警。
+
+两者都返回停止函数，组件卸载时也会自动停止。
 
 **常见追问**：如何避免「误以为 watchEffect 能拿到新旧值，实际上它没有 oldValue/newValue 参数。」？ 「误以为 watch 默认深度监听所有类型，实际上监听 ref 基本类型时不是深度，监听 reactive 对象才默认深层。」在真实项目中应如何规避？
 
@@ -7368,7 +10033,31 @@ watch 和 watchEffect 都是 Vue 3 组合式 API 中用于响应式副作用的�
 
 EventBus 是 Vue 2 时代基于 Vue 实例实现的全局事件总线（利用 $on/$emit），mitt 是一个框架无关、约 200 字节的轻量发布订阅库，两者本质都是事件总线，区别在于实现载体、框架耦合度、API 语义与生命周期管理。
 
-一、概念本质 两者都是「发布-订阅模式」的实现：一个中心对象维护事件名到回调数组的映射，发布者 emit 触发，订阅者 on 监听。通俗类比：EventBus 像公司前台总机，谁都能打进来转接；mitt 像一台极简的对讲机，只负责把消息广播给登记过的人。 二、EventBus（Vue 2） 1. 实现方式：`const bus = new Vue()`，因为 Vue 实例自带 $on/$once/$off/$emit 四个方法，直接借用。 2. 特点：与 Vue 强耦合，只能在 Vue 项目里用；事件挂在 Vue 实例的 _events 上，组件销毁时若不手动 $off，回调仍持有组件引用，导致内存泄漏；Vue 3 移除了 $on/$off/$once，官方推荐用 mitt 或 provide/inject 替代。 3. 典型用法：`bus.$on('msg', fn)` / `bus.$emit('msg', data)`，常在 beforeDestroy 里 `bus.$off('msg', fn)`。 三、mitt 1. 实现：约 200 字节，核心是一个 `Map<eventName, handler[]>`，提供 on/off/emit，还支持 `emit('*')` 通配符监听所有事件。 2. 特点：零依赖、框架无关，Vue/React/原生 JS 都能用；TypeScript 类型友好，可定义事件映射类型；API 更纯粹，没有 Vue 实例的额外负担。 3. 用法：`const emitter = mitt(); emitter.on('foo', fn); emitter.emit('foo', 1); emitter.off('foo', fn)`。 四、为什么选 mitt Vue 3 没有 $on，且组合式 API 下更强调显式依赖；mitt 体积小、无框架绑定、类型安全，成为 Vue 3 官方文档推荐的 EventBus 替代方案。 五、适用场景 - 跨层级、非父子组件通信，且不想引入 Vuex/Pinia 时。 - 全局通知、埋点、快捷键、WebSocket 消息分发等。 - 注意：复杂状态共享仍应使用状态管理库，事件总线只适合「通知」而非「状态同步」。
+**一、概念本质**
+
+两者都是「发布-订阅模式」的实现：一个中心对象维护事件名到回调数组的映射，发布者 emit 触发，订阅者 on 监听。
+
+通俗类比：EventBus 像公司前台总机，谁都能打进来转接；mitt 像一台极简的对讲机，只负责把消息广播给登记过的人。
+
+**二、EventBus（Vue 2）**
+
+1. 实现方式：`const bus = new Vue()`，因为 Vue 实例自带 $on/$once/$off/$emit 四个方法，直接借用。
+2. 特点：与 Vue 强耦合，只能在 Vue 项目里用；事件挂在 Vue 实例的 _events 上，组件销毁时若不手动 $off，回调仍持有组件引用，导致内存泄漏；Vue 3 移除了 $on/$off/$once，官方推荐用 mitt 或 provide/inject 替代。
+3. 典型用法：`bus.$on('msg', fn)` / `bus.$emit('msg', data)`，常在 beforeDestroy 里 `bus.$off('msg', fn)`。
+
+**三、mitt**
+
+1. 实现：约 200 字节，核心是一个 `Map<eventName, handler[]>`，提供 on/off/emit，还支持 `emit('*')` 通配符监听所有事件。
+2. 特点：零依赖、框架无关，Vue/React/原生 JS 都能用；TypeScript 类型友好，可定义事件映射类型；API 更纯粹，没有 Vue 实例的额外负担。
+3. 用法：`const emitter = mitt(); emitter.on('foo', fn); emitter.emit('foo', 1); emitter.off('foo', fn)`。
+
+**四、为什么选**
+
+mitt Vue 3 没有 $on，且组合式 API 下更强调显式依赖；mitt 体积小、无框架绑定、类型安全，成为 Vue 3 官方文档推荐的 EventBus 替代方案。
+
+**五、适用场景**
+
+- 跨层级、非父子组件通信，且不想引入 Vuex/Pinia 时。 - 全局通知、埋点、快捷键、WebSocket 消息分发等。 - 注意：复杂状态共享仍应使用状态管理库，事件总线只适合「通知」而非「状态同步」。
 
 **常见追问**：如何避免「误以为 Vue 3 还能用 `new Vue()` 做 EventBus——Vue 3 已移除 $on/$off/$once。」？ 「认为 EventBus/mitt 能替代 Vuex/Pinia——它们只做事件通知，不保存状态、不支持响应式追踪与时间旅行调试。」在真实项目中应如何规避？
 
@@ -7390,7 +10079,13 @@ EventBus 是 Vue 2 时代基于 Vue 实例实现的全局事件总线（利用 $
 
 `<script setup>` 是 Vue 3 单文件组件（SFC）中用于编写组合式 API 的编译时语法糖，让代码更简洁、类型推断更好、性能更优。
 
-在 Vue 3 中，`<script setup>` 是 SFC 的一种脚本块写法，它会被编译器处理成组件的 `setup()` 函数。核心作用有三点： 1. **更简洁的写法**：顶层声明的变量、函数、import 的组件，都能直接在模板中使用，不需要 `return` 暴露。例如： ```vue <script setup> import { ref } from 'vue' import MyComp from './MyComp.vue' const count = ref(0) function inc() { count.value++ } </script> <template> <MyComp /> <button @click="inc">{{ count }}</button> </template> ``` 对比普通 `<script>` 需要 `export default { components: { MyComp }, setup() { const count = ref(0); return { count, inc } } }`，明显更少样板代码。 2. **更好的类型推断**：因为变量是真实顶层作用域，TypeScript / IDE 能直接推断类型，不需要 `defineComponent` 包装，模板中也能获得类型提示。 3. **更好的运行时性能**：编译时能静态分析模板中使用了哪些绑定，生成更精准的渲染函数，减少运行时开销；同时支持顶层 `await`，编译成 `async setup()`，配合 `<Suspense>` 使用。 它本质上是“编译时语法糖”，不是新的运行时 API。编译后等价于 `setup()` 返回一个对象，模板通过该对象访问绑定。适用场景：Vue 3 项目、组合式 API、TS 项目、需要顶层 await 的异步组件。普通 `<script>` 仍可用于需要 `export default` 选项（如 `name`、`inheritAttrs`）或与 `<script setup>` 混用的场景。
+在 Vue 3 中，`<script setup>` 是 SFC 的一种脚本块写法，它会被编译器处理成组件的 `setup()` 函数。核心作用有三点：
+
+1. **更简洁的写法**：顶层声明的变量、函数、import 的组件，都能直接在模板中使用，不需要 `return` 暴露。例如： ```vue <script setup> import { ref } from 'vue' import MyComp from './MyComp.vue' const count = ref(0) function inc() { count.value++ } </script> <template> <MyComp /> <button @click="inc">{{ count }}</button> </template> ``` 对比普通 `<script>` 需要 `export default { components: { MyComp }, setup() { const count = ref(0); return { count, inc } } }`，明显更少样板代码。
+2. **更好的类型推断**：因为变量是真实顶层作用域，TypeScript / IDE 能直接推断类型，不需要 `defineComponent` 包装，模板中也能获得类型提示。
+3. **更好的运行时性能**：编译时能静态分析模板中使用了哪些绑定，生成更精准的渲染函数，减少运行时开销；同时支持顶层 `await`，编译成 `async setup()`，配合 `<Suspense>` 使用。 它本质上是“编译时语法糖”，不是新的运行时 API。编译后等价于 `setup()` 返回一个对象，模板通过该对象访问绑定。
+
+适用场景：Vue 3 项目、组合式 API、TS 项目、需要顶层 await 的异步组件。普通 `<script>` 仍可用于需要 `export default` 选项（如 `name`、`inheritAttrs`）或与 `<script setup>` 混用的场景。
 
 **常见追问**：如何避免「误以为 `<script setup>` 是运行时新 API，其实只是编译时语法糖，最终仍走 `setup()`。」？ 「以为顶层变量必须 `return` 才能在模板用，实际上不需要，编译器自动处理。」在真实项目中应如何规避？
 
@@ -7412,7 +10107,13 @@ EventBus 是 Vue 2 时代基于 Vue 实例实现的全局事件总线（利用 $
 
 标准盒模型（content-box）的 width/height 只包含内容区；IE 盒模型（border-box）的 width/height 包含内容、内边距和边框。
 
-在 CSS 中，盒模型由内容（content）、内边距（padding）、边框（border）、外边距（margin）组成。标准盒模型（box-sizing: content-box）下，设置 width 和 height 只作用于内容区，元素实际占据的宽度 = width + padding-left + padding-right + border-left + border-right + margin-left + margin-right。IE 盒模型（box-sizing: border-box）下，width 和 height 包含内容、内边距和边框，元素实际占据的宽度 = width + margin-left + margin-right，内容区宽度 = width - padding-left - padding-right - border-left - border-right。 通俗类比：标准盒模型像买一个“净含量”标称的盒子，盒子本身有厚度（padding/border），总大小会超出标称；IE 盒模型像买一个“外径”标称的盒子，厚度算在内，总大小就是标称值。 适用场景：border-box 更符合直觉，便于布局计算，尤其适合响应式设计、栅格系统；content-box 是 CSS 默认值，适合需要精确控制内容区尺寸的场景。现代开发中常全局设置 * { box-sizing: border-box; }。
+在 CSS 中，盒模型由内容（content）、内边距（padding）、边框（border）、外边距（margin）组成。标准盒模型（box-sizing: content-box）下，设置 width 和 height 只作用于内容区，元素实际占据的宽度 = width + padding-left + padding-right + border-left + border-right + margin-left + margin-right。
+
+IE 盒模型（box-sizing: border-box）下，width 和 height 包含内容、内边距和边框，元素实际占据的宽度 = width + margin-left + margin-right，内容区宽度 = width - padding-left - padding-right - border-left - border-right。
+
+通俗类比：标准盒模型像买一个“净含量”标称的盒子，盒子本身有厚度（padding/border），总大小会超出标称；IE 盒模型像买一个“外径”标称的盒子，厚度算在内，总大小就是标称值。
+
+适用场景：border-box 更符合直觉，便于布局计算，尤其适合响应式设计、栅格系统；content-box 是 CSS 默认值，适合需要精确控制内容区尺寸的场景。现代开发中常全局设置 * { box-sizing: border-box; }。
 
 **常见追问**：如何避免「常见误解：1. 认为 margin 也包含在 width/height 内（实际两者都不包含 margin）」？ 「2. 认为 box-sizing 会影响 margin 的计算（不会）」在真实项目中应如何规避？
 
@@ -7434,7 +10135,15 @@ em：按钮内边距随按钮字号变化、图标随文字缩放、组件内部
 
 em 相对当前元素的 font-size（用于 font-size 时相对父元素），rem 始终相对根元素 html 的 font-size。
 
-两者都是 CSS 相对长度单位，但参照物不同。 1) em：参照当前元素的 font-size。若属性本身就是 font-size，则参照父元素的 font-size（因为自身 font-size 还没确定）。其他属性（width、padding、margin 等）参照当前元素已计算出的 font-size。 例： .parent { font-size: 16px; } .child { font-size: 1.5em; } /* 24px，相对父元素 */ .child { padding: 1em; } /* 24px，相对自身 font-size */ 2) rem：root em，始终参照根元素 html 的 font-size，与父级无关。 例： html { font-size: 16px; } .box { font-size: 2rem; padding: 1rem; } /* 32px、16px */ 为什么：em 具有继承和嵌套放大效应，适合组件内部按字号等比缩放；rem 参照稳定，适合全局统一尺寸、响应式布局。 适用场景： - em：按钮内边距随按钮字号变化、图标随文字缩放、组件内部比例。 - rem：页面整体缩放、媒体查询断点、统一间距/字号体系。 通俗类比：em 像“跟着当前家庭成员的身高定家具尺寸”，换到不同家庭会变；rem 像“全国统一按国家标准身高定尺寸”，到哪都一样。 注意：浏览器默认 html font-size 通常为 16px，但用户可改；设置 html { font-size: 62.5%; } 可让 1rem = 10px，方便计算。
+两者都是 CSS 相对长度单位，但参照物不同。
+
+1) em：参照当前元素的 font-size。若属性本身就是 font-size，则参照父元素的 font-size（因为自身 font-size 还没确定）。其他属性（width、padding、margin 等）参照当前元素已计算出的 font-size。 例： .parent { font-size: 16px; } .child { font-size: 1.5em; } /* 24px，相对父元素 */ .child { padding: 1em; } /* 24px，相对自身 font-size */
+2) rem：root em，始终参照根元素 html 的 font-size，与父级无关。 例： html { font-size: 16px; } .box { font-size: 2rem; padding: 1rem; } /* 32px、16px */ 为什么：em 具有继承和嵌套放大效应，适合组件内部按字号等比缩放；rem 参照稳定，适合全局统一尺寸、响应式布局。
+
+适用场景：
+
+- em：按钮内边距随按钮字号变化、图标随文字缩放、组件内部比例。
+- rem：页面整体缩放、媒体查询断点、统一间距/字号体系。 通俗类比：em 像“跟着当前家庭成员的身高定家具尺寸”，换到不同家庭会变；rem 像“全国统一按国家标准身高定尺寸”，到哪都一样。 注意：浏览器默认 html font-size 通常为 16px，但用户可改；设置 html { font-size: 62.5%; } 可让 1rem = 10px，方便计算。
 
 **常见追问**：如何避免「1) 误以为 em 永远相对父元素：只有 font-size 用 em 时才相对父元素，其他属性相对自身 font-size」？ 「2) 误以为 rem 相对 body 或某个祖先：rem 只相对 html 根元素」在真实项目中应如何规避？
 
@@ -7456,7 +10165,21 @@ px（像素）：绝对单位，1px 在 CSS 中通常对应一个逻辑像素，
 
 px 是固定像素单位，em 相对当前元素字体大小且会逐层累积，rem 相对根元素 html 字体大小、不受嵌套影响，常用于响应式布局。
 
-三者都是 CSS 长度单位，核心区别在“参照物”不同。 1. px（像素）：绝对单位，1px 在 CSS 中通常对应一个逻辑像素，不随父元素字体或屏幕尺寸自动变化。适合边框、图标、固定间距等需要精确控制的场景。 2. em：相对单位，参照当前元素的 font-size。若当前元素没设 font-size，则继承父元素，所以会逐层累积。例如： html { font-size: 16px; } .parent { font-size: 20px; } .child { font-size: 1.5em; } /* 30px */ .child 的 padding: 1em 则等于 30px。 3. rem（root em）：相对单位，始终参照根元素 html 的 font-size，不受父级嵌套影响。例如： html { font-size: 16px; } .box { width: 10rem; } /* 160px */ 如果通过 JS 或媒体查询把 html 的 font-size 改成 20px，则 .box 变成 200px，实现整体缩放。 通俗类比：px 像“固定尺寸的砖块”；em 像“跟着当前房间层高变化的家具”，换到不同房间会变；rem 像“全楼统一基准的家具”，只跟大楼总基准走。 适用场景：px 用于不需要缩放的细节；em 适合组件内部按自身字号成比例缩放，如按钮 padding、行高；rem 适合移动端适配、主题字号切换、整体布局缩放。
+三者都是 CSS 长度单位，核心区别在“参照物”不同。
+
+1. px（像素）：绝对单位，1px 在 CSS 中通常对应一个逻辑像素，不随父元素字体或屏幕尺寸自动变化。适合边框、图标、固定间距等需要精确控制的场景。
+2. em：相对单位，参照当前元素的 font-size。若当前元素没设 font-size，则继承父元素，所以会逐层累积。例如： html { font-size: 16px; } .parent { font-size: 20px; } .child { font-size: 1.5em; } /* 30px */ .child 的 padding: 1em 则等于 30px。
+3. rem（root em）：相对单位，始终参照根元素 html 的 font-size，不受父级嵌套影响。
+
+例如： html { font-size: 16px; } .box { width: 10rem; } /* 160px */ 如果通过 JS 或媒体查询把 html 的 font-size 改成 20px，则 .box 变成 200px，实现整体缩放。
+
+- 通俗类比：px 像“固定尺寸的砖块”；
+- em 像“跟着当前房间层高变化的家具”，换到不同房间会变；
+- rem 像“全楼统一基准的家具”，只跟大楼总基准走。
+
+- 适用场景：px 用于不需要缩放的细节；
+- em 适合组件内部按自身字号成比例缩放，如按钮 padding、行高；
+- rem 适合移动端适配、主题字号切换、整体布局缩放。
 
 **常见追问**：如何避免「误以为 em 只相对父元素 font-size：实际上 em 相对当前元素自身的 font-size，只有当前元素未显式设置 font-size 时才继承父元素。」？ 「误以为 rem 相对屏幕宽度或视口：rem 只相对 html 的 font-size，和视口无关。」在真实项目中应如何规避？
 
@@ -7478,7 +10201,23 @@ px 是固定像素单位，em 相对当前元素字体大小且会逐层累积�
 
 BFC（块级格式化上下文）是页面上一块独立的渲染区域，内部块级盒子的布局不受外部影响，外部也不会被内部影响，常用于清除浮动、防止 margin 合并和实现自适应布局。
 
-BFC 全称 Block Formatting Context，是 CSS 视觉格式化模型中的概念。可以把它类比成一个“独立王国”：王国里的元素怎么排列、浮动怎么飘、margin 怎么合并，都由这个王国自己管，不会和外面的王国互相干扰。 触发条件（满足任一即可创建 BFC）： 1. 根元素 html； 2. float 不为 none； 3. position 为 absolute 或 fixed； 4. display 为 inline-block、table-cell、table-caption、flex、grid、flow-root 等； 5. overflow 不为 visible（如 hidden、auto、scroll）； 6. contain 为 layout、content、paint 等； 7. column-span 为 all； 8. display: flow-root 是专门为创建 BFC 设计的，无副作用。 BFC 的核心特性与典型用途： 1. 包含内部浮动：BFC 会计算内部浮动元素的高度，因此父元素设置 overflow: hidden 或 display: flow-root 可以清除浮动，避免高度塌陷。 2. 阻止 margin 合并：同一个 BFC 内相邻块级元素的上下 margin 会合并；让其中一个元素处于新的 BFC 中即可避免。 3. 不被浮动元素覆盖：BFC 区域不会与 float 元素重叠，因此可用来做两栏自适应布局，例如左侧浮动、右侧 overflow: hidden 形成 BFC，右侧就会自动占据剩余宽度。 4. 隔离外部影响：BFC 内部布局与外部互不影响，可用于局部布局隔离。 示例： .parent { overflow: hidden; } /* 创建 BFC，包住浮动子元素 */ .left { float: left; width: 200px; } .right { overflow: hidden; } /* 创建 BFC，不被左侧浮动覆盖，形成自适应 */ 现代开发中，若只想创建 BFC 而不引入滚动条或裁剪，优先用 display: flow-root，它语义最纯粹。
+BFC 全称 Block Formatting Context，是 CSS 视觉格式化模型中的概念。可以把它类比成一个“独立王国”：王国里的元素怎么排列、浮动怎么飘、margin 怎么合并，都由这个王国自己管，不会和外面的王国互相干扰。 触发条件（满足任一即可创建 BFC）：
+
+1. 根元素 html；
+2. float 不为 none；
+3. position 为 absolute 或 fixed；
+4. display 为 inline-block、table-cell、table-caption、flex、grid、flow-root 等；
+5. overflow 不为 visible（如 hidden、auto、scroll）；
+6. contain 为 layout、content、paint 等；
+7. column-span 为 all；
+8. display: flow-root 是专门为创建 BFC 设计的，无副作用。
+
+BFC 的核心特性与典型用途：
+
+1. 包含内部浮动：BFC 会计算内部浮动元素的高度，因此父元素设置 overflow: hidden 或 display: flow-root 可以清除浮动，避免高度塌陷。
+2. 阻止 margin 合并：同一个 BFC 内相邻块级元素的上下 margin 会合并；让其中一个元素处于新的 BFC 中即可避免。
+3. 不被浮动元素覆盖：BFC 区域不会与 float 元素重叠，因此可用来做两栏自适应布局，例如左侧浮动、右侧 overflow: hidden 形成 BFC，右侧就会自动占据剩余宽度。
+4. 隔离外部影响：BFC 内部布局与外部互不影响，可用于局部布局隔离。 示例： .parent { overflow: hidden; } /* 创建 BFC，包住浮动子元素 */ .left { float: left; width: 200px; } .right { overflow: hidden; } /* 创建 BFC，不被左侧浮动覆盖，形成自适应 */ 现代开发中，若只想创建 BFC 而不引入滚动条或裁剪，优先用 display: flow-root，它语义最纯粹。
 
 **常见追问**：如何避免「误以为只有 overflow: hidden 能创建 BFC，忽略 float、position、display、flow-root 等多种方式。」？ 「把 BFC 和层叠上下文（stacking context）混为一谈，认为创建 BFC 就一定创建层叠上下文。」在真实项目中应如何规避？
 
@@ -7500,7 +10239,19 @@ BFC 全称 Block Formatting Context，是 CSS 视觉格式化模型中的概念�
 
 margin重叠（外边距塌陷）是CSS中相邻块级元素的垂直外边距相遇时合并为一个较大外边距的现象，可通过BFC、padding/border、flex/grid布局等方式解决。
 
-margin重叠指在标准文档流中，两个或多个相邻块级元素的垂直外边距（margin-top和margin-bottom）相遇时，它们不会相加，而是合并成其中较大的那个值。注意：只有垂直方向会重叠，水平方向不会；行内元素、浮动元素、绝对定位元素不参与。 发生场景主要有三种： 1. 相邻兄弟元素：上一个元素的margin-bottom与下一个元素的margin-top重叠，取较大值。 2. 父子元素：父元素没有上边框、上内边距，且子元素不是浮动/绝对定位，父元素和子元素的margin-top会重叠，导致父元素“塌陷”，子元素的margin-top跑到父元素外面。 3. 空元素：元素自身没有内容、高度、内边距和边框时，其margin-top和margin-bottom会重叠。 原理：CSS规范规定，在块级格式化上下文（BFC）中，垂直相邻的margin会合并，这是为了保持文档流中元素间距的视觉一致性，避免出现双倍间距。 通俗类比：想象两个人排队，他们之间的“个人空间”不是简单相加，而是取两人中要求更大的那个距离，所以最终间距是max(前者的后间距, 后者的前间距)。 如何解决： - 对父子重叠：给父元素添加overflow:hidden/auto、display:flow-root、float、position:absolute、border、padding等触发BFC或阻断margin传递。 - 对兄弟重叠：给其中一个元素包裹一层BFC容器，或改用flex/grid布局（flex/grid中不会发生margin重叠），或使用padding替代margin。 - 通用：使用display:flow-root（现代方案）创建BFC，或直接使用flex/grid布局。 示例： ```html <div style="margin-bottom:20px">A</div> <div style="margin-top:30px">B</div> ``` 两者间距为30px，而非50px。 ```html <div style="background:red"> <div style="margin-top:20px">child</div> </div> ``` 父元素没有border/padding，子元素margin-top会“穿透”到父元素外，导致父元素整体下移。解决：给父元素加overflow:hidden或display:flow-root。
+margin重叠指在标准文档流中，两个或多个相邻块级元素的垂直外边距（margin-top和margin-bottom）相遇时，它们不会相加，而是合并成其中较大的那个值。
+
+注意：只有垂直方向会重叠，水平方向不会；行内元素、浮动元素、绝对定位元素不参与。 发生场景主要有三种：
+
+1. 相邻兄弟元素：上一个元素的margin-bottom与下一个元素的margin-top重叠，取较大值。
+2. 父子元素：父元素没有上边框、上内边距，且子元素不是浮动/绝对定位，父元素和子元素的margin-top会重叠，导致父元素“塌陷”，子元素的margin-top跑到父元素外面。
+3. 空元素：元素自身没有内容、高度、内边距和边框时，其margin-top和margin-bottom会重叠。 原理：CSS规范规定，在块级格式化上下文（BFC）中，垂直相邻的margin会合并，这是为了保持文档流中元素间距的视觉一致性，避免出现双倍间距。
+
+通俗类比：想象两个人排队，他们之间的“个人空间”不是简单相加，而是取两人中要求更大的那个距离，所以最终间距是max(前者的后间距, 后者的前间距)。 如何解决：
+
+- 对父子重叠：给父元素添加overflow:hidden/auto、display:flow-root、float、position:absolute、border、padding等触发BFC或阻断margin传递。
+- 对兄弟重叠：给其中一个元素包裹一层BFC容器，或改用flex/grid布局（flex/grid中不会发生margin重叠），或使用padding替代margin。
+- 通用：使用display:flow-root（现代方案）创建BFC，或直接使用flex/grid布局。 示例： ```html <div style="margin-bottom:20px">A</div> <div style="margin-top:30px">B</div> ``` 两者间距为30px，而非50px。 ```html <div style="background:red"> <div style="margin-top:20px">child</div> </div> ``` 父元素没有border/padding，子元素margin-top会“穿透”到父元素外，导致父元素整体下移。解决：给父元素加overflow:hidden或display:flow-root。
 
 **常见追问**：如何避免「误以为所有方向都会重叠，实际上只有垂直方向。」？ 「误以为margin重叠是bug，其实是CSS规范行为。」在真实项目中应如何规避？
 
@@ -7522,7 +10273,17 @@ margin重叠指在标准文档流中，两个或多个相邻块级元素的垂�
 
 1px 问题指在 DPR>1 的移动端屏幕上，CSS 的 1px 会被渲染成物理上的多个像素而显得过粗，解决思路是让边框宽度在物理像素层面真正等于 1 个设备像素。
 
-原理：CSS 像素是逻辑像素，设备像素比 DPR = 物理像素 / CSS 像素。iPhone 上 DPR=2 或 3，写 border:1px 实际占 2~3 个物理像素，视觉上比设计稿的细线粗。目标是让边框在物理上只有 1 个像素，即 CSS 宽度应为 1/DPR px。 常见方案： 1) 伪元素 + transform scale：给元素加 ::after，设置 width/height 为 200%（或 100%）、border:1px，再 transform: scale(0.5)（DPR=2）或 scale(0.333)（DPR=3），配合 transform-origin 定位。这是最通用、兼容性最好的方案。 2) 0.5px 方案：直接写 border: 0.5px，iOS 8+ 和部分安卓支持，但安卓兼容性差，且 DPR=3 时仍需 0.333px，不通用。 3) viewport 缩放：通过 meta viewport 的 initial-scale=1/DPR 把布局视口放大，再用 rem 适配，使 1px 等于 1 物理像素；但会影响整体布局，需配合 flexible 方案。 4) box-shadow：用 0 0 0 0.5px 的阴影模拟边框，简单但圆角、颜色控制弱，且性能一般。 5) border-image / SVG：用渐变或 SVG 做 1px 线，适合特殊场景。 通俗类比：CSS 像素像“图纸上的格子”，物理像素像“实际铺的瓷砖”。DPR=2 时一个格子要铺 2 块瓷砖，你画 1 格宽的线，实际就占了 2 块瓷砖，看起来就粗。解决办法就是要么把线画成半格（0.5px），要么画 1 格再整体缩小一半（scale 0.5）。 适用场景：移动端 H5、需要 1px 细线的列表分割线、卡片边框、输入框边框等。伪元素 + scale 是首选，兼容性和可控性最好。
+原理：CSS 像素是逻辑像素，设备像素比 DPR = 物理像素 / CSS 像素。iPhone 上 DPR=2 或 3，写 border:1px 实际占 2~3 个物理像素，视觉上比设计稿的细线粗。目标是让边框在物理上只有 1 个像素，即 CSS 宽度应为 1/DPR px。 常见方案：
+
+1) 伪元素 + transform scale：给元素加 ::after，设置 width/height 为 200%（或 100%）、border:1px，再 transform: scale(0.5)（DPR=2）或 scale(0.333)（DPR=3），配合 transform-origin 定位。这是最通用、兼容性最好的方案。
+2) 0.5px 方案：直接写 border: 0.5px，iOS 8+ 和部分安卓支持，但安卓兼容性差，且 DPR=3 时仍需 0.333px，不通用。
+3) viewport 缩放：通过 meta viewport 的 initial-scale=1/DPR 把布局视口放大，再用 rem 适配，使 1px 等于 1 物理像素；但会影响整体布局，需配合 flexible 方案。
+4) box-shadow：用 0 0 0 0.5px 的阴影模拟边框，简单但圆角、颜色控制弱，且性能一般。
+5) border-image / SVG：用渐变或 SVG 做 1px 线，适合特殊场景。
+
+通俗类比：CSS 像素像“图纸上的格子”，物理像素像“实际铺的瓷砖”。DPR=2 时一个格子要铺 2 块瓷砖，你画 1 格宽的线，实际就占了 2 块瓷砖，看起来就粗。解决办法就是要么把线画成半格（0.5px），要么画 1 格再整体缩小一半（scale 0.5）。
+
+适用场景：移动端 H5、需要 1px 细线的列表分割线、卡片边框、输入框边框等。伪元素 + scale 是首选，兼容性和可控性最好。
 
 **常见追问**：如何避免「1) 以为写 0.5px 就万事大吉，忽略安卓兼容性和 DPR=3 的情况」？ 「2) 用 transform: scale(0.5) 时忘记设置 transform-origin，导致边框位置偏移」在真实项目中应如何规避？
 
@@ -7544,7 +10305,24 @@ margin重叠指在标准文档流中，两个或多个相邻块级元素的垂�
 
 iframe 是浏览器提供的独立嵌套浏览上下文，优点是隔离、复用与安全沙箱，缺点是性能开销、通信复杂、SEO/可访问性差和布局限制。
 
-iframe（内联框架）本质上是在当前页面里嵌入另一个完整的浏览上下文（browsing context），它有自己的 window、document、history 和 JS 执行环境。可以把它类比成“页面里开了一扇独立的小窗户”：窗外风景（子页面）和屋内（父页面）互不干扰，但想递东西（通信）就得走专门的窗口（postMessage）。 优点： 1. 隔离性：CSS、JS、全局变量互不影响，适合嵌入第三方内容（广告、地图、支付、视频），避免样式污染和脚本冲突。 2. 安全性：配合 sandbox 属性可限制脚本、表单、同源、弹窗等；配合 allow 控制摄像头、麦克风等权限；跨域时受同源策略保护。 3. 复用与解耦：多个页面可复用同一子应用，微前端常用 iframe 做运行时隔离。 4. 独立加载：子页面可独立导航、刷新，不影响父页面。 缺点： 1. 性能：每个 iframe 都是独立文档和渲染上下文，增加内存、网络和布局开销；过多 iframe 会拖慢页面。 2. 通信成本：跨域只能用 postMessage，需处理 origin 校验、消息格式和时序；同源可直接访问 DOM 但有耦合风险。 3. SEO 与可访问性：搜索引擎对 iframe 内容索引有限，屏幕阅读器对嵌套上下文支持不佳。 4. 布局与交互：高度自适应需 JS 计算，滚动、焦点、键盘事件、右键菜单等行为可能异常；移动端体验差。 5. 安全风险：若未正确配置 sandbox/allow，可能被恶意页面利用；点击劫持、XSS 传播等。 适用场景：嵌入第三方不可控内容、微前端隔离、广告/地图/视频、需要独立沙箱的插件。不适用：同站简单组件复用（用组件化更合适）、对 SEO 和性能要求高的主内容。
+iframe（内联框架）本质上是在当前页面里嵌入另一个完整的浏览上下文（browsing context），它有自己的 window、document、history 和 JS 执行环境。可以把它类比成“页面里开了一扇独立的小窗户”：窗外风景（子页面）和屋内（父页面）互不干扰，但想递东西（通信）就得走专门的窗口（postMessage）。
+
+优点：
+
+1. 隔离性：CSS、JS、全局变量互不影响，适合嵌入第三方内容（广告、地图、支付、视频），避免样式污染和脚本冲突。
+2. 安全性：配合 sandbox 属性可限制脚本、表单、同源、弹窗等；配合 allow 控制摄像头、麦克风等权限；跨域时受同源策略保护。
+3. 复用与解耦：多个页面可复用同一子应用，微前端常用 iframe 做运行时隔离。
+4. 独立加载：子页面可独立导航、刷新，不影响父页面。
+
+缺点：
+
+1. 性能：每个 iframe 都是独立文档和渲染上下文，增加内存、网络和布局开销；过多 iframe 会拖慢页面。
+2. 通信成本：跨域只能用 postMessage，需处理 origin 校验、消息格式和时序；同源可直接访问 DOM 但有耦合风险。
+3. SEO 与可访问性：搜索引擎对 iframe 内容索引有限，屏幕阅读器对嵌套上下文支持不佳。
+4. 布局与交互：高度自适应需 JS 计算，滚动、焦点、键盘事件、右键菜单等行为可能异常；移动端体验差。
+5. 安全风险：若未正确配置 sandbox/allow，可能被恶意页面利用；点击劫持、XSS 传播等。
+
+适用场景：嵌入第三方不可控内容、微前端隔离、广告/地图/视频、需要独立沙箱的插件。不适用：同站简单组件复用（用组件化更合适）、对 SEO 和性能要求高的主内容。
 
 **常见追问**：如何避免「误以为 iframe 内容一定跨域或一定同源：是否同源取决于 URL，同源时可访问 DOM，跨域时受同源策略限制。」？ 「误以为 sandbox 只是安全开关，不知道它会默认禁用脚本、表单、同源等，需要显式 allow-* 开启。」在真实项目中应如何规避？
 
@@ -7566,7 +10344,22 @@ offsetWidth 的定义（CSSOM View 规范）：；offsetWidth = 元素 border-bo
 
 offsetWidth 是元素布局后的只读像素值，等于 border-box 宽度（含 padding+border，不含 margin、transform、滚动条），想让它等于 100px 必须让 border-box 宽度为 100px，且元素处于正常布局、不被缩放/隐藏。
 
-offsetWidth 的定义（CSSOM View 规范）： offsetWidth = 元素 border-box 的布局宽度（layout width），四舍五入为整数。 具体组成：content width + padding-left + padding-right + border-left-width + border-right-width。 不包含：margin、transform 造成的视觉缩放、滚动条（滚动条占的是 content 区域，已包含在 content width 里）、伪元素、绝对定位子元素溢出部分。 所以要让 offsetWidth === 100，本质是让 border-box 宽度 = 100px。常见做法： 1) 最直接：box-sizing: border-box; width: 100px; 此时 padding/border 都算在 100 内，offsetWidth 就是 100。 2) 默认 content-box 下：width: 100px 但加了 padding/border 会超过 100。要凑成 100 需手动算：width = 100 - paddingLeft - paddingRight - borderLeft - borderRight。例如 padding:10px、border:1px，则 width 应为 100-20-2=78px。 3) 用 JS 设置：el.style.boxSizing='border-box'; el.style.width='100px'; 或 el.style.width = (100 - 左右padding - 左右border) + 'px'。 4) 注意前提条件：元素必须参与布局（display 不能是 none，否则 offsetWidth 为 0）；不能是 inline 元素（inline 的 offsetWidth 由内容决定，设 width 无效，需改成 inline-block/block/flex 等）；不能有 transform: scale 影响（offsetWidth 不受 transform 影响，但视觉宽度会变，别混淆）；父容器不能把它压成 0（如 flex 收缩、width:0、overflow 裁剪等）；如果被 CSS 缩放或 zoom，offsetWidth 仍按布局值返回。 通俗类比：offsetWidth 就像快递盒的外包装尺寸（含缓冲泡沫 padding 和硬纸板 border），不是里面商品的尺寸（content），也不是盒子加外间距（margin）。你想让外包装正好 100px，要么直接规定外包装 100px（border-box），要么按内层尺寸反推。 验证：console.log(el.offsetWidth) 应为 100。注意 offsetWidth 是整数，若布局宽度是 99.6 会被四舍五入为 100，所以严格相等要小心亚像素。
+offsetWidth 的定义（CSSOM View 规范）： offsetWidth = 元素 border-box 的布局宽度（layout width），四舍五入为整数。 具体组成：content width + padding-left + padding-right + border-left-width + border-right-width。
+
+不包含：margin、transform 造成的视觉缩放、滚动条（滚动条占的是 content 区域，已包含在 content width 里）、伪元素、绝对定位子元素溢出部分。
+
+所以要让 offsetWidth === 100，本质是让 border-box 宽度 = 100px。常见做法：
+
+1) 最直接：box-sizing: border-box; width: 100px; 此时 padding/border 都算在 100 内，offsetWidth 就是 100。
+2) 默认 content-box 下：width: 100px 但加了 padding/border 会超过 100。要凑成 100 需手动算：width = 100 - paddingLeft - paddingRight - borderLeft - borderRight。例如 padding:10px、border:1px，则 width 应为 100-20-2=78px。
+3) 用 JS 设置：el.style.boxSizing='border-box'; el.style.width='100px'; 或 el.style.width = (100 - 左右padding - 左右border) + 'px'。
+4) 注意前提条件：元素必须参与布局（display 不能是 none，否则 offsetWidth 为 0）；不能是 inline 元素（inline 的 offsetWidth 由内容决定，设 width 无效，需改成 inline-block/block/flex 等）；不能有 transform: scale 影响（offsetWidth 不受 transform 影响，但视觉宽度会变，别混淆）；父容器不能把它压成 0（如 flex 收缩、width:0、overflow 裁剪等）；如果被 CSS 缩放或 zoom，offsetWidth 仍按布局值返回。
+
+通俗类比：offsetWidth 就像快递盒的外包装尺寸（含缓冲泡沫 padding 和硬纸板 border），不是里面商品的尺寸（content），也不是盒子加外间距（margin）。你想让外包装正好 100px，要么直接规定外包装 100px（border-box），要么按内层尺寸反推。
+
+验证：console.log(el.offsetWidth) 应为 100。
+
+注意 offsetWidth 是整数，若布局宽度是 99.6 会被四舍五入为 100，所以严格相等要小心亚像素。
 
 **常见追问**：如何避免「1) 误以为 offsetWidth 包含 margin —— 不包含，margin 是外边距，不在 border-box 内」？ 「2) 误以为 offsetWidth 受 transform: scale 影响 —— 不受，它取布局值」在真实项目中应如何规避？
 
@@ -7588,7 +10381,17 @@ visibility:hidden：元素仍占据布局空间，只是不可见；子孙若显
 
 display:none 会让元素及其整个子树从渲染树中彻底移除，子孙元素无论设置什么 display/visibility/opacity 都无法显示，因为它们的盒子根本不会被生成。
 
-要理解这句话，先要区分 DOM 树和渲染树（Render Tree）。浏览器渲染流程大致是：解析 HTML 得到 DOM 树，解析 CSS 得到 CSSOM，两者结合生成渲染树，再布局（layout/reflow）、绘制（paint）、合成（composite）。 关键点在于：display:none 的元素不会进入渲染树。也就是说，它自己不生成任何盒子（box），它的所有子孙节点也不会被遍历生成盒子——因为渲染树构建时遇到 display:none 就直接跳过整棵子树。既然子孙元素连盒子都没有，自然谈不上布局、绘制、可见性。 通俗类比：DOM 是一份公司组织架构图，渲染树是实际来上班的人名单。父节点 display:none 相当于整个部门被裁撤，部门里所有员工（子孙节点）都不用来上班了。员工个人再怎么在工牌上写“我很显眼”（visibility:visible、opacity:1、display:block），也没用，因为根本没人来上班。 对比几个容易混淆的属性： - visibility:hidden：元素仍占据布局空间，只是不可见；子孙若显式设置 visibility:visible 是可以重新显示出来的（这是它和 display:none 的核心区别）。 - opacity:0：元素仍参与布局和事件，只是完全透明，子孙也无法通过设置 opacity 恢复（因为父级整体透明度为 0，子级透明度是相乘叠加的）。 - display:none：不生成盒子、不占空间、不参与布局、不响应事件、不被无障碍树读取。 适用场景：需要彻底隐藏且不占位时用 display:none（如 Tab 切换、条件渲染）；需要保留占位、做过渡动画时用 visibility 或 opacity。
+要理解这句话，先要区分 DOM 树和渲染树（Render Tree）。浏览器渲染流程大致是：解析 HTML 得到 DOM 树，解析 CSS 得到 CSSOM，两者结合生成渲染树，再布局（layout/reflow）、绘制（paint）、合成（composite）。 关键点在于：display:none 的元素不会进入渲染树。
+
+也就是说，它自己不生成任何盒子（box），它的所有子孙节点也不会被遍历生成盒子——因为渲染树构建时遇到 display:none 就直接跳过整棵子树。既然子孙元素连盒子都没有，自然谈不上布局、绘制、可见性。
+
+通俗类比：DOM 是一份公司组织架构图，渲染树是实际来上班的人名单。父节点 display:none 相当于整个部门被裁撤，部门里所有员工（子孙节点）都不用来上班了。员工个人再怎么在工牌上写“我很显眼”（visibility:visible、opacity:1、display:block），也没用，因为根本没人来上班。
+
+对比几个容易混淆的属性：
+
+- visibility:hidden：元素仍占据布局空间，只是不可见；子孙若显式设置 visibility:visible 是可以重新显示出来的（这是它和 display:none 的核心区别）。
+- opacity:0：元素仍参与布局和事件，只是完全透明，子孙也无法通过设置 opacity 恢复（因为父级整体透明度为 0，子级透明度是相乘叠加的）。
+- display:none：不生成盒子、不占空间、不参与布局、不响应事件、不被无障碍树读取。 适用场景：需要彻底隐藏且不占位时用 display:none（如 Tab 切换、条件渲染）；需要保留占位、做过渡动画时用 visibility 或 opacity。
 
 **常见追问**：如何避免「1) 误以为子孙元素设置 display:block 或 visibility:visible 就能显示——不会，父级 display:none 直接让整棵子树不生成盒子」？ 「2) 把 display:none 和 visibility:hidden 混为一谈，忽略前者不占位、后者占位且子级可覆盖」在真实项目中应如何规避？
 
@@ -7610,7 +10413,15 @@ display:none 会让元素及其整个子树从渲染树中彻底移除，子孙�
 
 clear 清除浮动的原理是：在浮动元素之后的元素上设置 clear 属性，使其外边距边界（margin edge）不能与前面浮动元素的下外边距边界相邻，从而强制该元素下移，撑开父容器高度，达到清除浮动的效果。
 
-浮动元素会脱离普通文档流，导致父容器计算高度时忽略浮动子元素，从而出现高度塌陷。clear 属性（left/right/both）的作用是：要求当前元素的顶部外边距边界（top margin edge）必须位于前面所有指定方向浮动元素的底部外边距边界之下。浏览器在布局时，会检查当前元素上方是否有浮动元素，如果有，就把当前元素向下移动，直到满足 clear 条件。 通俗类比：浮动元素像从队伍里跑出来的人，父容器（队伍）看不到他们，所以高度变矮。clear 就像在队伍后面放一个“隔离桩”，要求这个桩必须站在所有跑出来的人下面，于是队伍被撑高。 常见用法： 1. 在浮动元素后添加一个空元素，设置 clear:both，例如 <div style="clear:both"></div>。 2. 给父容器添加伪元素 ::after { content:''; display:block; clear:both; }，即 clearfix。 3. 给父容器设置 overflow:hidden/auto 触发 BFC，也能包含浮动，但原理不同（BFC 计算高度时包含浮动子元素）。 注意：clear 只对块级元素有效（或 display 为 block/table 等），对行内元素无效；clear 不能清除绝对定位元素，因为绝对定位完全脱离文档流。
+浮动元素会脱离普通文档流，导致父容器计算高度时忽略浮动子元素，从而出现高度塌陷。clear 属性（left/right/both）的作用是：要求当前元素的顶部外边距边界（top margin edge）必须位于前面所有指定方向浮动元素的底部外边距边界之下。浏览器在布局时，会检查当前元素上方是否有浮动元素，如果有，就把当前元素向下移动，直到满足 clear 条件。
+
+通俗类比：浮动元素像从队伍里跑出来的人，父容器（队伍）看不到他们，所以高度变矮。clear 就像在队伍后面放一个“隔离桩”，要求这个桩必须站在所有跑出来的人下面，于是队伍被撑高。 常见用法：
+
+1. 在浮动元素后添加一个空元素，设置 clear:both，例如 <div style="clear:both"></div>。
+2. 给父容器添加伪元素 ::after { content:''; display:block; clear:both; }，即 clearfix。
+3. 给父容器设置 overflow:hidden/auto 触发 BFC，也能包含浮动，但原理不同（BFC 计算高度时包含浮动子元素）。
+
+注意：clear 只对块级元素有效（或 display 为 block/table 等），对行内元素无效；clear 不能清除绝对定位元素，因为绝对定位完全脱离文档流。
 
 **常见追问**：如何避免「误以为 clear 能清除所有浮动，实际上 clear 只影响当前元素自身的位置，不能改变浮动元素本身，也不能让父容器自动包含浮动（除非配合额外元素或伪元素）。」？ 「误以为 clear 对行内元素有效，实际上 clear 只适用于块级元素。」在真实项目中应如何规避？
 
@@ -7632,7 +10443,12 @@ clear 清除浮动的原理是：在浮动元素之后的元素上设置 clear �
 
 伪类描述元素的“状态/位置”（如 :hover、:nth-child），伪元素创建并选中元素的“虚拟子部分”（如 ::before、::first-line），前者不新增节点，后者会生成抽象元素。
 
-1) 概念：伪类（pseudo-class）用一个冒号表示，用来给处于特定状态或满足特定结构条件的已有元素加样式，例如 a:hover、input:focus、li:first-child、:not(.active)。它本质上是选择器的“条件过滤器”，不创建新元素。伪元素（pseudo-element）用两个冒号表示（CSS3 规范，兼容旧写法可一个冒号），用来选中元素中并不存在于 DOM 的抽象部分，或凭空生成一个子元素，例如 p::first-line、p::first-letter、::before、::after、::selection、::placeholder。 2) 通俗类比：伪类像“给已经存在的演员加一个状态标签”——正在被鼠标悬停的按钮、被选中的复选框；伪元素像“给演员临时加一顶帽子或一条字幕”——它原本不在 DOM 里，是 CSS 渲染时虚构出来的部分。 3) 作用与场景：伪类常用于交互反馈（:hover、:active、:focus-visible）、表单校验（:valid、:invalid、:checked）、结构选择（:nth-child、:first-of-type）、逻辑否定（:not、:is、:where）。伪元素常用于装饰性图标/箭头（::before/::after + content）、清除浮动、首字下沉、首行特殊排版、选中文本高亮、占位符样式。 4) 关键区别：伪类不改变 DOM 树，只匹配已有节点；伪元素会生成一个“匿名盒”或选中匿名文本片段，可以设置 content、display、position 等，但默认是 inline。伪元素通常必须配合 content 属性（::before/::after）才会显示。 5) 优先级：伪类和伪元素都参与选择器特异性计算，伪类算一个类（0,1,0），伪元素算一个元素（0,0,1）。例如 .box::before 特异性为 (0,1,1)。 6) 可组合：可以同时使用，如 li:hover::before 表示鼠标悬停时给 li 的伪元素加样式。
+1) 概念：伪类（pseudo-class）用一个冒号表示，用来给处于特定状态或满足特定结构条件的已有元素加样式，例如 a:hover、input:focus、li:first-child、:not(.active)。它本质上是选择器的“条件过滤器”，不创建新元素。伪元素（pseudo-element）用两个冒号表示（CSS3 规范，兼容旧写法可一个冒号），用来选中元素中并不存在于 DOM 的抽象部分，或凭空生成一个子元素，例如 p::first-line、p::first-letter、::before、::after、::selection、::placeholder。
+2) 通俗类比：伪类像“给已经存在的演员加一个状态标签”——正在被鼠标悬停的按钮、被选中的复选框；伪元素像“给演员临时加一顶帽子或一条字幕”——它原本不在 DOM 里，是 CSS 渲染时虚构出来的部分。
+3) 作用与场景：伪类常用于交互反馈（:hover、:active、:focus-visible）、表单校验（:valid、:invalid、:checked）、结构选择（:nth-child、:first-of-type）、逻辑否定（:not、:is、:where）。伪元素常用于装饰性图标/箭头（::before/::after + content）、清除浮动、首字下沉、首行特殊排版、选中文本高亮、占位符样式。
+4) 关键区别：伪类不改变 DOM 树，只匹配已有节点；伪元素会生成一个“匿名盒”或选中匿名文本片段，可以设置 content、display、position 等，但默认是 inline。伪元素通常必须配合 content 属性（::before/::after）才会显示。
+5) 优先级：伪类和伪元素都参与选择器特异性计算，伪类算一个类（0,1,0），伪元素算一个元素（0,0,1）。例如 .box::before 特异性为 (0,1,1)。
+6) 可组合：可以同时使用，如 li:hover::before 表示鼠标悬停时给 li 的伪元素加样式。
 
 **常见追问**：如何避免「1) 把伪类和伪元素混为一谈，认为 :before 也是伪类」？ 「实际上单冒号旧写法只是兼容，语义上是伪元素」在真实项目中应如何规避？
 
@@ -7654,7 +10470,13 @@ clear 清除浮动的原理是：在浮动元素之后的元素上设置 clear �
 
 IE6 中块级元素同时设置 float 和同方向 margin 时，margin 会被错误地放大为两倍，标准解法是给该元素加 display:inline。
 
-这个 Bug 只出现在 IE6（以及 IE7 的某些怪异模式）中：当一个块级元素设置了 float（left 或 right），并且设置了与浮动方向相同的 margin 时，IE6 会把该 margin 值乘以 2。例如 .box{float:left; margin-left:20px;} 在 IE6 下实际左边距会变成 40px，导致布局错位。 原理上，这是 IE6 对浮动元素外边距计算的一个历史实现缺陷：它把浮动元素的 margin 错误地叠加了一次。触发条件很明确：块级元素 + float + 同方向 margin。 标准修复方案是给该浮动元素加上 display:inline。因为浮动元素本身会被浏览器强制当作块级框处理，所以 display:inline 不会改变它的实际布局行为，但能绕过 IE6 的错误计算路径，使 margin 恢复正常。例如： .box{float:left; margin-left:20px; display:inline;} 另一种思路是改用 padding 或父容器 padding 来替代同方向 margin，但 display:inline 是最经典、副作用最小的 hack。现代浏览器早已修复该问题，所以这个技巧通常只写在针对 IE6 的 hack 中，比如 *display:inline 或 _display:inline。
+这个 Bug 只出现在 IE6（以及 IE7 的某些怪异模式）中：当一个块级元素设置了 float（left 或 right），并且设置了与浮动方向相同的 margin 时，IE6 会把该 margin 值乘以 2。
+
+例如 .box{float:left; margin-left:20px;} 在 IE6 下实际左边距会变成 40px，导致布局错位。 原理上，这是 IE6 对浮动元素外边距计算的一个历史实现缺陷：它把浮动元素的 margin 错误地叠加了一次。触发条件很明确：块级元素 + float + 同方向 margin。
+
+标准修复方案是给该浮动元素加上 display:inline。因为浮动元素本身会被浏览器强制当作块级框处理，所以 display:inline 不会改变它的实际布局行为，但能绕过 IE6 的错误计算路径，使 margin 恢复正常。
+
+例如： .box{float:left; margin-left:20px; display:inline;} 另一种思路是改用 padding 或父容器 padding 来替代同方向 margin，但 display:inline 是最经典、副作用最小的 hack。现代浏览器早已修复该问题，所以这个技巧通常只写在针对 IE6 的 hack 中，比如 *display:inline 或 _display:inline。
 
 **常见追问**：如何避免「误以为所有 margin 都会双倍：实际上只有与 float 方向相同的 margin 才会，反方向 margin 正常。」？ 「误以为 display:inline 会改变元素布局：浮动元素本身会被块级化，所以不会。」在真实项目中应如何规避？
 
@@ -7676,7 +10498,16 @@ IE6 中块级元素同时设置 float 和同方向 margin 时，margin 会被错
 
 vw/vh 是相对视口（viewport）的固定单位，% 是相对父元素对应属性的百分比，二者参照物不同，因此表现和适用场景不同。
 
-1) 参照物不同：vw/vh 始终以浏览器视口为基准，1vw = 视口宽度的 1%，1vh = 视口高度的 1%；而 % 的参照物是父元素（或包含块）的对应尺寸，例如 width:50% 是父元素宽度的 50%，height:50% 是父元素高度的 50%，padding/margin 的百分比则参照父元素宽度（即使 top/bottom 也参照宽度）。 2) 行为差异：vw/vh 不依赖父元素，父元素尺寸变化不影响它；% 会随父元素尺寸变化，父元素没显式高度时 height:50% 往往失效（因为父元素高度由内容撑开，百分比高度无法计算）。 3) 典型场景： - 全屏布局：height:100vh 做首屏，width:100vw 做满宽； - 响应式字号/间距：font-size:2vw 随视口缩放； - 栅格/自适应容器：width:50% 做两列布局，随父容器变化； - 图片/视频自适应：max-width:100% 防止溢出。 4) 通俗类比：vw/vh 像“按整个屏幕大小切蛋糕”，不管放在哪个盒子里，切法都一样；% 像“按所在盒子大小切蛋糕”，盒子变了，蛋糕大小也变。 5) 注意：vw 包含滚动条宽度（部分浏览器），100vw 可能比可视内容宽，导致横向滚动；vh 在移动端受地址栏收起/展开影响，100vh 可能跳动，可用 dvh/svh/lvh 或 JS 修正。
+1) 参照物不同：vw/vh 始终以浏览器视口为基准，1vw = 视口宽度的 1%，1vh = 视口高度的 1%；而 % 的参照物是父元素（或包含块）的对应尺寸，例如 width:50% 是父元素宽度的 50%，height:50% 是父元素高度的 50%，padding/margin 的百分比则参照父元素宽度（即使 top/bottom 也参照宽度）。
+2) 行为差异：vw/vh 不依赖父元素，父元素尺寸变化不影响它；% 会随父元素尺寸变化，父元素没显式高度时 height:50% 往往失效（因为父元素高度由内容撑开，百分比高度无法计算）。
+3) 典型场景：
+
+  - 全屏布局：height:100vh 做首屏，width:100vw 做满宽；
+  - 响应式字号/间距：font-size:2vw 随视口缩放；
+  - 栅格/自适应容器：width:50% 做两列布局，随父容器变化；
+  - 图片/视频自适应：max-width:100% 防止溢出。
+4) 通俗类比：vw/vh 像“按整个屏幕大小切蛋糕”，不管放在哪个盒子里，切法都一样；% 像“按所在盒子大小切蛋糕”，盒子变了，蛋糕大小也变。
+5) 注意：vw 包含滚动条宽度（部分浏览器），100vw 可能比可视内容宽，导致横向滚动；vh 在移动端受地址栏收起/展开影响，100vh 可能跳动，可用 dvh/svh/lvh 或 JS 修正。
 
 **常见追问**：如何避免「1) 误以为 % 是相对视口：% 是相对父元素/包含块，不是视口」？ 「2) 误以为 height:100% 一定等于 100vh：父元素无显式高度时 100% 无效，100vh 才有效」在真实项目中应如何规避？
 
@@ -7698,7 +10529,18 @@ vw/vh 是相对视口（viewport）的固定单位，% 是相对父元素对应�
 
 var 是函数作用域、可重复声明、存在变量提升；let/const 是块级作用域、有暂时性死区、不可重复声明，其中 const 声明后必须初始化且绑定不可重新赋值（但对象内容可改）。
 
-三者最核心的区别在于作用域、提升行为和可变性。 1. 作用域：var 是函数作用域，只在函数内有效，在 if/for 等块中声明的 var 会泄漏到外层函数或全局；let/const 是块级作用域，只在最近的一对 {} 内有效。 2. 变量提升：var 声明会提升到函数顶部，并初始化为 undefined，所以声明前访问得到 undefined；let/const 也会提升，但不会初始化，声明前访问会抛 ReferenceError，这段区域叫暂时性死区（TDZ）。 3. 重复声明：同一作用域内 var 可以重复声明，后者覆盖前者；let/const 不允许重复声明，会直接报 SyntaxError。 4. 初始化与赋值：var/let 声明时可不赋值；const 声明时必须初始化，且之后不能重新赋值。注意 const 保证的是变量绑定不可变，不是值不可变：const obj = {} 后仍可 obj.a = 1，但 obj = {} 会报错。 5. 全局对象属性：在浏览器全局作用域下，var 声明的变量会成为 window 的属性，let/const 不会。 6. 循环中的经典差异：for (var i=0;i<3;i++) 里 setTimeout 都打印 3，因为共享同一个函数作用域变量；for (let i=0;i<3;i++) 每次迭代都会创建新的绑定，打印 0、1、2。 通俗类比：var 像公司公共白板，谁都能写、写了就一直在，前面的人也能看到；let/const 像每人自己的便签，只在自己工位（块）有效，贴上之前不能读，const 便签一旦贴上就不能换一张，但便签上的字可以改。 适用场景：现代代码默认用 const，需要重新赋值时用 let，尽量避免 var，以减少作用域污染和提升带来的 bug。
+三者最核心的区别在于作用域、提升行为和可变性。
+
+1. 作用域：var 是函数作用域，只在函数内有效，在 if/for 等块中声明的 var 会泄漏到外层函数或全局；let/const 是块级作用域，只在最近的一对 {} 内有效。
+2. 变量提升：var 声明会提升到函数顶部，并初始化为 undefined，所以声明前访问得到 undefined；let/const 也会提升，但不会初始化，声明前访问会抛 ReferenceError，这段区域叫暂时性死区（TDZ）。
+3. 重复声明：同一作用域内 var 可以重复声明，后者覆盖前者；let/const 不允许重复声明，会直接报 SyntaxError。
+4. 初始化与赋值：var/let 声明时可不赋值；const 声明时必须初始化，且之后不能重新赋值。注意 const 保证的是变量绑定不可变，不是值不可变：const obj = {} 后仍可 obj.a = 1，但 obj = {} 会报错。
+5. 全局对象属性：在浏览器全局作用域下，var 声明的变量会成为 window 的属性，let/const 不会。
+6. 循环中的经典差异：for (var i=0;i<3;i++) 里 setTimeout 都打印 3，因为共享同一个函数作用域变量；for (let i=0;i<3;i++) 每次迭代都会创建新的绑定，打印 0、1、2。
+
+通俗类比：var 像公司公共白板，谁都能写、写了就一直在，前面的人也能看到；let/const 像每人自己的便签，只在自己工位（块）有效，贴上之前不能读，const 便签一旦贴上就不能换一张，但便签上的字可以改。
+
+适用场景：现代代码默认用 const，需要重新赋值时用 let，尽量避免 var，以减少作用域污染和提升带来的 bug。
 
 **常见追问**：如何避免「说“let/const 没有变量提升”——错，它们有提升，只是存在 TDZ，声明前访问报错而不是 undefined。」？ 「说“const 声明的值完全不可变”——错，const 只限制绑定不可重新赋值，对象/数组内容仍可修改；要真正不可变需 Object.freeze 或 immutable 方案。」在真实项目中应如何规避？
 
@@ -7720,7 +10562,40 @@ Promise.all 像“团队合影”：必须所有成员都到齐才能拍，只�
 
 Promise.all 是“全部成功才成功，一个失败就失败”，Promise.race 是“第一个敲定（成功或失败）就决定结果”，二者都用于并发编排多个 Promise。
 
-一、概念与原理 Promise 是 JS 中表示异步操作最终完成或失败的对象，有 pending、fulfilled、rejected 三种状态。Promise.all 和 Promise.race 是 Promise 的静态组合方法，接收一个可迭代对象（通常是数组），返回一个新的 Promise，用于把多个异步任务编排成一个。 通俗类比： - Promise.all 像“团队合影”：必须所有成员都到齐才能拍，只要有一个人没来（失败），这次合影就失败。 - Promise.race 像“赛跑”：谁先冲过终点线，就以谁的结果为准，不管其他人后面如何。 二、Promise.all(iterable) 1. 行为：等待所有 Promise 都 fulfilled 后，返回一个数组，结果顺序与输入顺序一致，而不是完成顺序。只要有一个 Promise rejected，返回的 Promise 立即 rejected，原因是第一个失败的原因。 2. 适用场景：多个互不依赖的请求需要全部完成后才能继续，例如页面初始化时同时拉取用户信息、配置、权限，全部成功后再渲染。 3. 例子： const [user, orders] = await Promise.all([fetch('/user'), fetch('/orders')]); 4. 注意：如果传入的不是 Promise，会通过 Promise.resolve 包装；空数组会立即 fulfilled 为 []。 三、Promise.race(iterable) 1. 行为：只要有一个 Promise 最先 settled（fulfilled 或 rejected），返回的 Promise 就以相同状态和结果 settled，其余结果被忽略。 2. 适用场景：超时控制、竞速取最快结果。例如给请求加超时： const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)); const result = await Promise.race([fetch('/api'), timeout]); 3. 注意：race 不会取消其他 Promise，只是忽略它们的结果；如果传入空数组，会永远 pending。 四、共同点与区别 共同点：都接收可迭代对象，返回新 Promise，不改变原 Promise。 区别：all 关注“全部成功”，race 关注“最先敲定”；all 的结果是数组，race 的结果是单个值；all 在第一个失败时短路，race 在第一个 settled 时短路。 五、使用建议 - 需要全部成功才继续：用 Promise.all。 - 需要最快结果或超时控制：用 Promise.race。 - 如果希望“无论成功失败都拿到所有结果”，可用 Promise.allSettled；如果只想要第一个成功结果，可用 Promise.any。
+**一、概念与原理**
+
+Promise 是 JS 中表示异步操作最终完成或失败的对象，有 pending、fulfilled、rejected 三种状态。Promise.all 和 Promise.race 是 Promise 的静态组合方法，接收一个可迭代对象（通常是数组），返回一个新的 Promise，用于把多个异步任务编排成一个。
+
+通俗类比：
+
+- Promise.all 像“团队合影”：必须所有成员都到齐才能拍，只要有一个人没来（失败），这次合影就失败。
+- Promise.race 像“赛跑”：谁先冲过终点线，就以谁的结果为准，不管其他人后面如何。
+
+**二、Promise.all(iterable)**
+
+1. 行为：等待所有 Promise 都 fulfilled 后，返回一个数组，结果顺序与输入顺序一致，而不是完成顺序。只要有一个 Promise rejected，返回的 Promise 立即 rejected，原因是第一个失败的原因。
+2. 适用场景：多个互不依赖的请求需要全部完成后才能继续，例如页面初始化时同时拉取用户信息、配置、权限，全部成功后再渲染。
+3. 例子： const [user, orders] = await Promise.all([fetch('/user'), fetch('/orders')]);
+4. 注意：如果传入的不是 Promise，会通过 Promise.resolve 包装；空数组会立即 fulfilled 为 []。
+
+**三、Promise.race(iterable)**
+
+1. 行为：只要有一个 Promise 最先 settled（fulfilled 或 rejected），返回的 Promise 就以相同状态和结果 settled，其余结果被忽略。
+2. 适用场景：超时控制、竞速取最快结果。例如给请求加超时： const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)); const result = await Promise.race([fetch('/api'), timeout]);
+3. 注意：race 不会取消其他 Promise，只是忽略它们的结果；如果传入空数组，会永远 pending。
+
+**四、共同点与区别**
+
+共同点：都接收可迭代对象，返回新 Promise，不改变原 Promise。
+
+- 区别：all 关注“全部成功”，race 关注“最先敲定”；
+- all 的结果是数组，race 的结果是单个值；
+- all 在第一个失败时短路，race 在第一个 settled 时短路。
+
+**五、使用建议**
+
+- 需要全部成功才继续：用 Promise.all。
+- 需要最快结果或超时控制：用 Promise.race。 - 如果希望“无论成功失败都拿到所有结果”，可用 Promise.allSettled；如果只想要第一个成功结果，可用 Promise.any。
 
 **常见追问**：如何避免「误以为 Promise.all 的结果顺序是完成顺序，实际是输入顺序。」？ 「误以为 Promise.all 中一个失败会取消其他任务，实际不会取消，只是返回的 Promise 提前 rejected。」在真实项目中应如何规避？
 
@@ -7742,7 +10617,12 @@ Promise.all 是“全部成功才成功，一个失败就失败”，Promise.rac
 
 class 本质是构造函数的语法糖，其原型链关系与 ES5 构造函数一致：类的 prototype 指向原型对象，实例的 __proto__ 指向该原型对象，静态方法挂在类本身。
 
-在 JavaScript 中，class 并不是一种全新的继承模型，而是对原有“构造函数 + 原型”模式的语法封装。 1. 基本对应关系： ```js class Person { constructor(name) { this.name = name; } say() { console.log(this.name); } static create(name) { return new Person(name); } } ``` 等价于： ```js function Person(name) { this.name = name; } Person.prototype.say = function() { console.log(this.name); }; Person.create = function(name) { return new Person(name); }; ``` 2. 原型链： - `Person.prototype` 是实例的原型对象，实例 `p.__proto__ === Person.prototype`。 - `Person.prototype.constructor === Person`。 - 静态方法 `create` 直接挂在 `Person` 上，不在 `Person.prototype` 上，所以实例不能直接调用。 - `Person.__proto__ === Function.prototype`，因为类本身也是函数。 - 如果 `class Student extends Person`，则 `Student.__proto__ === Person`，`Student.prototype.__proto__ === Person.prototype`，这就是静态属性和实例方法都能继承的原因。 3. 为什么要有 class： - 更接近传统面向对象语言写法，语义清晰。 - 强制使用 `new` 调用，避免把构造函数当普通函数调用。 - 类内部默认严格模式，方法不可枚举，`constructor` 不可被直接调用等。 4. 适用场景： - 需要创建多个具有相同结构和行为的对象时。 - 需要继承、复用、多态式设计时。 - 但 JS 的原型继承本质仍是“对象委托”，不是 Java/C++ 那种类复制。
+在 JavaScript 中，class 并不是一种全新的继承模型，而是对原有“构造函数 + 原型”模式的语法封装。
+
+1. 基本对应关系： ```js class Person { constructor(name) { this.name = name; } say() { console.log(this.name); } static create(name) { return new Person(name); } } ``` 等价于： ```js function Person(name) { this.name = name; } Person.prototype.say = function() { console.log(this.name); }; Person.create = function(name) { return new Person(name); }; ```
+2. 原型链： - `Person.prototype` 是实例的原型对象，实例 `p.__proto__ === Person.prototype`。 - `Person.prototype.constructor === Person`。 - 静态方法 `create` 直接挂在 `Person` 上，不在 `Person.prototype` 上，所以实例不能直接调用。 - `Person.__proto__ === Function.prototype`，因为类本身也是函数。 - 如果 `class Student extends Person`，则 `Student.__proto__ === Person`，`Student.prototype.__proto__ === Person.prototype`，这就是静态属性和实例方法都能继承的原因。
+3. 为什么要有 class： - 更接近传统面向对象语言写法，语义清晰。 - 强制使用 `new` 调用，避免把构造函数当普通函数调用。 - 类内部默认严格模式，方法不可枚举，`constructor` 不可被直接调用等。
+4. 适用场景： - 需要创建多个具有相同结构和行为的对象时。 - 需要继承、复用、多态式设计时。 - 但 JS 的原型继承本质仍是“对象委托”，不是 Java/C++ 那种类复制。
 
 **常见追问**：如何避免「误以为 class 是全新的继承机制，和原型无关。」？ 「误以为 class 的方法挂在实例上，实际上实例方法在 prototype 上。」在真实项目中应如何规避？
 
@@ -7764,7 +10644,17 @@ class 本质是构造函数的语法糖，其原型链关系与 ES5 构造函数
 
 this 是函数调用时动态绑定的执行上下文，取值由调用方式决定，遵循默认、隐式、显式、new 四种绑定规则及箭头函数词法绑定。
 
-this 不是函数定义时决定的，而是函数被调用时确定的，可以理解为“谁调用我，我就指向谁”。常见场景与取值如下： 1. 默认绑定：普通函数独立调用，非严格模式下 this 指向全局对象（浏览器 window，Node 的 global），严格模式下为 undefined。例如 function f(){ console.log(this); } f(); 2. 隐式绑定：作为对象方法调用，this 指向调用该方法的对象。例如 obj.fn() 中 this 是 obj。注意赋值后调用会丢失绑定：const g = obj.fn; g() 变成默认绑定。 3. 显式绑定：通过 call、apply、bind 强制指定 this。call/apply 立即执行，bind 返回绑定后的新函数。例如 fn.call(obj)、fn.bind(obj)()。 4. new 绑定：使用 new 调用构造函数时，this 指向新创建的对象。若构造函数返回对象则返回该对象，否则返回新对象。 5. 箭头函数：没有自己的 this，捕获定义时外层作用域的 this，且无法被 call/apply/bind 改变。适合回调中保持 this。 6. DOM 事件处理：普通函数中 this 指向触发事件的元素；箭头函数则继承外层 this。 7. 优先级：new > 显式绑定 > 隐式绑定 > 默认绑定。 通俗类比：this 像“当前操作的主人”，谁发起调用，this 就指向谁；箭头函数则像“继承父母的身份”，出生时就定好了。
+this 不是函数定义时决定的，而是函数被调用时确定的，可以理解为“谁调用我，我就指向谁”。常见场景与取值如下：
+
+1. 默认绑定：普通函数独立调用，非严格模式下 this 指向全局对象（浏览器 window，Node 的 global），严格模式下为 undefined。例如 function f(){ console.log(this); } f();
+2. 隐式绑定：作为对象方法调用，this 指向调用该方法的对象。例如 obj.fn() 中 this 是 obj。注意赋值后调用会丢失绑定：const g = obj.fn; g() 变成默认绑定。
+3. 显式绑定：通过 call、apply、bind 强制指定 this。call/apply 立即执行，bind 返回绑定后的新函数。例如 fn.call(obj)、fn.bind(obj)()。
+4. new 绑定：使用 new 调用构造函数时，this 指向新创建的对象。若构造函数返回对象则返回该对象，否则返回新对象。
+5. 箭头函数：没有自己的 this，捕获定义时外层作用域的 this，且无法被 call/apply/bind 改变。适合回调中保持 this。
+6. DOM 事件处理：普通函数中 this 指向触发事件的元素；箭头函数则继承外层 this。
+7. 优先级：new > 显式绑定 > 隐式绑定 > 默认绑定。
+
+通俗类比：this 像“当前操作的主人”，谁发起调用，this 就指向谁；箭头函数则像“继承父母的身份”，出生时就定好了。
 
 **常见追问**：如何避免「误以为 this 指向函数自身或函数定义时的作用域。2. 混淆箭头函数与普通函数的 this，认为箭头函数可以用 call 改变 this。3. 忽略严格模式对默认绑定的影响。4. 认为对象方法中的 this 永远指向该对象，忽略赋值丢失绑定。5. 把 this 与作用域链、闭包混为一谈。」？ 能否结合「能说出绑定优先级并举例验证，如 new fn.call(obj) 中 new 优先。2. 了解 bind 的硬绑定与 new 的冲突：bind 后的函数用 new 调用时，this 仍指向新对象，因为 new 优先级更高。3. 知道箭头函数不能作为构造函数，没有 prototype 和 arguments。4. 了解严格模式下默认绑定为 undefined，以及模块化代码默认严格模式。5. 能提到 React 类组件中事件处理需 bind 或箭头函数，以及 Hooks 中 this 不再使用。」进一步展开？
 
@@ -7786,7 +10676,17 @@ call：参数少、明确时直接调用，如 Array.prototype.slice.call(argume
 
 三者都用于改变函数执行时的 this 指向，区别在于传参方式与是否立即执行：call/apply 立即调用，bind 返回一个绑定后的新函数。
 
-在 JavaScript 中，函数的 this 由调用方式决定。call、apply、bind 都是 Function.prototype 上的方法，用来显式指定 this。 1) call：立即执行函数，参数逐个传入。 fn.call(thisArg, arg1, arg2, ...) 2) apply：立即执行函数，参数以数组（或类数组）整体传入。 fn.apply(thisArg, [arg1, arg2, ...]) 3) bind：不立即执行，而是返回一个新函数，this 被永久绑定为第一个参数，后续参数会作为预设参数（偏函数）。 const newFn = fn.bind(thisArg, arg1); newFn(arg2); 通俗类比：call/apply 像“当场打电话叫人办事”，区别只是报参数时是一个个报（call）还是递一张清单（apply）；bind 像“先签一份委托书”，以后每次调用都按委托书上的 this 和预设参数执行。 适用场景： - call：参数少、明确时直接调用，如 Array.prototype.slice.call(arguments)。 - apply：参数已经是数组时，如 Math.max.apply(null, arr)。 - bind：需要延迟执行、事件回调固定 this、偏函数、React 类组件绑定方法等。 共同点：第一个参数为 thisArg；在非严格模式下，若 thisArg 为 null/undefined，会指向全局对象（浏览器为 window），原始值会被包装成对象；严格模式下则保持传入值。
+在 JavaScript 中，函数的 this 由调用方式决定。call、apply、bind 都是 Function.prototype 上的方法，用来显式指定 this。
+
+1) call：立即执行函数，参数逐个传入。 fn.call(thisArg, arg1, arg2, ...)
+2) apply：立即执行函数，参数以数组（或类数组）整体传入。 fn.apply(thisArg, [arg1, arg2, ...])
+3) bind：不立即执行，而是返回一个新函数，this 被永久绑定为第一个参数，后续参数会作为预设参数（偏函数）。 const newFn = fn.bind(thisArg, arg1); newFn(arg2); 通俗类比：call/apply 像“当场打电话叫人办事”，区别只是报参数时是一个个报（call）还是递一张清单（apply）；bind 像“先签一份委托书”，以后每次调用都按委托书上的 this 和预设参数执行。
+
+适用场景：
+
+- call：参数少、明确时直接调用，如 Array.prototype.slice.call(arguments)。
+- apply：参数已经是数组时，如 Math.max.apply(null, arr)。
+- bind：需要延迟执行、事件回调固定 this、偏函数、React 类组件绑定方法等。 共同点：第一个参数为 thisArg；在非严格模式下，若 thisArg 为 null/undefined，会指向全局对象（浏览器为 window），原始值会被包装成对象；严格模式下则保持传入值。
 
 **常见追问**：如何避免「1) 误以为 bind 会立即执行」？ 「实际返回新函数」在真实项目中应如何规避？
 
@@ -7808,7 +10708,17 @@ Promise 本质是一个状态机：内部有 pending、fulfilled、rejected 三�
 
 Promise 通过状态机 + 回调队列（微任务）把异步结果与后续处理解耦，实现链式、可组合的异步流程控制。
 
-Promise 本质是一个状态机：内部有 pending、fulfilled、rejected 三种状态，状态只能从 pending 单向变为 fulfilled 或 rejected，且一旦变更不可逆。它并不“让异步变同步”，而是把异步操作的结果先存起来，等结果就绪后再按注册顺序执行回调。 原理可以拆成三部分： 1) 状态与值：Promise 内部保存 state 和 result。resolve(value) 把状态置为 fulfilled 并保存 value；reject(reason) 置为 rejected 并保存 reason。 2) then 注册回调：调用 then(onFulfilled, onRejected) 时，如果当前还是 pending，就把回调推进队列；如果已经 settled，就安排回调异步执行。 3) 微任务调度：回调不会同步执行，而是通过 queueMicrotask / MutationObserver / process.nextTick 等机制放入微任务队列，在当前同步代码执行完后、下一个宏任务前执行，保证 then 回调总是异步且顺序稳定。 链式调用：then 返回一个新的 Promise。前一个回调的返回值会作为下一个 Promise 的 resolve 值；如果返回的是 Promise，则等待它 settle 后再继续，这就是“展开”和链式串行的基础。 通俗类比：Promise 像餐厅取餐器。你点餐后拿到一个取餐器（Promise），它现在还没响（pending）。你可以先去做别的事，等餐好了取餐器会响（fulfilled），你再去取餐；如果没餐了也会通知你（rejected）。你不需要一直站在柜台等，但取餐器保证结果只会通知一次。 适用场景：多个异步依赖串行、并发聚合（Promise.all）、竞速（Promise.race）、错误统一捕获（catch/finally），以及 async/await 的底层基础。
+Promise 本质是一个状态机：内部有 pending、fulfilled、rejected 三种状态，状态只能从 pending 单向变为 fulfilled 或 rejected，且一旦变更不可逆。它并不“让异步变同步”，而是把异步操作的结果先存起来，等结果就绪后再按注册顺序执行回调。
+
+原理可以拆成三部分：
+
+1) 状态与值：Promise 内部保存 state 和 result。resolve(value) 把状态置为 fulfilled 并保存 value；reject(reason) 置为 rejected 并保存 reason。
+2) then 注册回调：调用 then(onFulfilled, onRejected) 时，如果当前还是 pending，就把回调推进队列；如果已经 settled，就安排回调异步执行。
+3) 微任务调度：回调不会同步执行，而是通过 queueMicrotask / MutationObserver / process.nextTick 等机制放入微任务队列，在当前同步代码执行完后、下一个宏任务前执行，保证 then 回调总是异步且顺序稳定。 链式调用：then 返回一个新的 Promise。前一个回调的返回值会作为下一个 Promise 的 resolve 值；如果返回的是 Promise，则等待它 settle 后再继续，这就是“展开”和链式串行的基础。
+
+通俗类比：Promise 像餐厅取餐器。你点餐后拿到一个取餐器（Promise），它现在还没响（pending）。你可以先去做别的事，等餐好了取餐器会响（fulfilled），你再去取餐；如果没餐了也会通知你（rejected）。你不需要一直站在柜台等，但取餐器保证结果只会通知一次。
+
+适用场景：多个异步依赖串行、并发聚合（Promise.all）、竞速（Promise.race）、错误统一捕获（catch/finally），以及 async/await 的底层基础。
 
 **常见追问**：如何避免「1) 误以为 Promise 让代码同步执行，或认为 new Promise 里的 executor 是异步的——executor 是同步立即执行的」？ 「2) 误以为 then 回调是同步执行，或认为多个 then 会并发执行」在真实项目中应如何规避？
 
@@ -7830,7 +10740,20 @@ Promise 本质是一个状态机：内部有 pending、fulfilled、rejected 三�
 
 事件代理是利用事件冒泡机制，把子元素的事件监听统一绑定到父元素上，由父元素根据事件目标判断并处理，从而减少监听器数量、支持动态元素。
 
-事件代理（事件委托）的核心原理是 DOM 事件流中的冒泡阶段：当点击一个子元素时，事件会从目标元素逐级向上冒泡到父元素甚至 document。因此我们不需要给每个子元素都绑定监听器，只需在它们的共同父元素上绑定一个监听器，然后在回调里通过 event.target 判断实际触发的是哪个子元素，再执行对应逻辑。 通俗类比：公司里如果每个员工都单独配一个前台接待，成本很高；改成只设一个总前台，所有访客都先到总前台，前台根据访客要找的人再转接。总前台就是父元素上的监听器，访客就是事件，找的人就是 event.target。 典型代码： ```js const ul = document.querySelector('#list'); ul.addEventListener('click', function (e) { const li = e.target.closest('li'); if (!li || !ul.contains(li)) return; console.log('点击了', li.dataset.id); }); ``` 这样即使后续动态新增 li，也无需重新绑定事件。 适用场景：列表、表格、菜单、动态增删的卡片等大量同构子元素；需要减少内存和绑定开销；需要自动支持未来新增元素。 不适用或需注意：不冒泡的事件（如 focus、blur、mouseenter、mouseleave、load 等）不能直接代理，可用 focusin/focusout 或捕获阶段替代；事件目标可能不是期望元素，需要用 closest 或判断边界；stopPropagation 会阻断代理；频繁触发的事件（如 mousemove）代理本身不解决性能问题，仍需节流。
+事件代理（事件委托）的核心原理是 DOM 事件流中的冒泡阶段：当点击一个子元素时，事件会从目标元素逐级向上冒泡到父元素甚至 document。
+
+因此我们不需要给每个子元素都绑定监听器，只需在它们的共同父元素上绑定一个监听器，然后在回调里通过 event.target 判断实际触发的是哪个子元素，再执行对应逻辑。
+
+通俗类比：公司里如果每个员工都单独配一个前台接待，成本很高；改成只设一个总前台，所有访客都先到总前台，前台根据访客要找的人再转接。总前台就是父元素上的监听器，访客就是事件，找的人就是 event.target。 典型代码： ```js const ul = document.querySelector('#list'); ul.addEventListener('click', function (e) { const li = e.target.closest('li'); if (!li || !ul.contains(li)) return; console.log('点击了', li.dataset.id); }); ``` 这样即使后续动态新增 li，也无需重新绑定事件。
+
+- 适用场景：列表、表格、菜单、动态增删的卡片等大量同构子元素；
+- 需要减少内存和绑定开销；
+- 需要自动支持未来新增元素。
+
+- 不适用或需注意：不冒泡的事件（如 focus、blur、mouseenter、mouseleave、load 等）不能直接代理，可用 focusin/focusout 或捕获阶段替代；
+- 事件目标可能不是期望元素，需要用 closest 或判断边界；
+- stopPropagation 会阻断代理；
+- 频繁触发的事件（如 mousemove）代理本身不解决性能问题，仍需节流。
 
 **常见追问**：如何避免「误以为所有事件都能代理，忽略 focus、blur、mouseenter、mouseleave 等不冒泡事件。2. 把 event.target 当成绑定监听器的元素，实际那是 currentTarget。3. 忘记判断事件来源，导致点击父元素空白区域也触发子元素逻辑。4. 认为事件代理一定提升性能，实际上如果代理层过高、判断逻辑复杂，可能得不偿失。5. 在代理回调里使用 stopPropagation 阻止冒泡，会破坏其他代理或框架事件。6. 动态元素场景下仍手动绑定，或使用 innerHTML 后重新绑定，增加维护成本。」？ 能否结合「事件流三阶段：捕获、目标、冒泡，addEventListener 第三个参数 capture 可控制监听阶段，不冒泡事件可在捕获阶段代理。2. event.target 是实际触发元素，event.currentTarget 是绑定监听器的元素，二者容易混淆。3. 事件委托依赖冒泡，但 React 17 之前把事件委托到 document，17 之后改为委托到 root 容器，影响原生事件与合成事件的传播顺序。4. 可用 e.target.closest(selector) 精准匹配，避免手写循环；同时用 parent.contains(target) 防止事件从外部冒泡进来。5. 内存角度：大量独立监听器会增加内存和 GC 压力，代理能显著减少监听器数量；但代理回调中若做复杂 DOM 查询也可能有性能问题。6. 对于 Shadow DOM，事件冒泡会被 retarget，event.target 在宿主外会变成宿主元素，需要 composedPath() 获取真实路径。」进一步展开？
 
@@ -7852,7 +10775,20 @@ Promise 本质是一个状态机：内部有 pending、fulfilled、rejected 三�
 
 display 决定元素在文档流中的显示类型与布局参与方式，核心是控制盒模型生成、是否脱离文档流以及子元素的布局上下文。
 
-display 是 CSS 中最核心的布局属性，它决定一个元素生成什么类型的盒子，以及这个盒子如何参与父级和自身的布局。可以把它理解为“这个元素在页面里扮演什么角色”。 常见值分几类： 1. 外部显示类型：block、inline、inline-block。block 独占一行，可设宽高，默认宽度撑满父级；inline 不换行，宽高由内容决定，设置 width/height 无效，垂直 margin 不生效；inline-block 对外像 inline 参与行内排列，对内像 block 可设宽高。 2. 内部显示类型：flow、flow-root、table、flex、grid。现代 CSS 把 display 拆成“外部显示类型 + 内部显示类型”，例如 display: inline flex 表示元素对外是 inline，内部是 flex 容器。 3. 特殊值：none 表示元素不生成盒子，从渲染树移除，不占空间、不响应事件；contents 表示元素本身不生成盒子，但子元素正常参与布局；list-item 生成列表项盒子。 作用上，display 主要影响：是否换行、能否设置宽高、是否脱离正常流、子元素如何排列、以及是否参与 BFC/格式化上下文。例如父元素 display:flex 后，子元素默认变成 flex item，float/clear/vertical-align 会失效；display:grid 则开启二维网格布局。 通俗类比：block 像一块砖，自己占一整行；inline 像句子里的字，跟着文字流走；inline-block 像可设置尺寸的图片，能跟文字排在一行；flex/grid 像给子元素发了一套排列规则，父级变成“布局容器”。 适用场景：导航栏用 flex，卡片列表用 grid，隐藏元素用 none，需要保留语义但去掉包裹盒可用 contents，传统表单/表格布局用 table 系列。
+display 是 CSS 中最核心的布局属性，它决定一个元素生成什么类型的盒子，以及这个盒子如何参与父级和自身的布局。可以把它理解为“这个元素在页面里扮演什么角色”。 常见值分几类：
+
+1. 外部显示类型：block、inline、inline-block。block 独占一行，可设宽高，默认宽度撑满父级；inline 不换行，宽高由内容决定，设置 width/height 无效，垂直 margin 不生效；inline-block 对外像 inline 参与行内排列，对内像 block 可设宽高。
+2. 内部显示类型：flow、flow-root、table、flex、grid。现代 CSS 把 display 拆成“外部显示类型 + 内部显示类型”，例如 display: inline flex 表示元素对外是 inline，内部是 flex 容器。
+3. 特殊值：none 表示元素不生成盒子，从渲染树移除，不占空间、不响应事件；contents 表示元素本身不生成盒子，但子元素正常参与布局；list-item 生成列表项盒子。 作用上，display 主要影响：是否换行、能否设置宽高、是否脱离正常流、子元素如何排列、以及是否参与 BFC/格式化上下文。
+
+例如父元素 display:flex 后，子元素默认变成 flex item，float/clear/vertical-align 会失效；display:grid 则开启二维网格布局。
+
+- 通俗类比：block 像一块砖，自己占一整行；
+- inline 像句子里的字，跟着文字流走；
+- inline-block 像可设置尺寸的图片，能跟文字排在一行；
+- flex/grid 像给子元素发了一套排列规则，父级变成“布局容器”。
+
+适用场景：导航栏用 flex，卡片列表用 grid，隐藏元素用 none，需要保留语义但去掉包裹盒可用 contents，传统表单/表格布局用 table 系列。
 
 **常见追问**：如何避免「把 display:none 和 visibility:hidden 混为一谈：前者不占位、不渲染，后者占位但不可见。」？ 「认为 inline 元素设置 width/height 一定无效，实际上替换元素如 img、input 可以设置。」在真实项目中应如何规避？
 
@@ -7874,7 +10810,17 @@ display 是 CSS 中最核心的布局属性，它决定一个元素生成什么�
 
 层叠顺序是 CSS 中决定同一层叠上下文内元素绘制先后的一套规则，核心由层叠上下文、层叠等级和 z-index 共同决定。
 
-层叠顺序（stacking order）解决的是：当多个元素在屏幕上重叠时，谁盖住谁。它不是一个简单的 z-index 比大小，而是先看元素是否处于同一个层叠上下文（stacking context），再按固定优先级排序。 在一个层叠上下文内部，从低到高大致是： 1. 背景和边框：当前层叠上下文的根元素自己的背景、边框； 2. 负 z-index 的子元素； 3. 块级盒子的背景和边框（普通流中的块级元素）； 4. 浮动元素； 5. 普通流中的行内元素、行内块、行内表格等； 6. z-index: 0 / auto 的定位元素，以及创建了层叠上下文的元素； 7. 正 z-index 的子元素。 关键点：z-index 只在定位元素（position 为 relative、absolute、fixed、sticky）或某些现代属性（如 flex/grid 子项、opacity 小于 1、transform 非 none、filter 非 none、will-change 等）创建层叠上下文时才生效。如果父元素创建了层叠上下文，子元素的 z-index 再大也只能在父元素的层叠上下文内部排序，无法越过父元素的兄弟层。 通俗类比：层叠上下文像一栋楼，每个楼里有很多房间（元素）。z-index 是房间号，但不同楼之间的房间号不能直接比较；先看楼与楼之间的顺序，再看同一栋楼内房间号的顺序。
+层叠顺序（stacking order）解决的是：当多个元素在屏幕上重叠时，谁盖住谁。它不是一个简单的 z-index 比大小，而是先看元素是否处于同一个层叠上下文（stacking context），再按固定优先级排序。 在一个层叠上下文内部，从低到高大致是：
+
+1. 背景和边框：当前层叠上下文的根元素自己的背景、边框；
+2. 负 z-index 的子元素；
+3. 块级盒子的背景和边框（普通流中的块级元素）；
+4. 浮动元素；
+5. 普通流中的行内元素、行内块、行内表格等；
+6. z-index: 0 / auto 的定位元素，以及创建了层叠上下文的元素；
+7. 正 z-index 的子元素。 关键点：z-index 只在定位元素（position 为 relative、absolute、fixed、sticky）或某些现代属性（如 flex/grid 子项、opacity 小于 1、transform 非 none、filter 非 none、will-change 等）创建层叠上下文时才生效。如果父元素创建了层叠上下文，子元素的 z-index 再大也只能在父元素的层叠上下文内部排序，无法越过父元素的兄弟层。
+
+通俗类比：层叠上下文像一栋楼，每个楼里有很多房间（元素）。z-index 是房间号，但不同楼之间的房间号不能直接比较；先看楼与楼之间的顺序，再看同一栋楼内房间号的顺序。
 
 **常见追问**：如何避免「误以为 z-index 数值大就一定在上面，忽略层叠上下文隔离。」？ 「误以为只有 position 定位元素才有层叠顺序，忽略浮动、行内、块级背景的固定顺序。」在真实项目中应如何规避？
 
@@ -7896,7 +10842,15 @@ relative（相对定位）：元素仍保留在正常文档流中，原本占据
 
 absolute 依据最近的非 static 祖先（定位上下文）定位，relative 依据元素自身在文档流中的原位置定位。
 
-在 CSS 中，position 决定元素如何脱离或保留文档流，以及以谁为参照物。 1. relative（相对定位）：元素仍保留在正常文档流中，原本占据的空间不释放；它依据的是“元素自身在未定位时应该在的位置”进行偏移。设置 top/left/right/bottom 后，视觉上移动，但不会影响周围元素布局。通俗类比：你坐在自己的座位上，只是身体往左歪了一点，座位还是你的，别人不会来占。 2. absolute（绝对定位）：元素完全脱离文档流，不再占据原空间；它依据的是“最近的已定位祖先元素”（position 为 relative、absolute、fixed、sticky 的祖先）的 padding box 来定位。如果找不到这样的祖先，则依据初始包含块（通常是视口/根元素）定位。通俗类比：你从座位上站起来，跑到房间里某个“被标记过的墙角”去站，原来的座位立刻空出来给别人。 3. 关键细节： - absolute 的参照物是祖先的 padding box，不是 content box，也不是 margin box。 - 如果祖先只有 static，absolute 会继续向上找，直到找到非 static 祖先或初始包含块。 - relative 的偏移不会改变文档流，absolute 会改变文档流，可能造成父元素高度塌陷。 - 常见组合：父元素 position: relative，子元素 position: absolute，实现“子绝父相”的局部定位。 4. 适用场景： - relative：微调位置、作为 absolute 的定位上下文、配合 z-index 控制层级。 - absolute：弹层、下拉菜单、角标、图标覆盖、模态框等需要精确覆盖在某个容器内的元素。
+在 CSS 中，position 决定元素如何脱离或保留文档流，以及以谁为参照物。
+
+1. relative（相对定位）：元素仍保留在正常文档流中，原本占据的空间不释放；它依据的是“元素自身在未定位时应该在的位置”进行偏移。设置 top/left/right/bottom 后，视觉上移动，但不会影响周围元素布局。通俗类比：你坐在自己的座位上，只是身体往左歪了一点，座位还是你的，别人不会来占。
+2. absolute（绝对定位）：元素完全脱离文档流，不再占据原空间；它依据的是“最近的已定位祖先元素”（position 为 relative、absolute、fixed、sticky 的祖先）的 padding box 来定位。如果找不到这样的祖先，则依据初始包含块（通常是视口/根元素）定位。通俗类比：你从座位上站起来，跑到房间里某个“被标记过的墙角”去站，原来的座位立刻空出来给别人。
+3. 关键细节： - absolute 的参照物是祖先的 padding box，不是 content box，也不是 margin box。 - 如果祖先只有 static，absolute 会继续向上找，直到找到非 static 祖先或初始包含块。 - relative 的偏移不会改变文档流，absolute 会改变文档流，可能造成父元素高度塌陷。
+
+- 常见组合：父元素 position: relative，子元素 position: absolute，实现“子绝父相”的局部定位。 4. 适用场景：
+- relative：微调位置、作为 absolute 的定位上下文、配合 z-index 控制层级。
+- absolute：弹层、下拉菜单、角标、图标覆盖、模态框等需要精确覆盖在某个容器内的元素。
 
 **常见追问**：如何避免「误以为 absolute 总是相对浏览器视口定位；实际上只有没有非 static 祖先时才相对初始包含块。」？ 「误以为 relative 会脱离文档流；它不会，原空间仍保留。」在真实项目中应如何规避？
 
@@ -7918,7 +10872,15 @@ absolute 依据最近的非 static 祖先（定位上下文）定位，relative 
 
 会。绝对定位（absolute）和固定定位（fixed）都会脱离文档流，不再占据原来的空间，也不影响后续普通流元素的布局。
 
-文档流（normal flow）指块级元素自上而下、行内元素从左到右依次排列的默认布局方式。元素一旦脱离文档流，就不再参与这种排列，父元素和其他兄弟元素在计算位置和尺寸时会忽略它。 绝对定位 position:absolute：元素脱离文档流，相对于最近的已定位祖先（position 不为 static 的祖先）进行定位；若没有这样的祖先，则相对于初始包含块（通常是视口/根元素）定位。它原来的位置会被后面的元素“顶上来”占据。 固定定位 position:fixed：同样脱离文档流，但它的包含块是视口（viewport），所以滚动页面时元素位置不变，常用于吸顶导航、悬浮按钮、弹窗遮罩。 通俗类比：文档流像排队买票，每个人占一个位置；绝对定位像你离开队伍站到旁边，队伍会往前补位；固定定位像你站在大厅的固定柱子上，无论队伍怎么移动，你都在柱子旁不动。 注意：脱离文档流不等于不渲染，元素仍然可见、可交互，只是不占布局空间。另外，绝对定位元素如果父级有 transform、filter、perspective 等属性，包含块可能变成该父级，这是常见坑。
+文档流（normal flow）指块级元素自上而下、行内元素从左到右依次排列的默认布局方式。元素一旦脱离文档流，就不再参与这种排列，父元素和其他兄弟元素在计算位置和尺寸时会忽略它。 绝对定位 position:absolute：元素脱离文档流，相对于最近的已定位祖先（position 不为 static 的祖先）进行定位；若没有这样的祖先，则相对于初始包含块（通常是视口/根元素）定位。
+
+它原来的位置会被后面的元素“顶上来”占据。 固定定位 position:fixed：同样脱离文档流，但它的包含块是视口（viewport），所以滚动页面时元素位置不变，常用于吸顶导航、悬浮按钮、弹窗遮罩。
+
+- 通俗类比：文档流像排队买票，每个人占一个位置；
+- 绝对定位像你离开队伍站到旁边，队伍会往前补位；
+- 固定定位像你站在大厅的固定柱子上，无论队伍怎么移动，你都在柱子旁不动。
+
+注意：脱离文档流不等于不渲染，元素仍然可见、可交互，只是不占布局空间。另外，绝对定位元素如果父级有 transform、filter、perspective 等属性，包含块可能变成该父级，这是常见坑。
 
 **常见追问**：如何避免「常见错误：1）认为 absolute 脱离文档流但 fixed 不脱离，或反过来」？ 「2）认为脱离文档流后元素不可见或不占任何空间（其实仍占视觉空间，只是不占布局空间）」在真实项目中应如何规避？
 
@@ -7940,7 +10902,13 @@ absolute 依据最近的非 static 祖先（定位上下文）定位，relative 
 
 z-index 只在元素建立了层叠上下文（stacking context）且参与定位/层叠排序时才生效；父级层叠上下文、非定位元素、flex/grid 子项、opacity/transform 等属性都会让它看起来失效。
 
-z-index 的本质是控制同一个层叠上下文内、同一层叠层级（stacking level）中元素的绘制顺序。它失效通常不是属性写错，而是元素没有进入可比较的层叠环境。 1. 元素没有定位且不是 flex/grid 子项：普通文档流元素 z-index 不生效。position 为 static 时，z-index 会被忽略；需要 position: relative/absolute/fixed/sticky，或作为 flex/grid 容器的直接子项（此时 z-index 可生效）。 2. 父级创建了新的层叠上下文：如果父元素因为 opacity<1、transform、filter、perspective、will-change、isolation:isolate、position:fixed/sticky、flex/grid 子项且 z-index 非 auto 等原因创建了层叠上下文，那么子元素的 z-index 只在父级这个上下文内部比较，无法越过父级去和外部兄弟比较。通俗类比：每个层叠上下文是一个“班级”，z-index 只是班内排名，不能跨班比较；父级班级整体排在哪里，子元素再高也没用。 3. 层叠上下文内的比较顺序：同一上下文内，先按层叠层级排序：背景/边框 < 负 z-index < 块级普通流 < 浮动 < 行内普通流 < z-index:0/auto 定位元素 < 正 z-index。所以即使 z-index 很大，如果它所在上下文整体被另一个上下文盖住，仍然显示不出来。 4. 常见触发层叠上下文的属性：根元素 html；position 为 absolute/relative 且 z-index 非 auto；position 为 fixed/sticky；flex/grid 子项且 z-index 非 auto；opacity 小于 1；transform/filter/perspective/clip-path/mask 非 none；will-change 指定上述属性；contain: layout/paint；isolation:isolate。 5. 适用场景：弹窗、下拉菜单、悬浮按钮、地图覆盖物等需要控制遮挡关系时，要确保它们处于同一个层叠上下文，或把高层级元素挂到 body 下/使用 portal，避免被父级上下文“封印”。
+z-index 的本质是控制同一个层叠上下文内、同一层叠层级（stacking level）中元素的绘制顺序。它失效通常不是属性写错，而是元素没有进入可比较的层叠环境。
+
+1. 元素没有定位且不是 flex/grid 子项：普通文档流元素 z-index 不生效。position 为 static 时，z-index 会被忽略；需要 position: relative/absolute/fixed/sticky，或作为 flex/grid 容器的直接子项（此时 z-index 可生效）。
+2. 父级创建了新的层叠上下文：如果父元素因为 opacity<1、transform、filter、perspective、will-change、isolation:isolate、position:fixed/sticky、flex/grid 子项且 z-index 非 auto 等原因创建了层叠上下文，那么子元素的 z-index 只在父级这个上下文内部比较，无法越过父级去和外部兄弟比较。通俗类比：每个层叠上下文是一个“班级”，z-index 只是班内排名，不能跨班比较；父级班级整体排在哪里，子元素再高也没用。
+3. 层叠上下文内的比较顺序：同一上下文内，先按层叠层级排序：背景/边框 < 负 z-index < 块级普通流 < 浮动 < 行内普通流 < z-index:0/auto 定位元素 < 正 z-index。所以即使 z-index 很大，如果它所在上下文整体被另一个上下文盖住，仍然显示不出来。
+4. 常见触发层叠上下文的属性：根元素 html；position 为 absolute/relative 且 z-index 非 auto；position 为 fixed/sticky；flex/grid 子项且 z-index 非 auto；opacity 小于 1；transform/filter/perspective/clip-path/mask 非 none；will-change 指定上述属性；contain: layout/paint；isolation:isolate。
+5. 适用场景：弹窗、下拉菜单、悬浮按钮、地图覆盖物等需要控制遮挡关系时，要确保它们处于同一个层叠上下文，或把高层级元素挂到 body 下/使用 portal，避免被父级上下文“封印”。
 
 **常见追问**：如何避免「常见误解：1）认为 z-index 数值越大就一定越靠前，忽略层叠上下文隔离」？ 「2）认为只有 position 非 static 才生效，忘记 flex/grid 子项」在真实项目中应如何规避？
 
@@ -7962,7 +10930,15 @@ computed 的核心是「惰性求值 + 缓存 + 依赖追踪」；以 Vue 3 为�
 
 computed 是基于响应式依赖收集与惰性求值的缓存计算属性，只有依赖变化时才重新计算，否则直接返回缓存值。
 
-computed 的核心是「惰性求值 + 缓存 + 依赖追踪」。以 Vue 3 为例：调用 computed(getter) 会创建一个 ComputedRefImpl 对象，内部维护 _value（缓存值）、_dirty（是否需要重新计算）和 effect（副作用）。首次访问 .value 时，如果 _dirty 为 true，就执行 getter，执行过程中会触发依赖收集：getter 里访问的响应式数据（如 ref/reactive）会把当前 computed 的 effect 作为订阅者收集起来。计算完成后 _dirty 置为 false，并缓存结果。之后再次访问 .value，若 _dirty 仍为 false，直接返回 _value，不会重新执行 getter。当依赖发生变化时，依赖的 setter 会触发通知，把该 computed 的 _dirty 标记为 true，但不会立即重新计算，而是等到下一次有人读取 .value 时才重新求值，这就是惰性。同时 computed 自身也是一个响应式对象，被其他 effect（如渲染函数、watchEffect）读取时，会把这些外层 effect 收集为自己的订阅者，从而在 computed 值变化时通知它们更新。通俗类比：computed 像一张「带缓存的成绩单」，只有某科成绩（依赖）改了，成绩单才会被标记为过期；下次有人要看总分时，才重新算一遍，否则一直用上次算好的结果。适用场景：由已有响应式数据派生出的值，且计算成本较高或需要被多处复用，例如过滤列表、购物车总价、格式化展示字段。与 methods 的区别：methods 每次调用都重新执行，computed 有缓存；与 watch 的区别：watch 用于执行副作用，computed 用于派生值。
+computed 的核心是「惰性求值 + 缓存 + 依赖追踪」。以 Vue 3 为例：调用 computed(getter) 会创建一个 ComputedRefImpl 对象，内部维护 _value（缓存值）、_dirty（是否需要重新计算）和 effect（副作用）。首次访问 .value 时，如果 _dirty 为 true，就执行 getter，执行过程中会触发依赖收集：getter 里访问的响应式数据（如 ref/reactive）会把当前 computed 的 effect 作为订阅者收集起来。
+
+计算完成后 _dirty 置为 false，并缓存结果。之后再次访问 .value，若 _dirty 仍为 false，直接返回 _value，不会重新执行 getter。当依赖发生变化时，依赖的 setter 会触发通知，把该 computed 的 _dirty 标记为 true，但不会立即重新计算，而是等到下一次有人读取 .value 时才重新求值，这就是惰性。
+
+同时 computed 自身也是一个响应式对象，被其他 effect（如渲染函数、watchEffect）读取时，会把这些外层 effect 收集为自己的订阅者，从而在 computed 值变化时通知它们更新。
+
+通俗类比：computed 像一张「带缓存的成绩单」，只有某科成绩（依赖）改了，成绩单才会被标记为过期；下次有人要看总分时，才重新算一遍，否则一直用上次算好的结果。
+
+适用场景：由已有响应式数据派生出的值，且计算成本较高或需要被多处复用，例如过滤列表、购物车总价、格式化展示字段。与 methods 的区别：methods 每次调用都重新执行，computed 有缓存；与 watch 的区别：watch 用于执行副作用，computed 用于派生值。
 
 **常见追问**：如何避免「误以为 computed 每次访问都会重新计算，忽略缓存机制。2. 误以为依赖变化时 computed 会立即重新计算，实际是惰性求值，读取时才计算。3. 在 computed 的 getter 里做异步请求或修改其他状态等副作用，导致依赖追踪异常或死循环。4. 混淆 computed 和 watch：computed 用于派生值并返回结果，watch 用于监听变化执行副作用。5. 认为 computed 的值可以直接修改（默认只读），需要可写时要提供 get/set。6. 忽略 computed 的依赖是动态收集的：getter 中条件分支不同，依赖集合可能不同。」？ 能否结合「Vue 3 源码中 ComputedRefImpl 的 get value 会调用 trackRefValue 收集依赖，并判断 _dirty 决定是否重新计算；依赖变化时通过 triggerRefValue 通知外层。2. Vue 3.4 对 computed 做了优化：当 computed 没有被任何 effect 订阅时，依赖变化不会立即触发调度，减少无效计算；同时引入版本号/脏标记机制避免重复触发。3. 可以提到「计算属性不能有副作用」：getter 应保持纯函数，否则缓存和依赖追踪会出问题。4. 可以对比 Vue 2 的 computed：Vue 2 基于 Watcher，computed watcher 默认 lazy，dirty 为 true 时才求值，依赖变化时通过 dep.notify 把 dirty 置 true。5. 可以提到 React 的 useMemo 是手动声明依赖数组，而 Vue computed 自动追踪依赖，这是两者设计哲学差异。」进一步展开？
 
@@ -7984,7 +10960,19 @@ key 是否相同（若都有 key）；；tag（标签名，如 'div'、'span'）
 
 patch 方法在对比同层虚拟节点时，先判断两个节点是否为同一种类型的标签（如 div 对 div、组件对组件），只有类型相同才继续深入 diff 并复用真实 DOM，否则直接销毁旧节点、创建新节点替换。
 
-在 Vue 的虚拟 DOM diff 中，patch 是核心入口函数，负责把新旧两棵虚拟节点树（vnode）的差异同步到真实 DOM。它采用同层比较策略，即只比较同一层级的节点，不跨层移动。 第一步就是判断新旧 vnode 是否为“同一种类型的标签”，通常通过 sameVnode 函数实现，核心判断包括： 1. key 是否相同（若都有 key）； 2. tag（标签名，如 'div'、'span'）是否相同； 3. isComment（注释节点）是否一致； 4. data 是否存在（都无 data 或都有 data）； 5. 若是组件，则比较组件构造函数/类型是否相同。 通俗类比：搬家时整理箱子，先看两个箱子是不是同一类（都是装书的纸箱）。如果是同一类，就打开箱子逐件对比里面的东西，能留的留、该换的换；如果不是同一类（一个是纸箱、一个是铁柜），就没必要逐件比了，直接把旧箱子扔掉，换一个新箱子重新装。 如果 sameVnode 返回 true，说明类型相同，可以复用旧的真实 DOM 元素，继续 patchVnode 深入比较子节点、文本、属性等；如果返回 false，则调用 createElm 创建新节点，并用 insertBefore 插入到旧节点之前，最后销毁旧节点。 为什么这样设计？因为跨层比较的算法复杂度是 O(n^3)，而同层比较加类型判断可以降到 O(n)，在绝大多数 UI 更新场景下性能足够且实现简单。适用场景就是常规的列表渲染、条件渲染、组件更新等，只要节点类型不变，就能最大化复用 DOM。
+在 Vue 的虚拟 DOM diff 中，patch 是核心入口函数，负责把新旧两棵虚拟节点树（vnode）的差异同步到真实 DOM。它采用同层比较策略，即只比较同一层级的节点，不跨层移动。 第一步就是判断新旧 vnode 是否为“同一种类型的标签”，通常通过 sameVnode 函数实现，核心判断包括：
+
+1. key 是否相同（若都有 key）；
+2. tag（标签名，如 'div'、'span'）是否相同；
+3. isComment（注释节点）是否一致；
+4. data 是否存在（都无 data 或都有 data）；
+5. 若是组件，则比较组件构造函数/类型是否相同。
+
+通俗类比：搬家时整理箱子，先看两个箱子是不是同一类（都是装书的纸箱）。如果是同一类，就打开箱子逐件对比里面的东西，能留的留、该换的换；如果不是同一类（一个是纸箱、一个是铁柜），就没必要逐件比了，直接把旧箱子扔掉，换一个新箱子重新装。 如果 sameVnode 返回 true，说明类型相同，可以复用旧的真实 DOM 元素，继续 patchVnode 深入比较子节点、文本、属性等；如果返回 false，则调用 createElm 创建新节点，并用 insertBefore 插入到旧节点之前，最后销毁旧节点。
+
+为什么这样设计？因为跨层比较的算法复杂度是 O(n^3)，而同层比较加类型判断可以降到 O(n)，在绝大多数 UI 更新场景下性能足够且实现简单。
+
+适用场景就是常规的列表渲染、条件渲染、组件更新等，只要节点类型不变，就能最大化复用 DOM。
 
 **常见追问**：如何避免「误以为 patch 会递归比较整棵树的所有层级，实际上只做同层比较。」？ 「误以为只要标签名相同就一定复用，忽略了 key、data、input type、组件类型等条件。」在真实项目中应如何规避？
 
@@ -8006,7 +10994,15 @@ patch 方法在对比同层虚拟节点时，先判断两个节点是否为同�
 
 computed是带缓存的派生状态，watch是响应式副作用，用于观察变化执行异步或开销大的操作。
 
-computed（计算属性）和watch（侦听器）都是Vue响应式系统的核心API，但设计目标不同。 computed： - 本质：基于响应式依赖计算出的值，具有缓存。只有依赖变化时才会重新计算，否则多次访问直接返回缓存值。 - 特点：声明式、同步、纯函数（不应有副作用），返回一个ref（Vue 3）或计算属性对象（Vue 2）。 - 适用场景：模板中需要基于多个响应式数据派生出新值，比如全名、过滤后的列表、总价等。 - 原理：内部维护一个dirty标志，依赖变化时将dirty置为true，下次访问时重新计算并缓存；依赖不变则直接返回缓存。 watch： - 本质：观察一个或多个响应式数据源，在变化时执行回调函数，可以执行副作用（如异步请求、操作DOM、修改其他状态）。 - 特点：命令式、可异步、可获取新旧值、可配置deep/immediate/flush等。 - 适用场景：数据变化时需要执行异步操作或开销较大的操作，比如搜索框输入后发请求、路由参数变化后重新获取数据。 通俗类比： - computed像Excel公式，单元格值由其他单元格计算得出，其他单元格不变时公式结果不会重算。 - watch像监控摄像头，一旦目标发生变化就触发报警（执行回调），可以记录变化前后并做后续处理。 区别总结： 1. 目的：computed用于派生值，watch用于执行副作用。 2. 缓存：computed有缓存，watch无缓存（每次变化都执行）。 3. 返回值：computed返回计算后的值，watch不返回值（可返回停止侦听函数）。 4. 执行时机：computed在访问时惰性计算，watch在依赖变化时主动执行。 5. 异步：computed必须同步返回，watch可以执行异步操作。 6. 使用方式：computed声明式，watch命令式。
+computed（计算属性）和watch（侦听器）都是Vue响应式系统的核心API，但设计目标不同。 computed：
+
+- 本质：基于响应式依赖计算出的值，具有缓存。只有依赖变化时才会重新计算，否则多次访问直接返回缓存值。
+- 特点：声明式、同步、纯函数（不应有副作用），返回一个ref（Vue 3）或计算属性对象（Vue 2）。
+- 适用场景：模板中需要基于多个响应式数据派生出新值，比如全名、过滤后的列表、总价等。
+- 原理：内部维护一个dirty标志，依赖变化时将dirty置为true，下次访问时重新计算并缓存；依赖不变则直接返回缓存。 watch：
+- 本质：观察一个或多个响应式数据源，在变化时执行回调函数，可以执行副作用（如异步请求、操作DOM、修改其他状态）。
+- 特点：命令式、可异步、可获取新旧值、可配置deep/immediate/flush等。
+- 适用场景：数据变化时需要执行异步操作或开销较大的操作，比如搜索框输入后发请求、路由参数变化后重新获取数据。 通俗类比： - computed像Excel公式，单元格值由其他单元格计算得出，其他单元格不变时公式结果不会重算。 - watch像监控摄像头，一旦目标发生变化就触发报警（执行回调），可以记录变化前后并做后续处理。 区别总结： 1. 目的：computed用于派生值，watch用于执行副作用。 2. 缓存：computed有缓存，watch无缓存（每次变化都执行）。 3. 返回值：computed返回计算后的值，watch不返回值（可返回停止侦听函数）。 4. 执行时机：computed在访问时惰性计算，watch在依赖变化时主动执行。 5. 异步：computed必须同步返回，watch可以执行异步操作。 6. 使用方式：computed声明式，watch命令式。
 
 **常见追问**：如何避免「认为computed和watch可以互相替代：computed不能执行异步或副作用，watch不适合派生值。」？ 「误以为computed每次访问都重新计算：实际上有缓存，只有依赖变化才重新计算。」在真实项目中应如何规避？
 
@@ -8028,31 +11024,58 @@ computed（计算属性）和watch（侦听器）都是Vue响应式系统的核�
 
 router 是全局路由实例（管理者，负责导航与守卫），route 是当前激活的路由信息对象（被管理者，只读快照）。
 
-在 Vue Router 中，router 是通过 createRouter() 创建的全局单例，代表整个路由系统，提供 push/replace/go/back 等导航方法，以及 beforeEach 等全局守卫的注册能力，还持有 routes 配置表、currentRoute、history 模式等。route 则是当前匹配到的路由状态对象，通常通过 useRoute() 或在组件内 this.$route 获取，包含 path、params、query、hash、name、meta、matched、fullPath 等字段，是一个只读的响应式快照。 通俗类比：router 像“导航仪/司机”，负责决定怎么走、能不能走；route 像“当前所在位置的坐标牌”，告诉你现在在哪。司机可以改变位置，但坐标牌本身不能自己改。 关键区别： 1) 数量：router 全局唯一；route 随每次导航变化，每个组件看到的都是当前激活的那一份。 2) 职责：router 管“跳转与拦截”，route 管“描述当前状态”。 3) 可变性：router 提供命令式 API；route 是只读的，不能直接 route.path = '/x'，必须 router.push('/x')。 4) 响应式：route 是响应式的，watch(() => route.params.id) 可监听变化；router.currentRoute 也是 ref，但通常直接用 useRoute 更简洁。 例子： const router = createRouter({ history: createWebHistory(), routes }); router.beforeEach((to, from) => { if (!isLogin && to.meta.auth) return '/login'; }); router.push('/user/1'); // 组件内 const route = useRoute(); console.log(route.params.id); // '1' 适用场景：需要跳转、重定向、注册守卫、动态增删路由时用 router；需要读取当前路径参数、query、meta 做渲染或权限判断时用 route。
+在 Vue Router 中，router 是通过 createRouter() 创建的全局单例，代表整个路由系统，提供 push/replace/go/back 等导航方法，以及 beforeEach 等全局守卫的注册能力，还持有 routes 配置表、currentRoute、history 模式等。
+
+route 则是当前匹配到的路由状态对象，通常通过 useRoute() 或在组件内 this.$route 获取，包含 path、params、query、hash、name、meta、matched、fullPath 等字段，是一个只读的响应式快照。
+
+通俗类比：router 像“导航仪/司机”，负责决定怎么走、能不能走；route 像“当前所在位置的坐标牌”，告诉你现在在哪。司机可以改变位置，但坐标牌本身不能自己改。 关键区别：
+
+1) 数量：router 全局唯一；route 随每次导航变化，每个组件看到的都是当前激活的那一份。
+2) 职责：router 管“跳转与拦截”，route 管“描述当前状态”。
+3) 可变性：router 提供命令式 API；route 是只读的，不能直接 route.path = '/x'，必须 router.push('/x')。
+4) 响应式：route 是响应式的，watch(() => route.params.id) 可监听变化；router.currentRoute 也是 ref，但通常直接用 useRoute 更简洁。
+
+- 例子： const router = createRouter({ history: createWebHistory(), routes });
+- router.beforeEach((to, from) => { if (!isLogin && to.meta.auth) return '/login'; });
+- router.push('/user/1');
+- // 组件内 const route = useRoute();
+- console.log(route.params.id);
+- // '1' 适用场景：需要跳转、重定向、注册守卫、动态增删路由时用 router；
+- 需要读取当前路径参数、query、meta 做渲染或权限判断时用 route。
 
 **常见追问**：如何避免「1) 认为 route 可以修改来跳转，例如 this.$route.path = '/x'，实际无效且报错」？ 「2) 把 router 当成当前路由信息，去 router.params 取参数，取不到」在真实项目中应如何规避？
 
 ---
 
-## 348. scoped导致的问题？
+## 348. Vue scoped 样式有哪些作用范围限制？Teleport 和 v-html 有什么区别？
 
 > 原题 ID：`q2483`
 
 **高频程度**：★★★
 
-**考察点**：考察对「scoped导致的问题？」的掌握，重点看能否讲清：scoped 是 Vue 单文件组件中常用的样式隔离方案
+**考察点**：作用域属性、子组件边界和实际 DOM 祖先关系。
 
 **回答框架**：
 
-scoped 是 Vue 单文件组件中常用的样式隔离方案；原理：编译时给组件内每个元素加上唯一属性（如 data-v-xxx），并把样式选择器改写成 .a[data-v-xxx]，从而只匹配本组件元素；它导致的问题主要有：；1) 选择器权重变高：.a[data-v-xxx] 比 .a 多一个属性选择器，权重从 (0,1,0) 变成 (0,2,0)，容易压过全局样式或第三方库样式，导致覆盖困难，常被迫用 !important；2) 无法作用于子组件根元素以外的内部元素：父组件 scoped 样式默认只能影响子组件根节点（Vue 2 会加父作用域属性到子根，Vue 3 行为类似但更严格），想改子组件内部样式必须用 :deep()/::v-deep，而深度选择器会破坏隔离、产生全局副作用；3) 动态创建/传送的 DOM 不生效：v-html 插入的内容、Teleport 到 body 的弹窗、通过 document.createElement 创建的节点没有 data-v 属性，scoped 样式匹配不到，需要额外全局样式或 :deep
+1) 选择器与作用域属性配对
+2) 区分子根节点和内部节点
+3) 分别解释 Teleport 与 v-html
+4) 克制使用 :deep
 
 **参考回答**：
 
-scoped 通过给选择器加属性选择器实现样式隔离，但会因选择器权重升高、无法穿透子组件、动态内容不生效、深度选择器滥用等引发样式覆盖难、性能与维护问题。
+scoped 通过编译后的属性选择器限定匹配范围，例如 `.box[data-v-xxx]`。它不是 Shadow DOM，也不阻止继承或全局样式参与层叠。
 
-scoped 是 Vue 单文件组件中常用的样式隔离方案。原理：编译时给组件内每个元素加上唯一属性（如 data-v-xxx），并把样式选择器改写成 .a[data-v-xxx]，从而只匹配本组件元素。它导致的问题主要有： 1) 选择器权重变高：.a[data-v-xxx] 比 .a 多一个属性选择器，权重从 (0,1,0) 变成 (0,2,0)，容易压过全局样式或第三方库样式，导致覆盖困难，常被迫用 !important。 2) 无法作用于子组件根元素以外的内部元素：父组件 scoped 样式默认只能影响子组件根节点（Vue 2 会加父作用域属性到子根，Vue 3 行为类似但更严格），想改子组件内部样式必须用 :deep()/::v-deep，而深度选择器会破坏隔离、产生全局副作用。 3) 动态创建/传送的 DOM 不生效：v-html 插入的内容、Teleport 到 body 的弹窗、通过 document.createElement 创建的节点没有 data-v 属性，scoped 样式匹配不到，需要额外全局样式或 :deep。 4) 样式复用与主题化困难：跨组件复用样式、换肤、覆盖 UI 库时，scoped 让选择器碎片化，难以统一管理。 5) 性能与体积：每个选择器都附加属性，CSS 体积略增，属性选择器匹配成本高于类选择器，大量 scoped 样式在低端设备上有一定开销。 6) 嵌套与预处理器陷阱：Sass/Less 嵌套中 & 与 :deep 组合写法易错，编译后选择器可能不符合预期。 适用场景：组件内部私有样式用 scoped 合适；需要主题、覆盖第三方、跨组件复用时，应改用 CSS Modules、CSS-in-JS、BEM 或全局样式分层。
+1. **层叠与子组件**：增加属性选择器会改变权重。父组件的 scoped 样式可以作用于子组件根节点以便布局，但通常不会直接匹配子组件内部节点；需要穿透时可用 :deep，并限定外层容器。
+2. **Teleport**：移动的是渲染后的 DOM 位置，并不会因此自动删除 scope 属性。直接匹配目标元素的 scoped 规则可以继续生效；若规则依赖原来的祖先结构，如 `.wrapper .dialog`，传送后祖先关系改变才可能导致失配。
+3. **v-html 或手动创建节点**：这类内容没有经过对应模板编译，不会自动附加组件 scope 属性。可在受控容器下使用深度选择器或专门的样式规则；不可信 HTML 仍需独立处理注入风险。
+4. **维护边界**：深度选择器不等于所有规则都变成全局，但会放宽匹配范围。优先使用组件提供的样式接口或 CSS 变量，避免依赖第三方组件内部 DOM。
 
-**常见追问**：如何避免「1) 误以为 scoped 是真正的 Shadow DOM 隔离，其实只是属性选择器模拟，仍受全局样式和权重影响」？ 「2) 认为父组件 scoped 样式能直接改子组件内部任意元素，实际默认不行，必须 :deep」在真实项目中应如何规避？
+排查顺序是检查实际 DOM 上的属性、祖先结构、编译后的选择器与层叠顺序，而不是一遇到 Teleport 就改成全局样式。
+
+**常见追问**：为什么 .dialog 能匹配传送后的元素，而 .wrapper .dialog 可能不能？
+
+**核验资料**：[Vue SFC CSS Features](https://vuejs.org/api/sfc-css-features)；[Vue Teleport](https://vuejs.org/guide/built-ins/teleport.html)
 
 ---
 
@@ -8072,7 +11095,19 @@ constructor：此时组件尚未挂载，不能 setState（虽然可以初始化
 
 Ajax 请求通常放在 componentDidMount（函数组件用 useEffect）中，因为此时组件已挂载、DOM 可用，且不会阻塞首次渲染。
 
-在 React 类组件中，发起 Ajax 请求的常见生命周期是 componentDidMount。原因有三：1）componentDidMount 在组件首次渲染到 DOM 之后调用，此时可以安全地操作 DOM 或依赖 DOM 的第三方库；2）它只执行一次（除非组件被卸载后重新挂载），适合做一次性数据获取；3）在它之前（如 constructor、componentWillMount/UNSAFE_componentWillMount、render）发起请求，可能造成内存泄漏、重复请求或与渲染竞争。 在函数组件中，对应的是 useEffect(() => { fetchData() }, [])，空依赖数组表示只在挂载后执行一次。如果请求依赖某些 props/state，则把这些依赖放入依赖数组，并在 effect 中处理竞态和取消。 为什么不在其他生命周期？ - constructor：此时组件尚未挂载，不能 setState（虽然可以初始化 state，但异步请求回来时组件可能已卸载），且会阻塞首次渲染。 - componentWillMount / UNSAFE_componentWillMount：在 React 16.3 后标记为不安全，且在服务端渲染中也会被调用，容易导致重复请求；未来可能被移除。 - render：必须纯函数，不能有副作用，否则每次渲染都会发请求，导致死循环。 - componentDidUpdate：适合在 props/state 变化后重新请求，但需加条件判断，否则每次更新都请求。 通俗类比：componentDidMount 就像“房子建好并入住后，再去打电话叫外卖”，而不是在打地基（constructor）或画图纸（render）时就叫，否则外卖到了房子还没建好。 适用场景：首屏数据加载、初始化时获取用户信息、订阅事件等。如果请求依赖路由参数或搜索关键词，则应在依赖变化时重新请求，此时用 componentDidUpdate 或 useEffect 的依赖数组。
+在 React 类组件中，发起 Ajax 请求的常见生命周期是 componentDidMount。
+
+原因有三：
+
+- 1）componentDidMount 在组件首次渲染到 DOM 之后调用，此时可以安全地操作 DOM 或依赖 DOM 的第三方库；
+- 2）它只执行一次（除非组件被卸载后重新挂载），适合做一次性数据获取；
+- 3）在它之前（如 constructor、componentWillMount/UNSAFE_componentWillMount、render）发起请求，可能造成内存泄漏、重复请求或与渲染竞争。
+
+在函数组件中，对应的是 useEffect(() => { fetchData() }, [])，空依赖数组表示只在挂载后执行一次。如果请求依赖某些 props/state，则把这些依赖放入依赖数组，并在 effect 中处理竞态和取消。 为什么不在其他生命周期？
+
+- constructor：此时组件尚未挂载，不能 setState（虽然可以初始化 state，但异步请求回来时组件可能已卸载），且会阻塞首次渲染。 - componentWillMount / UNSAFE_componentWillMount：在 React 16.3 后标记为不安全，且在服务端渲染中也会被调用，容易导致重复请求；未来可能被移除。
+- render：必须纯函数，不能有副作用，否则每次渲染都会发请求，导致死循环。
+- componentDidUpdate：适合在 props/state 变化后重新请求，但需加条件判断，否则每次更新都请求。 通俗类比：componentDidMount 就像“房子建好并入住后，再去打电话叫外卖”，而不是在打地基（constructor）或画图纸（render）时就叫，否则外卖到了房子还没建好。 适用场景：首屏数据加载、初始化时获取用户信息、订阅事件等。如果请求依赖路由参数或搜索关键词，则应在依赖变化时重新请求，此时用 componentDidUpdate 或 useEffect 的依赖数组。
 
 **常见追问**：如何避免「1）答 componentWillMount：这是旧版且不安全的生命周期，在 SSR 中会执行，容易重复请求，React 已不推荐」？ 「2）答 render：render 必须是纯函数，发请求会导致每次渲染都请求，甚至无限循环」在真实项目中应如何规避？
 
@@ -8094,7 +11129,15 @@ Ajax 请求通常放在 componentDidMount（函数组件用 useEffect）中，�
 
 beforeDestroy（Vue 2，Vue 3 为 beforeUnmount）用于在组件实例销毁前做清理：清除定时器、解绑全局事件、取消订阅/请求、释放非响应式资源，避免内存泄漏和销毁后仍执行逻辑。
 
-组件销毁时，Vue 只会自动清理它自己管理的响应式依赖、DOM 事件监听（模板上的 @click 等）和子组件。但组件里手动创建的、脱离 Vue 管理的资源不会被自动回收，所以需要在 beforeDestroy 里手动清理。 典型场景： 1. 定时器：setInterval/setTimeout 在 created/mounted 里启动，销毁前必须 clearInterval/clearTimeout，否则回调仍会执行并引用组件数据，造成内存泄漏。 2. 全局/原生事件：window.addEventListener('resize', fn)、document.addEventListener、EventBus.$on，需要在 beforeDestroy 里 removeEventListener / $off。 3. 第三方实例：ECharts、地图、编辑器、WebSocket、MutationObserver、IntersectionObserver 等，要调用 dispose/close/disconnect。 4. 未完成的异步请求：可取消的请求（如 axios CancelToken、AbortController）应取消，避免回调里 setState 到已销毁组件。 5. 手动订阅：RxJS subscription.unsubscribe()、store 订阅取消等。 为什么是 beforeDestroy 而不是 destroyed？因为此时组件实例、data、methods、DOM 仍然可用，能安全访问 this 和已挂载的 DOM 做清理；destroyed 时实例已拆解，访问 this 可能不可靠。 通俗类比：组件像租来的房间，Vue 负责退租时收回房间自带的家具（模板事件、子组件），但你入住时自己拉的电线、装的定时炸弹（定时器、全局监听）必须自己拆走，否则会留在房间里影响下一位租客（内存泄漏、幽灵回调）。 Vue 3 中对应生命周期是 beforeUnmount，组合式 API 里用 onBeforeUnmount。
+组件销毁时，Vue 只会自动清理它自己管理的响应式依赖、DOM 事件监听（模板上的 @click 等）和子组件。但组件里手动创建的、脱离 Vue 管理的资源不会被自动回收，所以需要在 beforeDestroy 里手动清理。 典型场景：
+
+1. 定时器：setInterval/setTimeout 在 created/mounted 里启动，销毁前必须 clearInterval/clearTimeout，否则回调仍会执行并引用组件数据，造成内存泄漏。
+2. 全局/原生事件：window.addEventListener('resize', fn)、document.addEventListener、EventBus.$on，需要在 beforeDestroy 里 removeEventListener / $off。
+3. 第三方实例：ECharts、地图、编辑器、WebSocket、MutationObserver、IntersectionObserver 等，要调用 dispose/close/disconnect。
+4. 未完成的异步请求：可取消的请求（如 axios CancelToken、AbortController）应取消，避免回调里 setState 到已销毁组件。
+5. 手动订阅：RxJS subscription.unsubscribe()、store 订阅取消等。 为什么是 beforeDestroy 而不是 destroyed？因为此时组件实例、data、methods、DOM 仍然可用，能安全访问 this 和已挂载的 DOM 做清理；destroyed 时实例已拆解，访问 this 可能不可靠。
+
+通俗类比：组件像租来的房间，Vue 负责退租时收回房间自带的家具（模板事件、子组件），但你入住时自己拉的电线、装的定时炸弹（定时器、全局监听）必须自己拆走，否则会留在房间里影响下一位租客（内存泄漏、幽灵回调）。 Vue 3 中对应生命周期是 beforeUnmount，组合式 API 里用 onBeforeUnmount。
 
 **常见追问**：如何避免「把 beforeDestroy 当成“销毁后”执行，实际是销毁前，destroyed 才是销毁后。」？ 「认为所有事件都需要手动解绑：模板上的 @click 由 Vue 自动处理，只有手动 addEventListener/EventBus 才需要。」在真实项目中应如何规避？
 
@@ -8116,7 +11159,13 @@ beforeDestroy（Vue 2，Vue 3 为 beforeUnmount）用于在组件实例销毁前
 
 Vue 2 监听 data 变化的核心 API 是 Object.defineProperty，Vue 3 则是 Proxy。
 
-在 Vue 2 中，data 对象会被递归遍历，对每个属性用 Object.defineProperty 定义 getter/setter。getter 在组件渲染或计算属性读取时收集依赖（Dep），setter 在赋值时通知订阅者（Watcher）更新视图。例如： function defineReactive(obj, key, val) { const dep = new Dep(); Object.defineProperty(obj, key, { get() { dep.depend(); return val; }, set(newVal) { if (newVal === val) return; val = newVal; dep.notify(); } }); } Vue 3 改用 Proxy 代理整个对象，通过 new Proxy(data, { get, set }) 拦截读写。get 中调用 track 收集依赖，set 中调用 trigger 触发更新。Proxy 能监听新增/删除属性、数组索引和 length 变化，而 defineProperty 不能。 通俗类比：defineProperty 像给每个房间单独装一个门铃，只能提前装好；Proxy 像给整栋楼装一个总门禁，任何房间进出都能感知。
+在 Vue 2 中，data 对象会被递归遍历，对每个属性用 Object.defineProperty 定义 getter/setter。getter 在组件渲染或计算属性读取时收集依赖（Dep），setter 在赋值时通知订阅者（Watcher）更新视图。
+
+例如： function defineReactive(obj, key, val) { const dep = new Dep(); Object.defineProperty(obj, key, { get() { dep.depend(); return val; }, set(newVal) { if (newVal === val) return; val = newVal; dep.notify(); } }); } Vue 3 改用 Proxy 代理整个对象，通过 new Proxy(data, { get, set }) 拦截读写。
+
+get 中调用 track 收集依赖，set 中调用 trigger 触发更新。Proxy 能监听新增/删除属性、数组索引和 length 变化，而 defineProperty 不能。
+
+通俗类比：defineProperty 像给每个房间单独装一个门铃，只能提前装好；Proxy 像给整栋楼装一个总门禁，任何房间进出都能感知。
 
 **常见追问**：如何避免「误以为 Vue 2 用 Proxy，或 Vue 3 用 defineProperty。2. 认为 defineProperty 能监听数组索引变化。3. 忽略 Vue 2 对数组方法的 hack。4. 把响应式与虚拟 DOM diff 混为一谈，其实响应式只负责触发更新，diff 负责最小化 DOM 操作。」？ 能否结合「Vue 2 对数组方法（push/pop/shift/unshift/splice/sort/reverse）做了重写（arrayMethods），因为 defineProperty 无法拦截索引和 length。2. Vue 3 的 Proxy 惰性递归，只有访问到嵌套对象时才代理，性能更好。3. 依赖收集使用 Dep 和 Watcher（Vue 2）或 effect 和 track/trigger（Vue 3），可结合源码说明。4. 可提到 Object.defineProperty 无法监听 Map/Set 等集合类型，Vue 3 通过 collectionHandlers 处理。」进一步展开？
 
@@ -8138,7 +11187,16 @@ this 指向：myCall 被谁调用，this 就是那个函数。；参数传递：
 
 call 的本质是让目标函数以指定 this 执行，实现方式是把函数临时挂到 this 对象上调用，再删除，并处理 this 为 null/undefined、非对象、返回值等边界。
 
-Function.prototype.call 的作用是：以指定的 this 值和若干参数，立即调用某个函数。它和 apply 的区别只是传参形式不同（call 逐个传，apply 用数组）。 实现思路（通俗类比）：你想让某人以“某公司员工”的身份干活，但这个人本来不属于该公司。做法是：临时把他登记进公司名册（obj.fn = fn），用 obj.fn(...) 调用，这样函数内部的 this 自然就指向 obj，干完活再把他从名册删掉。 基础实现： Function.prototype.myCall = function(context, ...args) { // 1. 处理 this 为 null/undefined：非严格模式下指向全局对象 if (context === null || context === undefined) { context = typeof globalThis !== 'undefined' ? globalThis : window; } // 2. 处理原始值：用 Object 包装成对象 context = Object(context); // 3. 用 Symbol 作为唯一 key，避免覆盖原属性 const key = Symbol('fn'); context[key] = this; // this 是调用 myCall 的函数 // 4. 执行并保存返回值 const result = context[key](...args); // 5. 删除临时属性 delete context[key]; return result; }; 关键点： - this 指向：myCall 被谁调用，this 就是那个函数。 - 参数传递：用剩余参数收集，再展开传入。 - 返回值：必须返回原函数执行结果。 - 边界：context 为 null/undefined 时指向全局；为原始值时装箱；用 Symbol 防止属性名冲突。 适用场景：需要显式指定 this 调用函数，如借用方法（Array.prototype.slice.call(arguments)）、继承中调用父构造函数、函数式编程中的 this 绑定。
+Function.prototype.call 的作用是：以指定的 this 值和若干参数，立即调用某个函数。
+
+它和 apply 的区别只是传参形式不同（call 逐个传，apply 用数组）。 实现思路（通俗类比）：你想让某人以“某公司员工”的身份干活，但这个人本来不属于该公司。做法是：临时把他登记进公司名册（obj.fn = fn），用 obj.fn(...) 调用，这样函数内部的 this 自然就指向 obj，干完活再把他从名册删掉。
+
+基础实现： Function.prototype.myCall = function(context, ...args) { // 1. 处理 this 为 null/undefined：非严格模式下指向全局对象 if (context === null || context === undefined) { context = typeof globalThis !== 'undefined' ? globalThis : window; } // 2. 处理原始值：用 Object 包装成对象 context = Object(context); // 3. 用 Symbol 作为唯一 key，避免覆盖原属性 const key = Symbol('fn'); context[key] = this; // this 是调用 myCall 的函数 // 4. 执行并保存返回值 const result = context[key](...args); // 5. 删除临时属性 delete context[key]; return result; }; 关键点：
+
+- this 指向：myCall 被谁调用，this 就是那个函数。
+- 参数传递：用剩余参数收集，再展开传入。
+- 返回值：必须返回原函数执行结果。
+- 边界：context 为 null/undefined 时指向全局；为原始值时装箱；用 Symbol 防止属性名冲突。 适用场景：需要显式指定 this 调用函数，如借用方法（Array.prototype.slice.call(arguments)）、继承中调用父构造函数、函数式编程中的 this 绑定。
 
 **常见追问**：如何避免「忘记返回原函数执行结果，导致返回值丢失。」？ 「直接用 context.fn = this，若 context 已有 fn 属性会被覆盖，且删除时可能误删原属性。」在真实项目中应如何规避？
 
@@ -8160,7 +11218,12 @@ Function.prototype.call 的作用是：以指定的 this 值和若干参数，�
 
 用同源的 BroadcastChannel 做多 tab 实时广播，配合 localStorage 事件做降级兜底，SharedWorker 可作为集中式状态方案。
 
-核心约束是「同源、多 tab、无服务端长连接」。浏览器提供了几种同源页面间通信的原生能力： 1) BroadcastChannel（首选）：`const ch = new BroadcastChannel('chat')`，任意 tab `ch.postMessage(msg)`，其他同源 tab 的 `ch.onmessage` 都能收到。它是浏览器原生实现的消息总线，语义就是「广播」，天然适合聊天室。注意它不会回发给发送者自己，所以本地消息要自己先渲染。 2) localStorage / sessionStorage 的 storage 事件：`window.addEventListener('storage', e => ...)`。A tab 写 `localStorage.setItem('msg', JSON.stringify(m))`，其他同源 tab 会触发 storage 事件（注意：写入的 tab 自己不触发）。这是最古老、兼容性最好的方案，可作为 BroadcastChannel 的降级。缺点是只能传字符串、有 5MB 限制、高频写入有性能开销。 3) SharedWorker：所有同源 tab 共享同一个 worker 实例，tab 通过 `port.postMessage` 与它通信，worker 内部维护一份「聊天室成员/消息历史」的单一状态源，再广播给所有 port。适合需要集中式状态（比如在线人数、消息顺序）的场景，但兼容性和调试成本更高。 4) 其他：window.postMessage 需要拿到对方 window 引用（如 window.open 的返回值），多 tab 场景不通用；IndexedDB 没有跨 tab 事件通知，只能轮询，不推荐。 典型实现：优先 `if ('BroadcastChannel' in window)` 用 BroadcastChannel，否则回退到 storage 事件；消息体统一为 `{type, id, from, ts, payload}`，接收端按 id 去重、按 ts 排序，避免重复渲染和乱序。
+核心约束是「同源、多 tab、无服务端长连接」。浏览器提供了几种同源页面间通信的原生能力：
+
+1) BroadcastChannel（首选）：`const ch = new BroadcastChannel('chat')`，任意 tab `ch.postMessage(msg)`，其他同源 tab 的 `ch.onmessage` 都能收到。它是浏览器原生实现的消息总线，语义就是「广播」，天然适合聊天室。注意它不会回发给发送者自己，所以本地消息要自己先渲染。
+2) localStorage / sessionStorage 的 storage 事件：`window.addEventListener('storage', e => ...)`。A tab 写 `localStorage.setItem('msg', JSON.stringify(m))`，其他同源 tab 会触发 storage 事件（注意：写入的 tab 自己不触发）。这是最古老、兼容性最好的方案，可作为 BroadcastChannel 的降级。缺点是只能传字符串、有 5MB 限制、高频写入有性能开销。
+3) SharedWorker：所有同源 tab 共享同一个 worker 实例，tab 通过 `port.postMessage` 与它通信，worker 内部维护一份「聊天室成员/消息历史」的单一状态源，再广播给所有 port。适合需要集中式状态（比如在线人数、消息顺序）的场景，但兼容性和调试成本更高。
+4) 其他：window.postMessage 需要拿到对方 window 引用（如 window.open 的返回值），多 tab 场景不通用；IndexedDB 没有跨 tab 事件通知，只能轮询，不推荐。 典型实现：优先 `if ('BroadcastChannel' in window)` 用 BroadcastChannel，否则回退到 storage 事件；消息体统一为 `{type, id, from, ts, payload}`，接收端按 id 去重、按 ts 排序，避免重复渲染和乱序。
 
 **常见追问**：如何避免「1) 以为 localStorage 的 storage 事件会在所有 tab（包括自己）触发——实际写入方不触发」？ 「2) 用 setInterval 轮询 localStorage 当通信手段，性能差且延迟高」在真实项目中应如何规避？
 
@@ -8182,7 +11245,18 @@ Proxy 的构造函数要求 target 是对象（包括数组、函数等），如
 
 Proxy 无法直接监听基本类型，因为它的 target 必须是对象；要监听基本类型，需用对象包装（如 {value: x}）或类/闭包把基本类型作为属性，再对包装对象做代理。
 
-Proxy 的构造函数要求 target 是对象（包括数组、函数等），如果传入 number、string、boolean、symbol、bigint、null、undefined 会直接抛 TypeError。基本类型本身没有属性/引用，无法被代理拦截。 原理：Proxy 的拦截发生在属性访问、赋值、删除、函数调用等“对象操作”上。基本类型是不可变值，没有可拦截的操作入口。 常见做法： 1) 包装成对象：const state = { value: 0 }; const p = new Proxy(state, { set(t,k,v){ t[k]=v; console.log('changed', v); return true; } }); p.value = 1; 这样监听的是 state.value。 2) 用类封装：class Ref { constructor(v){ this.value = v; } } 再代理实例。 3) 用闭包 + 函数：把基本类型放在闭包变量里，通过 get/set 方法暴露，但这不是 Proxy 直接监听，而是手动实现响应式。 4) 在 Vue 3 中，ref 对基本类型就是通过 RefImpl 对象包装，内部用 getter/setter 或 value 属性实现依赖收集，而不是用 Proxy 代理基本类型；reactive 只用于对象。 适用场景：需要响应式的基本类型状态、表单字段、计数器等。 通俗类比：Proxy 像给“房子”装监控，房子必须是实体对象；基本类型像一张写数字的纸，你没法在纸上装监控，只能把纸放进一个带监控的盒子里，监控盒子。
+Proxy 的构造函数要求 target 是对象（包括数组、函数等），如果传入 number、string、boolean、symbol、bigint、null、undefined 会直接抛 TypeError。基本类型本身没有属性/引用，无法被代理拦截。 原理：Proxy 的拦截发生在属性访问、赋值、删除、函数调用等“对象操作”上。
+
+基本类型是不可变值，没有可拦截的操作入口。 常见做法：
+
+1) 包装成对象：const state = { value: 0 }; const p = new Proxy(state, { set(t,k,v){ t[k]=v; console.log('changed', v); return true; } }); p.value = 1; 这样监听的是 state.value。
+2) 用类封装：class Ref { constructor(v){ this.value = v; } } 再代理实例。
+3) 用闭包 + 函数：把基本类型放在闭包变量里，通过 get/set 方法暴露，但这不是 Proxy 直接监听，而是手动实现响应式。
+4) 在 Vue 3 中，ref 对基本类型就是通过 RefImpl 对象包装，内部用 getter/setter 或 value 属性实现依赖收集，而不是用 Proxy 代理基本类型；reactive 只用于对象。
+
+适用场景：需要响应式的基本类型状态、表单字段、计数器等。
+
+通俗类比：Proxy 像给“房子”装监控，房子必须是实体对象；基本类型像一张写数字的纸，你没法在纸上装监控，只能把纸放进一个带监控的盒子里，监控盒子。
 
 **常见追问**：如何避免「1) 误以为 new Proxy(1, handler) 可以工作，实际会抛 TypeError」？ 「2) 误以为 Proxy 能监听变量本身的变化，实际上只能监听对象属性操作」在真实项目中应如何规避？
 
@@ -8204,7 +11278,18 @@ Proxy 的构造函数要求 target 是对象（包括数组、函数等），如
 
 tree-shaking 是基于 ES Module 静态结构的死代码消除（DCE）优化，打包时把没有被引用的导出代码摇掉，从而减小产物体积。
 
-tree-shaking 的核心前提是 ES Module 的静态性：import/export 语句只能出现在顶层，模块路径和导出名在编译期就能确定，因此打包器（Rollup、Webpack、esbuild、Vite 等）可以在不执行代码的情况下构建出模块依赖图，判断某个导出是否被使用。 通俗类比：把项目想成一棵树，每个 export 是树上的枝叶。打包器先画出整棵树的枝干连接图（依赖图），然后从入口出发做可达性分析，凡是没有任何路径能到达的枝叶就剪掉，这就是“摇树”。 流程大致是： 1. 解析每个模块，收集 import/export 绑定关系，建立模块图； 2. 从入口开始标记被真正使用的绑定（mark）； 3. 对未被标记的导出做消除（sweep），并进一步做副作用分析； 4. 配合压缩器（Terser/SWC）删除无用的变量、函数和分支。 例子： // utils.js export function add(a,b){return a+b} export function sub(a,b){return a-b} // main.js import { add } from './utils.js' console.log(add(1,2)) 如果 utils.js 没有副作用，sub 就会被摇掉。 适用场景：库开发（提供 ESM 产物、sideEffects 标记）、应用打包、按需引入组件库。对 CommonJS 效果差，因为 require 是运行时行为，导出对象是动态的，打包器无法静态确定哪些属性被使用。
+tree-shaking 的核心前提是 ES Module 的静态性：import/export 语句只能出现在顶层，模块路径和导出名在编译期就能确定，因此打包器（Rollup、Webpack、esbuild、Vite 等）可以在不执行代码的情况下构建出模块依赖图，判断某个导出是否被使用。
+
+通俗类比：把项目想成一棵树，每个 export 是树上的枝叶。打包器先画出整棵树的枝干连接图（依赖图），然后从入口出发做可达性分析，凡是没有任何路径能到达的枝叶就剪掉，这就是“摇树”。 流程大致是：
+
+1. 解析每个模块，收集 import/export 绑定关系，建立模块图；
+2. 从入口开始标记被真正使用的绑定（mark）；
+3. 对未被标记的导出做消除（sweep），并进一步做副作用分析；
+4. 配合压缩器（Terser/SWC）删除无用的变量、函数和分支。
+
+例子： // utils.js export function add(a,b){return a+b} export function sub(a,b){return a-b} // main.js import { add } from './utils.js' console.log(add(1,2)) 如果 utils.js 没有副作用，sub 就会被摇掉。
+
+适用场景：库开发（提供 ESM 产物、sideEffects 标记）、应用打包、按需引入组件库。对 CommonJS 效果差，因为 require 是运行时行为，导出对象是动态的，打包器无法静态确定哪些属性被使用。
 
 **常见追问**：如何避免「以为 tree-shaking 能删掉任何没用到的代码——它只能处理静态可分析的 ESM 导出，对 CJS、动态属性访问、副作用代码无能为力。」？ 「以为只要用了 ESM 就一定生效——如果 Babel/TS 编译成 CJS，或者库的 package.json 没配好，照样摇不掉。」在真实项目中应如何规避？
 
@@ -8226,7 +11311,12 @@ Parent.call(this) 解决引用类型共享问题，每个子实例都有自己�
 
 ES5 通过构造函数 + 原型链组合实现继承：子构造函数内调用父构造函数继承实例属性，再将子原型指向父原型（或父实例）继承方法。
 
-ES5 没有 class 语法，继承靠函数和原型对象模拟。核心是两件事： 1) 继承实例属性：在子构造函数里调用父构造函数，并把 this 绑定到子实例上，即 Parent.call(this, ...)。这样父构造函数里 this.x = ... 的属性会写到子实例自身，避免多个子实例共享引用类型。 2) 继承原型方法：让子构造函数的 prototype 能访问父构造函数的 prototype。常见写法是 Child.prototype = Object.create(Parent.prototype)，然后修正 Child.prototype.constructor = Child。 最经典的组合继承例子： function Parent(name){ this.name = name; this.colors = ['red']; } Parent.prototype.say = function(){ console.log(this.name); }; function Child(name, age){ Parent.call(this, name); // 继承实例属性 this.age = age; } Child.prototype = Object.create(Parent.prototype); // 继承原型方法 Child.prototype.constructor = Child; Child.prototype.run = function(){ console.log(this.age); }; 为什么这样写： - Parent.call(this) 解决引用类型共享问题，每个子实例都有自己的 colors。 - Object.create(Parent.prototype) 让子原型链指向父原型，方法可复用，且不会像 Child.prototype = new Parent() 那样多执行一次父构造函数、在子原型上留下多余实例属性。 适用场景：需要复用父类方法和属性、又不想每个实例都复制方法时。ES5 里还有原型链继承、构造函数继承、寄生组合继承等，寄生组合继承是最推荐、最接近 ES6 class extends 行为的方案。
+ES5 没有 class 语法，继承靠函数和原型对象模拟。核心是两件事：
+
+1) 继承实例属性：在子构造函数里调用父构造函数，并把 this 绑定到子实例上，即 Parent.call(this, ...)。这样父构造函数里 this.x = ... 的属性会写到子实例自身，避免多个子实例共享引用类型。
+2) 继承原型方法：让子构造函数的 prototype 能访问父构造函数的 prototype。常见写法是 Child.prototype = Object.create(Parent.prototype)，然后修正 Child.prototype.constructor = Child。 最经典的组合继承例子： function Parent(name){ this.name = name; this.colors = ['red']; } Parent.prototype.say = function(){ console.log(this.name); }; function Child(name, age){ Parent.call(this, name); // 继承实例属性 this.age = age; } Child.prototype = Object.create(Parent.prototype); // 继承原型方法 Child.prototype.constructor = Child; Child.prototype.run = function(){ console.log(this.age); }; 为什么这样写： - Parent.call(this) 解决引用类型共享问题，每个子实例都有自己的 colors。 - Object.create(Parent.prototype) 让子原型链指向父原型，方法可复用，且不会像 Child.prototype = new Parent() 那样多执行一次父构造函数、在子原型上留下多余实例属性。
+
+适用场景：需要复用父类方法和属性、又不想每个实例都复制方法时。ES5 里还有原型链继承、构造函数继承、寄生组合继承等，寄生组合继承是最推荐、最接近 ES6 class extends 行为的方案。
 
 **常见追问**：如何避免「1) 只写 Child.prototype = new Parent()，导致父构造函数执行两次、子原型上多出实例属性，且引用类型仍可能被共享」？ 「2) 忘记 Parent.call(this)，导致实例属性没有继承，或引用类型在原型上被共享」在真实项目中应如何规避？
 
@@ -8248,7 +11338,29 @@ ES5 没有 class 语法，继承靠函数和原型对象模拟。核心是两件
 
 Proxy 默认只能监听目标对象自身的一层属性操作，无法自动监听嵌套对象的内部变化；要监听嵌套对象，需要在 get 时递归包装（如返回新的 Proxy），或使用深层遍历/懒代理方案。
 
-Proxy 的监听能力来自它包裹的是“某一个具体对象”的 [[ProxyHandler]]。当你执行 new Proxy(obj, handler) 时，handler 里的 get/set/deleteProperty 等 trap 只会在对这个 proxy 本身进行属性访问、赋值、删除等操作时触发。 关键点：Proxy 不会自动“穿透”到属性值内部。例如： const inner = { count: 0 }; const obj = { inner }; const p = new Proxy(obj, { get(t, k, r) { console.log('get', k); return Reflect.get(t, k, r); }, set(t, k, v, r) { console.log('set', k); return Reflect.set(t, k, v, r); } }); p.inner.count = 1; 这里只会触发一次 get('inner')，拿到原始 inner 对象；随后 .count = 1 是直接作用在原始 inner 上的，不会触发 proxy 的 set trap。也就是说，Proxy 能监听到“对象中的对象引用被读取/替换”，但不能自动监听“该引用所指向对象内部属性的变化”。 为什么？因为 JavaScript 的属性访问是逐层求值的：p.inner 先触发 proxy 的 get，返回一个普通对象；后续 .count 的读写发生在这个普通对象上，和 proxy 已经没有关系。Proxy 不是深层的响应式系统，它只是对单个对象操作做拦截。 适用场景与实现方式： 1. 浅代理：只关心顶层属性，如配置对象、简单状态。 2. 懒递归代理：在 get 中判断返回值是否为对象，如果是则返回它的 Proxy，并缓存，避免重复创建。Vue 3 的 reactive 就是这种思路，配合 WeakMap 缓存和 Reflect 完成。 3. 深代理：初始化时递归遍历所有嵌套对象并包装，简单但性能差、循环引用需处理。 4. 不可变数据/结构共享：不直接改嵌套对象，而是替换引用，这样顶层 set 就能感知。 通俗类比：Proxy 像小区门卫，只检查进出“这栋楼”的人。你从楼里拿出一把钥匙（inner 引用），之后用钥匙打开里面房间的门（inner.count），门卫看不到，因为操作已经不在他的管辖范围。要管到里面，就得给每个房间也配一个门卫，即递归代理。
+Proxy 的监听能力来自它包裹的是“某一个具体对象”的 [[ProxyHandler]]。当你执行 new Proxy(obj, handler) 时，handler 里的 get/set/deleteProperty 等 trap 只会在对这个 proxy 本身进行属性访问、赋值、删除等操作时触发。
+
+关键点：Proxy 不会自动“穿透”到属性值内部。
+
+- 例如： const inner = { count: 0 };
+- const obj = { inner };
+- const p = new Proxy(obj, { get(t, k, r) { console.log('get', k); return Reflect.get(t, k, r); }, set(t, k, v, r) { console.log('set', k); return Reflect.set(t, k, v, r); } });
+- p.inner.count = 1;
+- 这里只会触发一次 get('inner')，拿到原始 inner 对象；
+- 随后 .count = 1 是直接作用在原始 inner 上的，不会触发 proxy 的 set trap。
+
+也就是说，Proxy 能监听到“对象中的对象引用被读取/替换”，但不能自动监听“该引用所指向对象内部属性的变化”。 为什么？因为 JavaScript 的属性访问是逐层求值的：p.inner 先触发 proxy 的 get，返回一个普通对象；后续 .count 的读写发生在这个普通对象上，和 proxy 已经没有关系。
+
+Proxy 不是深层的响应式系统，它只是对单个对象操作做拦截。
+
+适用场景与实现方式：
+
+1. 浅代理：只关心顶层属性，如配置对象、简单状态。
+2. 懒递归代理：在 get 中判断返回值是否为对象，如果是则返回它的 Proxy，并缓存，避免重复创建。Vue 3 的 reactive 就是这种思路，配合 WeakMap 缓存和 Reflect 完成。
+3. 深代理：初始化时递归遍历所有嵌套对象并包装，简单但性能差、循环引用需处理。
+4. 不可变数据/结构共享：不直接改嵌套对象，而是替换引用，这样顶层 set 就能感知。
+
+通俗类比：Proxy 像小区门卫，只检查进出“这栋楼”的人。你从楼里拿出一把钥匙（inner 引用），之后用钥匙打开里面房间的门（inner.count），门卫看不到，因为操作已经不在他的管辖范围。要管到里面，就得给每个房间也配一个门卫，即递归代理。
 
 **常见追问**：如何避免「误以为 new Proxy(obj, handler) 会自动递归监听所有嵌套对象，这是最常见的错误。」？ 「误以为 p.inner.count = 1 会触发 proxy 的 set trap；实际不会。」在真实项目中应如何规避？
 
@@ -8270,7 +11382,16 @@ Proxy 的监听能力来自它包裹的是“某一个具体对象”的 [[Proxy
 
 new 一个对象时，引擎会创建新对象、绑定原型、执行构造函数、根据返回值决定最终结果。
 
-以 JavaScript 为例，`new Foo(...args)` 大致做四步：1）创建一个新的空对象；2）把这个对象的内部原型 `[[Prototype]]` 指向 `Foo.prototype`；3）以这个新对象作为 `this`，执行构造函数 `Foo`，并把参数传进去；4）如果构造函数返回的是对象（包括函数、数组等），则返回该对象；否则返回第 1 步创建的新对象。 通俗类比：`new` 像“按图纸盖房”。先准备一块空地（新对象），把这块地和开发商的样板间图纸关联起来（原型链），然后让施工队按图纸施工（执行构造函数，给房子装门窗、家具），最后如果施工队另外交给你一栋现成的房子（构造函数返回对象），就用那栋；否则就交付最初盖好的这栋。 手写一个简化版 `myNew`： ```js function myNew(Ctor, ...args) { if (typeof Ctor !== 'function') throw new TypeError('Ctor must be a function'); const obj = Object.create(Ctor.prototype); // 创建对象并绑定原型 const ret = Ctor.apply(obj, args); // 执行构造函数，this 指向 obj return ret !== null && (typeof ret === 'object' || typeof ret === 'function') ? ret : obj; } ``` 适用场景：需要批量创建具有相同结构和行为的实例时，用构造函数 + `new` 或 ES6 `class`。`class` 本质也是这套机制，但更严格：必须用 `new` 调用，且构造函数返回非对象会报错。
+以 JavaScript 为例，`new Foo(...args)` 大致做四步：
+
+- 1）创建一个新的空对象；
+- 2）把这个对象的内部原型 `[[Prototype]]` 指向 `Foo.prototype`；
+- 3）以这个新对象作为 `this`，执行构造函数 `Foo`，并把参数传进去；
+- 4）如果构造函数返回的是对象（包括函数、数组等），则返回该对象；否则返回第 1 步创建的新对象。
+
+通俗类比：`new` 像“按图纸盖房”。先准备一块空地（新对象），把这块地和开发商的样板间图纸关联起来（原型链），然后让施工队按图纸施工（执行构造函数，给房子装门窗、家具），最后如果施工队另外交给你一栋现成的房子（构造函数返回对象），就用那栋；否则就交付最初盖好的这栋。 手写一个简化版 `myNew`： ```js function myNew(Ctor, ...args) { if (typeof Ctor !== 'function') throw new TypeError('Ctor must be a function'); const obj = Object.create(Ctor.prototype); // 创建对象并绑定原型 const ret = Ctor.apply(obj, args); // 执行构造函数，this 指向 obj return ret !== null && (typeof ret === 'object' || typeof ret === 'function') ? ret : obj; } ``` 适用场景：需要批量创建具有相同结构和行为的实例时，用构造函数 + `new` 或 ES6 `class`。`class`
+
+本质也是这套机制，但更严格：必须用 `new` 调用，且构造函数返回非对象会报错。
 
 **常见追问**：如何避免「1）误以为 `new` 一定会返回构造函数里 `return` 的值：只有返回对象/函数才覆盖，返回原始值会被忽略」？ 「2）误以为 `new` 只是“调用函数”：它还会创建对象、绑定原型、绑定 `this`」在真实项目中应如何规避？
 
@@ -8292,7 +11413,11 @@ beforeCreate：此时只完成了实例的创建和事件、生命周期的初�
 
 在 beforeCreate 阶段拿不到 data、methods、$refs，在 created 阶段能拿到 data 和 methods，但 $refs 仍然拿不到，因为 DOM 还没渲染。
 
-Vue 的生命周期里，beforeCreate 和 created 是组件实例初始化最早的两个钩子。 1. beforeCreate：此时只完成了实例的创建和事件、生命周期的初始化，data、methods、computed、watch、props 等都还没被初始化，所以 this 上访问不到 data、methods，$refs 也还不存在。 2. created：此时已经完成了 data、methods、computed、watch、props 的初始化，所以可以通过 this 访问 data 和 methods。但模板还没有编译和挂载，真实 DOM 还没有生成，因此 $refs 仍然是空的（或者说不存在）。 通俗类比：beforeCreate 像刚拿到一块空地，什么都还没建；created 像房子主体已经建好，家具（data、methods）都放进去了，但门窗（DOM）还没装，所以看不到 $refs。 $refs 要等到 mounted 之后才能拿到，因为 mounted 表示组件已经挂载到真实 DOM 上。 另外，Vue 3 的 Composition API 中，setup 执行时机相当于 beforeCreate 和 created 之间，此时也拿不到 $refs，需要通过 ref 变量在 onMounted 后访问。
+Vue 的生命周期里，beforeCreate 和 created 是组件实例初始化最早的两个钩子。 1. beforeCreate：此时只完成了实例的创建和事件、生命周期的初始化，data、methods、computed、watch、props 等都还没被初始化，所以 this 上访问不到 data、methods，$refs 也还不存在。 2. created：此时已经完成了 data、methods、computed、watch、props 的初始化，所以可以通过 this 访问 data 和 methods。但模板还没有编译和挂载，真实 DOM 还没有生成，因此 $refs 仍然是空的（或者说不存在）。
+
+通俗类比：beforeCreate 像刚拿到一块空地，什么都还没建；created 像房子主体已经建好，家具（data、methods）都放进去了，但门窗（DOM）还没装，所以看不到 $refs。 $refs 要等到 mounted 之后才能拿到，因为 mounted 表示组件已经挂载到真实 DOM 上。
+
+另外，Vue 3 的 Composition API 中，setup 执行时机相当于 beforeCreate 和 created 之间，此时也拿不到 $refs，需要通过 ref 变量在 onMounted 后访问。
 
 **常见追问**：如何避免「误以为 created 里能拿到 $refs，这是最常见的错误。」？ 「误以为 beforeCreate 里能拿到 data 或 methods，实际上此时 data 和 methods 都还没初始化。」在真实项目中应如何规避？
 
@@ -8314,7 +11439,17 @@ Vue 的生命周期里，beforeCreate 和 created 是组件实例初始化最早
 
 用 index 作为 key 会在列表顺序变化、插入或删除时导致 React 复用错误的 DOM 节点，引发状态错乱和性能问题。
 
-在 React 的 diff 算法中，key 用于标识列表元素的身份。当 key 为 index 时，key 只反映元素在数组中的位置，而不是元素本身的身份。 原理：React 更新列表时，会对比新旧虚拟 DOM 的 key。如果 key 相同，就认为同一个元素，复用其真实 DOM 和组件状态；如果 key 不同，则销毁重建。 问题场景： 1. 列表头部插入元素：旧列表 [A, B, C] 的 key 为 0,1,2；新列表 [X, A, B, C] 的 key 为 0,1,2,3。React 看到 key=0 相同，就复用原来的 A 节点，但内容变成了 X，导致 A 的组件状态（如输入框内容、勾选状态）被错误地保留在 X 上。 2. 删除元素：类似地，后面的元素会“继承”前一个元素的状态。 3. 排序：所有元素 key 都变了，React 会全部销毁重建，性能差且状态丢失。 通俗类比：key 就像身份证号。用 index 相当于按座位号认人，一旦有人插队或离开，座位号对应的人就变了，你会把新来的人当成原来的人，导致张冠李戴。 适用场景：仅当列表是静态的、不会发生插入、删除、排序，且元素没有内部状态时，才可以用 index 作为 key。否则应使用稳定唯一的业务 ID。
+在 React 的 diff 算法中，key 用于标识列表元素的身份。当 key 为 index 时，key 只反映元素在数组中的位置，而不是元素本身的身份。 原理：React 更新列表时，会对比新旧虚拟 DOM 的 key。如果 key 相同，就认为同一个元素，复用其真实 DOM 和组件状态；如果 key 不同，则销毁重建。
+
+问题场景：
+
+1. 列表头部插入元素：旧列表 [A, B, C] 的 key 为 0,1,2；新列表 [X, A, B, C] 的 key 为 0,1,2,3。React 看到 key=0 相同，就复用原来的 A 节点，但内容变成了 X，导致 A 的组件状态（如输入框内容、勾选状态）被错误地保留在 X 上。
+2. 删除元素：类似地，后面的元素会“继承”前一个元素的状态。
+3. 排序：所有元素 key 都变了，React 会全部销毁重建，性能差且状态丢失。
+
+通俗类比：key 就像身份证号。用 index 相当于按座位号认人，一旦有人插队或离开，座位号对应的人就变了，你会把新来的人当成原来的人，导致张冠李戴。
+
+适用场景：仅当列表是静态的、不会发生插入、删除、排序，且元素没有内部状态时，才可以用 index 作为 key。否则应使用稳定唯一的业务 ID。
 
 **常见追问**：如何避免「认为“只要列表不重新排序，用 index 就没问题”——实际上插入/删除也会出问题。」？ 「认为“key 只是给 React 看的，不影响渲染结果”——实际上会影响组件状态和 DOM 复用。」在真实项目中应如何规避？
 
@@ -8336,7 +11471,15 @@ Vue 的生命周期里，beforeCreate 和 created 是组件实例初始化最早
 
 slot 是 Vue 中父组件向子组件传递“带内容的模板片段”的机制，让子组件在指定位置渲染父组件提供的内容，实现内容分发与组件复用。
 
-通俗类比：子组件像一套“带预留插槽的家具”，slot 就是家具上的预留孔位；父组件在使用子组件时，把想放进去的抽屉/隔板（模板内容）塞进对应孔位，子组件只负责决定孔位在哪、怎么排布。 作用：1) 内容分发：父组件控制子组件内部某块区域显示什么，子组件保持布局和逻辑封装；2) 提高复用性：同一个子组件可在不同场景渲染不同内容；3) 支持默认内容、具名插槽、作用域插槽，满足复杂组合。 原理（以 Vue 3 为例）：编译阶段，父组件模板中的 <template #xxx> 或直接写在子组件标签内的内容，会被编译成插槽函数（slot function），通常挂在子组件 vnode 的 children 上，Vue 内部用 shapeFlag 标记为 SLOTS_CHILDREN。子组件模板中的 <slot name="xxx"> 会被编译成 renderSlot 调用，运行时从当前实例的 $slots 中按 name 取出对应插槽函数并执行，把返回的 vnode 渲染到该位置。作用域插槽则是子组件调用插槽函数时传入 props，父组件插槽函数接收这些参数，从而让父组件内容能访问子组件内部数据。Vue 2 中类似，父组件编译时生成 scopedSlots/normalSlots，子组件通过 this.$slots 和 this.$scopedSlots 访问，渲染时由 _t/_u 等辅助函数处理。 例子：子组件 Card 写 <div class="card"><slot name="header">默认标题</slot><slot :user="user"></slot></div>；父组件写 <Card><template #header>我的标题</template><template #default="{ user }">{{ user.name }}</template></Card>。子组件决定 header 和默认内容的位置，父组件决定具体内容，且默认插槽能拿到子组件的 user。
+通俗类比：子组件像一套“带预留插槽的家具”，slot 就是家具上的预留孔位；父组件在使用子组件时，把想放进去的抽屉/隔板（模板内容）塞进对应孔位，子组件只负责决定孔位在哪、怎么排布。 作用：
+
+1) 内容分发：父组件控制子组件内部某块区域显示什么，子组件保持布局和逻辑封装；
+2) 提高复用性：同一个子组件可在不同场景渲染不同内容；
+3) 支持默认内容、具名插槽、作用域插槽，满足复杂组合。 原理（以 Vue 3 为例）：编译阶段，父组件模板中的 <template #xxx> 或直接写在子组件标签内的内容，会被编译成插槽函数（slot function），通常挂在子组件 vnode 的 children 上，Vue 内部用 shapeFlag 标记为 SLOTS_CHILDREN。子组件模板中的 <slot name="xxx"> 会被编译成 renderSlot 调用，运行时从当前实例的 $slots 中按 name 取出对应插槽函数并执行，把返回的 vnode 渲染到该位置。作用域插槽则是子组件调用插槽函数时传入 props，父组件插槽函数接收这些参数，从而让父组件内容能访问子组件内部数据。Vue 2 中类似，父组件编译时生成 scopedSlots/normalSlots，子组件通过 this.$slots 和 this.$scopedSlots 访问，渲染时由 _t/_u 等辅助函数处理。
+
+例子：子组件 Card 写 <div class="card"><slot name="header">默认标题</slot><slot :user="user"></slot></div>；父组件写 <Card><template #header>我的标题</template><template #default="{ user }">{{ user.name }}</template></Card>。
+
+子组件决定 header 和默认内容的位置，父组件决定具体内容，且默认插槽能拿到子组件的 user。
 
 **常见追问**：如何避免「1) 把 slot 说成“子组件向父组件传值”，实际是父组件向子组件传模板内容」？ 「作用域插槽才是子组件把数据暴露给父组件插槽内容」在真实项目中应如何规避？
 
@@ -8356,9 +11499,23 @@ slot 是 Vue 中父组件向子组件传递“带内容的模板片段”的机�
 
 **参考回答**：
 
-闭包是函数与其定义时词法环境的组合，让函数能访问外部变量；常用于封装私有状态、回调、柯里化等；当闭包长期持有大对象且无法被回收时会造成内存泄漏。
+- 闭包是函数与其定义时词法环境的组合，让函数能访问外部变量；
+- 常用于封装私有状态、回调、柯里化等；
+- 当闭包长期持有大对象且无法被回收时会造成内存泄漏。
 
-闭包（Closure）本质是一个函数加上它被创建时所处的词法环境（Lexical Environment）。通俗类比：函数像随身带着一个背包，背包里装着它出生时能看到的变量，即使离开出生地（外层函数执行完），背包里的东西依然可用。 原理：以 JavaScript 为例，函数执行时会创建执行上下文，其中包含变量环境。内部函数引用外部变量时，引擎不会销毁外部函数的变量对象，而是让内部函数的作用域链指向它。因此外层函数返回后，其局部变量仍被内部函数引用而存活。 示例： function counter() { let count = 0; return function() { return ++count; }; } const c = counter(); c(); // 1 c(); // 2 count 被闭包持有，无法被 GC 回收，形成私有状态。 应用场景： 1. 封装私有变量/模块模式：用 IIFE 或闭包暴露有限接口，隐藏内部状态。 2. 回调与事件处理：保存创建时的上下文，如循环中绑定索引。 3. 函数工厂/柯里化：预设部分参数。 4. 防抖节流：闭包保存 timer 和上次执行时间。 5. React Hooks 中 useState/useEffect 依赖闭包捕获渲染时的 props/state。 内存泄漏产生方式：闭包本身不是泄漏，而是闭包长期持有不再需要的大对象，且闭包自身被全局或长生命周期对象引用，导致这些对象无法被 GC。常见操作： - 全局变量引用闭包，闭包又引用大 DOM/大数组。 - 事件监听器未移除，回调闭包持有组件或 DOM。 - 定时器 setInterval 未 clear，回调闭包一直存活。 - 循环中创建闭包并挂到 DOM 或全局，导致整条作用域链无法释放。 - 缓存未设上限，闭包持有缓存对象不断增长。 避免：及时移除监听、清除定时器、避免不必要的全局引用、用 WeakMap/WeakRef 弱引用、将大对象置 null 断开引用。
+闭包（Closure）本质是一个函数加上它被创建时所处的词法环境（Lexical Environment）。
+
+通俗类比：函数像随身带着一个背包，背包里装着它出生时能看到的变量，即使离开出生地（外层函数执行完），背包里的东西依然可用。 原理：以 JavaScript 为例，函数执行时会创建执行上下文，其中包含变量环境。内部函数引用外部变量时，引擎不会销毁外部函数的变量对象，而是让内部函数的作用域链指向它。
+
+因此外层函数返回后，其局部变量仍被内部函数引用而存活。 示例： function counter() { let count = 0; return function() { return ++count; }; } const c = counter(); c(); // 1 c(); // 2 count 被闭包持有，无法被 GC 回收，形成私有状态。
+
+应用场景：
+
+1. 封装私有变量/模块模式：用 IIFE 或闭包暴露有限接口，隐藏内部状态。
+2. 回调与事件处理：保存创建时的上下文，如循环中绑定索引。
+3. 函数工厂/柯里化：预设部分参数。
+4. 防抖节流：闭包保存 timer 和上次执行时间。
+5. React Hooks 中 useState/useEffect 依赖闭包捕获渲染时的 props/state。 内存泄漏产生方式：闭包本身不是泄漏，而是闭包长期持有不再需要的大对象，且闭包自身被全局或长生命周期对象引用，导致这些对象无法被 GC。常见操作： - 全局变量引用闭包，闭包又引用大 DOM/大数组。 - 事件监听器未移除，回调闭包持有组件或 DOM。 - 定时器 setInterval 未 clear，回调闭包一直存活。 - 循环中创建闭包并挂到 DOM 或全局，导致整条作用域链无法释放。 - 缓存未设上限，闭包持有缓存对象不断增长。 避免：及时移除监听、清除定时器、避免不必要的全局引用、用 WeakMap/WeakRef 弱引用、将大对象置 null 断开引用。
 
 **常见追问**：如何避免「认为闭包一定会内存泄漏：闭包只是延长变量生命周期，是否泄漏取决于是否还有可达引用。」？ 「把闭包等同于匿名函数或嵌套函数：匿名函数不一定是闭包，闭包强调捕获外部变量。」在真实项目中应如何规避？
 
@@ -8380,7 +11537,21 @@ slot 是 Vue 中父组件向子组件传递“带内容的模板片段”的机�
 
 不同屏幕适配的核心是让界面元素随屏幕尺寸/密度按比例或按约束自适应，而不是写死像素，常用方案有响应式布局、密度无关单位、约束布局和断点/栅格系统。
 
-屏幕适配要同时处理两个维度：物理尺寸（手机/平板/折叠屏/车机）和像素密度（dpi/ppi）。原理上，先区分单位：px 是物理像素，dp/dip（Android）、pt（iOS）、rem/em（Web）是逻辑单位，系统按 density 把逻辑单位换算成物理像素，从而保证同一控件在不同密度屏幕上物理大小接近。 常见做法： 1. 密度无关单位 + 资源限定符：Android 用 dp 做尺寸、sp 做字体，图片放 drawable-hdpi/xhdpi/xxhdpi 等目录，系统按 density 选图；iOS 用 pt 和 @2x/@3x 资源。 2. 约束/弹性布局：Android ConstraintLayout、iOS Auto Layout、Web Flexbox/Grid，用相对约束和权重（layout_weight、weight、flex-grow）让元素按比例分配剩余空间，避免绝对定位。 3. 断点与栅格：Web 用媒体查询 @media (min-width: 768px) 切换列数；Android 用 sw600dp、w600dp 等限定符区分手机/平板；Flutter 用 LayoutBuilder/MediaQuery 根据宽度选布局。 4. 图片与矢量：用 SVG/VectorDrawable/PDF 矢量图或 9-patch，避免大图拉伸模糊；Web 用 srcset/sizes 按 DPR 选图。 5. 安全区与刘海：iOS safeAreaInsets、Android WindowInsets，避免内容被刘海/手势条遮挡。 通俗类比：px 像“米”，dp 像“步”——不同身高的人一步长度不同，但走 10 步到达的距离大致相当；适配就是让 UI 用“步”来量，再根据屏幕宽窄决定一行放几个卡片。 适用场景：纯展示页可用等比缩放（如按设计稿宽度 375 整体 scale）；复杂交互页优先约束布局+断点；游戏/大屏可用 Canvas 缩放或 rem 动态根字号。
+屏幕适配要同时处理两个维度：物理尺寸（手机/平板/折叠屏/车机）和像素密度（dpi/ppi）。原理上，先区分单位：px 是物理像素，dp/dip（Android）、pt（iOS）、rem/em（Web）是逻辑单位，系统按 density 把逻辑单位换算成物理像素，从而保证同一控件在不同密度屏幕上物理大小接近。
+
+常见做法：
+
+1. 密度无关单位 + 资源限定符：Android 用 dp 做尺寸、sp 做字体，图片放 drawable-hdpi/xhdpi/xxhdpi 等目录，系统按 density 选图；iOS 用 pt 和 @2x/@3x 资源。
+2. 约束/弹性布局：Android ConstraintLayout、iOS Auto Layout、Web Flexbox/Grid，用相对约束和权重（layout_weight、weight、flex-grow）让元素按比例分配剩余空间，避免绝对定位。
+3. 断点与栅格：Web 用媒体查询 @media (min-width: 768px) 切换列数；Android 用 sw600dp、w600dp 等限定符区分手机/平板；Flutter 用 LayoutBuilder/MediaQuery 根据宽度选布局。
+4. 图片与矢量：用 SVG/VectorDrawable/PDF 矢量图或 9-patch，避免大图拉伸模糊；Web 用 srcset/sizes 按 DPR 选图。
+5. 安全区与刘海：iOS safeAreaInsets、Android WindowInsets，避免内容被刘海/手势条遮挡。
+
+通俗类比：px 像“米”，dp 像“步”——不同身高的人一步长度不同，但走 10 步到达的距离大致相当；适配就是让 UI 用“步”来量，再根据屏幕宽窄决定一行放几个卡片。
+
+- 适用场景：纯展示页可用等比缩放（如按设计稿宽度 375 整体 scale）；
+- 复杂交互页优先约束布局+断点；
+- 游戏/大屏可用 Canvas 缩放或 rem 动态根字号。
 
 **常见追问**：如何避免「把所有尺寸都写死 px，导致高密度屏上元素过小或模糊。」？ 「字体用 dp 而不是 sp，用户调大系统字体时文字不跟随，无障碍差。」在真实项目中应如何规避？
 
@@ -8402,7 +11573,16 @@ rem（root em）中的 r 指 root，即根元素 html；浏览器在计算任意
 
 rem 是相对于根元素 html 的 font-size 计算，默认 16px，可通过设置 html 的 font-size 改变基准，常用于移动端适配。
 
-rem（root em）中的 r 指 root，即根元素 html。浏览器在计算任意元素的 rem 长度时，会取当前文档根元素 html 的 computed font-size 作为基准，乘以 rem 前面的数值。例如 html { font-size: 16px } 时，1rem = 16px，2rem = 32px；若 html { font-size: 62.5% }，因为百分比基于浏览器默认字号 16px，所以 62.5% × 16px = 10px，此时 1rem = 10px，方便把设计稿的 px 除以 10 得到 rem。关键点：1）rem 只认 html 的 font-size，不认 body 或其他祖先；2）html 的 font-size 若用 em 或百分比，会基于浏览器默认字号（通常是 16px，但用户可在浏览器设置中改）；3）若 html 的 font-size 用 rem 设置，会形成循环引用，浏览器会忽略该声明或回退到默认值；4）媒体查询中的 rem 也以初始 font-size 为基准，而不是当前 html 的 font-size。移动端常见方案：用 JS 根据视口宽度动态设置 html 的 font-size，例如设计稿 750px，则 html.style.fontSize = document.documentElement.clientWidth / 7.5 + 'px'，这样 1rem 对应设计稿 100px，元素尺寸写 rem 即可等比缩放。
+rem（root em）中的 r 指 root，即根元素 html。浏览器在计算任意元素的 rem 长度时，会取当前文档根元素 html 的 computed font-size 作为基准，乘以 rem 前面的数值。
+
+例如 html { font-size: 16px } 时，1rem = 16px，2rem = 32px；若 html { font-size: 62.5% }，因为百分比基于浏览器默认字号 16px，所以 62.5% × 16px = 10px，此时 1rem = 10px，方便把设计稿的 px 除以 10 得到 rem。
+
+- 关键点：1）rem 只认 html 的 font-size，不认 body 或其他祖先；
+- 2）html 的 font-size 若用 em 或百分比，会基于浏览器默认字号（通常是 16px，但用户可在浏览器设置中改）；
+- 3）若 html 的 font-size 用 rem 设置，会形成循环引用，浏览器会忽略该声明或回退到默认值；
+- 4）媒体查询中的 rem 也以初始 font-size 为基准，而不是当前 html 的 font-size。
+
+移动端常见方案：用 JS 根据视口宽度动态设置 html 的 font-size，例如设计稿 750px，则 html.style.fontSize = document.documentElement.clientWidth / 7.5 + 'px'，这样 1rem 对应设计稿 100px，元素尺寸写 rem 即可等比缩放。
 
 **常见追问**：如何避免「1）误以为 rem 是相对于父元素 font-size，那是 em」？ 「2）误以为 html 的 font-size 用 rem 设置会生效，实际会循环引用被忽略」在真实项目中应如何规避？
 
@@ -8424,7 +11604,11 @@ rem（root em）中的 r 指 root，即根元素 html。浏览器在计算任意
 
 回流（reflow/layout）是几何属性变化导致重新计算布局，重绘（repaint）是外观变化但不影响布局，回流必然引起重绘，重绘不一定引起回流。
 
-浏览器渲染流程大致为：解析HTML/CSS构建DOM和CSSOM，合成渲染树，然后进行布局（Layout，即回流）计算每个节点的几何位置和大小，再进行绘制（Paint，即重绘）填充像素，最后合成（Composite）上屏。 回流：当元素的几何属性发生变化，如宽高、位置、边距、字体大小、显示隐藏（display）、窗口尺寸变化、读取某些布局属性（offsetTop、scrollHeight、getComputedStyle等）时，浏览器需要重新计算渲染树中受影响节点的布局，这个过程叫回流。回流成本高，因为它可能影响父节点、兄弟节点甚至整个文档。 重绘：当元素的外观样式变化但不影响布局时，如颜色、背景色、visibility、outline、box-shadow等，浏览器只需重新绘制该元素，不需要重新计算布局，成本相对较低。 通俗类比：回流像重新排版一篇文章，文字位置都变了；重画像只给文字换颜色，位置不动。 关系：回流一定会触发重绘，因为布局变了必须重新画；重绘不一定触发回流。 优化建议：批量修改样式（用class切换）、避免频繁读取布局属性、使用transform/opacity做动画（可走合成层，不触发回流重绘）、离线操作DOM（display:none后操作再显示）、使用DocumentFragment、will-change/translateZ提升图层。
+浏览器渲染流程大致为：解析HTML/CSS构建DOM和CSSOM，合成渲染树，然后进行布局（Layout，即回流）计算每个节点的几何位置和大小，再进行绘制（Paint，即重绘）填充像素，最后合成（Composite）上屏。 回流：当元素的几何属性发生变化，如宽高、位置、边距、字体大小、显示隐藏（display）、窗口尺寸变化、读取某些布局属性（offsetTop、scrollHeight、getComputedStyle等）时，浏览器需要重新计算渲染树中受影响节点的布局，这个过程叫回流。
+
+回流成本高，因为它可能影响父节点、兄弟节点甚至整个文档。 重绘：当元素的外观样式变化但不影响布局时，如颜色、背景色、visibility、outline、box-shadow等，浏览器只需重新绘制该元素，不需要重新计算布局，成本相对较低。
+
+通俗类比：回流像重新排版一篇文章，文字位置都变了；重画像只给文字换颜色，位置不动。 关系：回流一定会触发重绘，因为布局变了必须重新画；重绘不一定触发回流。 优化建议：批量修改样式（用class切换）、避免频繁读取布局属性、使用transform/opacity做动画（可走合成层，不触发回流重绘）、离线操作DOM（display:none后操作再显示）、使用DocumentFragment、will-change/translateZ提升图层。
 
 **常见追问**：如何避免「误以为重绘一定引起回流，实际上重绘不一定回流。」？ 「认为display:none和visibility:hidden一样，前者触发回流，后者只触发重绘。」在真实项目中应如何规避？
 
@@ -8446,7 +11630,16 @@ opacity 不是“给元素刷一层透明漆”，而是对元素及其所有后
 
 父元素设了 opacity 后子元素无法通过自身 opacity:1 恢复，因为 opacity 会创建层叠上下文并让整棵子树先合成再整体透明；正确做法是改用 rgba/background 半透明或把透明层与内容层分离。
 
-opacity 不是“给元素刷一层透明漆”，而是对元素及其所有后代渲染结果做一次整体 alpha 合成。原理上，设置 opacity<1 会触发元素生成层叠上下文（stacking context），浏览器先把该元素和它的子树绘制到同一个离屏图层/组里，再以指定 alpha 与背景合成。因此子元素的 opacity:1 只是“子元素在组内不透明”，但整个组已经被父级乘了 alpha，最终视觉上仍然透明。 类比：父元素像一块半透明玻璃罩，子元素是罩子里的灯泡。灯泡再亮（opacity:1），透过玻璃看还是暗的；想让灯泡看起来不透明，只能拿掉玻璃罩，或把灯泡放到罩子外面。 常见正确方案： 1) 如果只是想要半透明背景，不要用 opacity，改用 background-color: rgba(0,0,0,.5) 或 background: transparent + 伪元素；这样文字/子元素不受影响。 2) 如果确实需要“背景半透明、内容不透明”，用绝对定位分层：父容器 position:relative，背景层 position:absolute; inset:0; background:rgba(...); 内容层 position:relative; z-index:1。 3) 如果必须用 opacity 做动画，把需要不透明的子元素移到该透明元素之外，或使用 CSS 变量/伪元素只对背景层设 opacity。 4) 注意 filter: opacity() 同样会创建包含块/层叠上下文，不能靠子元素 opacity:1 抵消。 示例： <div class="card"> <div class="bg"></div> <div class="content">文字不透明</div> </div> .card{position:relative} .bg{position:absolute;inset:0;background:#000;opacity:.5} .content{position:relative;z-index:1;color:#fff} 这样背景半透明，内容完全清晰。
+opacity 不是“给元素刷一层透明漆”，而是对元素及其所有后代渲染结果做一次整体 alpha 合成。原理上，设置 opacity<1 会触发元素生成层叠上下文（stacking context），浏览器先把该元素和它的子树绘制到同一个离屏图层/组里，再以指定 alpha 与背景合成。
+
+因此子元素的 opacity:1 只是“子元素在组内不透明”，但整个组已经被父级乘了 alpha，最终视觉上仍然透明。 类比：父元素像一块半透明玻璃罩，子元素是罩子里的灯泡。灯泡再亮（opacity:1），透过玻璃看还是暗的；想让灯泡看起来不透明，只能拿掉玻璃罩，或把灯泡放到罩子外面。
+
+常见正确方案：
+
+1) 如果只是想要半透明背景，不要用 opacity，改用 background-color: rgba(0,0,0,.5) 或 background: transparent + 伪元素；这样文字/子元素不受影响。
+2) 如果确实需要“背景半透明、内容不透明”，用绝对定位分层：父容器 position:relative，背景层 position:absolute; inset:0; background:rgba(...); 内容层 position:relative; z-index:1。
+3) 如果必须用 opacity 做动画，把需要不透明的子元素移到该透明元素之外，或使用 CSS 变量/伪元素只对背景层设 opacity。
+4) 注意 filter: opacity() 同样会创建包含块/层叠上下文，不能靠子元素 opacity:1 抵消。 示例： <div class="card"> <div class="bg"></div> <div class="content">文字不透明</div> </div> .card{position:relative} .bg{position:absolute;inset:0;background:#000;opacity:.5} .content{position:relative;z-index:1;color:#fff} 这样背景半透明，内容完全清晰。
 
 **常见追问**：如何避免「1) 以为给子元素写 opacity:1 就能覆盖父元素透明度，这是最常见错误」？ 「2) 把 opacity 和 rgba 混为一谈，认为只是写法不同」在真实项目中应如何规避？
 
@@ -8468,7 +11661,15 @@ opacity 不是“给元素刷一层透明漆”，而是对元素及其所有后
 
 路由懒加载的本质是把路由组件从主包中拆出，通过动态 import() 返回 Promise，在路由真正被访问时才异步加载并执行该模块，从而减小首屏体积、加快首屏渲染。
 
-原理可以拆成三层： 1) 打包层：Webpack/Vite/Rollup 遇到 import('./views/Home.vue') 这种动态导入语法，不会把它打进主 chunk，而是单独生成一个 chunk 文件（如 home.[hash].js），并在运行时通过 JSONP（Webpack）或原生 ESM（Vite）去请求它。 2) 路由层：以 Vue Router 为例，路由配置里 component 可以是一个返回 Promise 的函数： { path: '/home', component: () => import('./views/Home.vue') } 路由匹配到该路径时，Router 调用这个函数拿到 Promise，等 resolve 出组件定义后再渲染。React Router 的 lazy 或 React.lazy + Suspense 同理。 3) 运行时层：首次访问会触发网络请求，因此需要 loading 态（Suspense fallback、路由守卫里 NProgress）和失败重试；加载完成后模块被缓存，再次访问不再请求。 通俗类比：主包像一家总店，把所有商品都摆在门口；懒加载像把冷门商品放到仓库，顾客点单（访问路由）时才去仓库取，门口就宽敞了，进店（首屏）更快。 适用场景：路由多、单页体积大、首屏性能敏感的后台系统/中大型 SPA。不适合只有两三个页面、或首屏就要用到全部模块的场景，否则反而增加请求数。
+原理可以拆成三层：
+
+1) 打包层：Webpack/Vite/Rollup 遇到 import('./views/Home.vue') 这种动态导入语法，不会把它打进主 chunk，而是单独生成一个 chunk 文件（如 home.[hash].js），并在运行时通过 JSONP（Webpack）或原生 ESM（Vite）去请求它。
+2) 路由层：以 Vue Router 为例，路由配置里 component 可以是一个返回 Promise 的函数： { path: '/home', component: () => import('./views/Home.vue') } 路由匹配到该路径时，Router 调用这个函数拿到 Promise，等 resolve 出组件定义后再渲染。React Router 的 lazy 或 React.lazy + Suspense 同理。
+3) 运行时层：首次访问会触发网络请求，因此需要 loading 态（Suspense fallback、路由守卫里 NProgress）和失败重试；加载完成后模块被缓存，再次访问不再请求。
+
+通俗类比：主包像一家总店，把所有商品都摆在门口；懒加载像把冷门商品放到仓库，顾客点单（访问路由）时才去仓库取，门口就宽敞了，进店（首屏）更快。
+
+适用场景：路由多、单页体积大、首屏性能敏感的后台系统/中大型 SPA。不适合只有两三个页面、或首屏就要用到全部模块的场景，否则反而增加请求数。
 
 **常见追问**：如何避免「1) 以为懒加载就是“按需加载代码”，其实它只负责拆包和异步请求，真正的渲染时机由路由匹配决定」？ 「2) 把 import 写成 require 或同步 import，结果没拆包，首屏体积没变」在真实项目中应如何规避？
 
@@ -8490,31 +11691,57 @@ opacity 不是“给元素刷一层透明漆”，而是对元素及其所有后
 
 文字渲染能力已具备后，业务要圆角/曲线边框，本质是把「矩形裁剪+绘制」升级为「任意路径裁剪+描边」，用 Canvas 的 Path/Path2D、CSS border-radius、或 SVG path 实现，核心是路径（Path）而非矩形。
 
-先明确问题：原来的文字能力通常基于「矩形区域」做排版和绘制，比如 Canvas 的 fillText 配合矩形 clip，或 DOM 里一个 div 加 border。业务要「曲线边框」，其实是两个诉求：1) 边框本身是曲线（圆角、椭圆、贝塞尔曲线、异形）；2) 内容（文字）要贴合这个曲线区域，不能溢出。 通俗类比：原来是在一张方形纸上写字并画方框；现在业务要一张「圆形/花瓣形」的卡片，字要写在里面，边也要沿着曲线画。 实现分三层： 1) 简单圆角：CSS 的 border-radius 就能做，DOM 场景直接加 border-radius: 20px 或 50% 变圆。Canvas 场景用 ctx.roundRect(x,y,w,h,r) 或手动 arcTo 画圆角矩形，再 clip 后 fillText。 2) 任意曲线：用路径描述。Canvas 用 Path2D + moveTo/lineTo/quadraticCurveTo/bezierCurveTo/arc 构造路径，ctx.clip(path) 做裁剪，ctx.stroke(path) 描边；SVG 用 <path d="M... C..."> 配合 stroke；WebGL/原生渲染则把路径转成三角形或 SDF。 3) 文字贴合曲线：如果只是裁剪，文字会被切掉，体验差。更好的是沿路径排版（text on path），Canvas 没有原生 API，需要自己算：把路径离散成点，按弧长逐字定位并旋转每个字的角度；SVG 有 <textPath> 原生支持；iOS/Android 原生也有沿路径绘制文字的 API。 选型建议： - 纯展示、静态：SVG 最省事，path + textPath + stroke，还能被 CSS 控制。 - 动态、大量、需要像素级控制：Canvas Path2D，注意 devicePixelRatio 缩放避免模糊。 - 原生 App：直接用平台 API（iOS CAShapeLayer + UIBezierPath，Android Path + Canvas.drawTextOnPath）。 - 只是圆角卡片：CSS border-radius 足够，别过度设计。 关键点：边框曲线和文字区域要共用同一条路径，保证描边和裁剪一致，否则会出现边框和内容错位。
+先明确问题：原来的文字能力通常基于「矩形区域」做排版和绘制，比如 Canvas 的 fillText 配合矩形 clip，或 DOM 里一个 div 加 border。业务要「曲线边框」，其实是两个诉求：
+
+1) 边框本身是曲线（圆角、椭圆、贝塞尔曲线、异形）；
+2) 内容（文字）要贴合这个曲线区域，不能溢出。
+
+通俗类比：原来是在一张方形纸上写字并画方框；现在业务要一张「圆形/花瓣形」的卡片，字要写在里面，边也要沿着曲线画。 实现分三层：
+
+1) 简单圆角：CSS 的 border-radius 就能做，DOM 场景直接加 border-radius: 20px 或 50% 变圆。Canvas 场景用 ctx.roundRect(x,y,w,h,r) 或手动 arcTo 画圆角矩形，再 clip 后 fillText。
+2) 任意曲线：用路径描述。Canvas 用 Path2D + moveTo/lineTo/quadraticCurveTo/bezierCurveTo/arc 构造路径，ctx.clip(path) 做裁剪，ctx.stroke(path) 描边；SVG 用 <path d="M... C..."> 配合 stroke；WebGL/原生渲染则把路径转成三角形或 SDF。
+3) 文字贴合曲线：如果只是裁剪，文字会被切掉，体验差。更好的是沿路径排版（text on path），Canvas 没有原生 API，需要自己算：把路径离散成点，按弧长逐字定位并旋转每个字的角度；SVG 有 <textPath> 原生支持；iOS/Android 原生也有沿路径绘制文字的 API。
+
+选型建议：
+
+- 纯展示、静态：SVG 最省事，path + textPath + stroke，还能被 CSS 控制。
+- 动态、大量、需要像素级控制：Canvas Path2D，注意 devicePixelRatio 缩放避免模糊。
+- 原生 App：直接用平台 API（iOS CAShapeLayer + UIBezierPath，Android Path + Canvas.drawTextOnPath）。
+- 只是圆角卡片：CSS border-radius 足够，别过度设计。 关键点：边框曲线和文字区域要共用同一条路径，保证描边和裁剪一致，否则会出现边框和内容错位。
 
 **常见追问**：如何避免「1) 以为「文字能力有了」就等于边框也能随便画，忽略裁剪与描边必须共用同一路径」？ 「2) 只加 CSS border-radius 就宣称支持曲线边框，遇到贝塞尔异形就露馅」在真实项目中应如何规避？
 
 ---
 
-## 369. 可以上下进行移动，这个过程你如何实现的？
+## 369. 如何实现前端列表项的上下拖拽排序，并保持视图与数据顺序一致？
 
 > 原题 ID：`q2697`
 
 **高频程度**：★★★
 
-**考察点**：考察对「可以上下进行移动，这个过程你如何实现的」的掌握，重点看能否讲清：“上下移动”通常指列表项的拖拽排序
+**考察点**：拖拽位置判断、数组移动、稳定 key 和顺序持久化。
 
 **回答框架**：
 
-原生 HTML5 Drag & Drop：给每个列表项加 draggable="true"，监听 dragstart、dragover（需 preventDefault 才能 drop）、drop 事件。在 dragover 中根据鼠标 Y 坐标与各元素中线比较，决定插入到前还是后。；第三方库：如 SortableJS、react-dnd、dnd-kit、vuedraggable，它们封装了边界计算、动画和触摸支持，生产环境更推荐。
+1) 记录被拖动项的稳定 ID
+2) 根据目标位置计算插入点
+3) 移动数据项并更新视图
+4) 保存顺序并处理失败
 
 **参考回答**：
 
-用 flex 布局的 order 属性或拖拽库（如 react-dnd、SortableJS）监听拖拽事件，实时交换/重排数组并更新视图。
+拖拽排序应以数据数组的顺序为准，不只交换 DOM 或设置 CSS order。
 
-“上下移动”通常指列表项的拖拽排序。核心原理分三步：1）拖拽开始：记录被拖拽元素的索引 fromIndex；2）拖拽经过：监听 dragover 或 mousemove，计算当前悬停位置对应的目标索引 toIndex，若不同则交换数组中两项的位置（或使用占位符/transform 做视觉过渡）；3）拖拽结束：将最终顺序持久化（如调用后端接口保存 order 字段）。 实现方式有两种： - 原生 HTML5 Drag & Drop：给每个列表项加 draggable="true"，监听 dragstart、dragover（需 preventDefault 才能 drop）、drop 事件。在 dragover 中根据鼠标 Y 坐标与各元素中线比较，决定插入到前还是后。 - 第三方库：如 SortableJS、react-dnd、dnd-kit、vuedraggable，它们封装了边界计算、动画和触摸支持，生产环境更推荐。 数据层：维护一个数组 list，拖拽时用 splice 把 fromIndex 的元素取出插入到 toIndex，然后 setState 触发重渲染。若后端需要顺序，通常给每条记录一个 sort/order 字段，移动后批量更新受影响项的 order（如取前后项 order 的中间值，或整体重排）。 通俗类比：就像整理书架，把一本书抽出来，插到另一本书前面，其余书自动往后挪。
+1. **开始拖拽**：记录被拖动项的稳定 ID；渲染时也用稳定 ID 作 key，避免排序后组件状态错位。
+2. **确定插入点**：根据指针与目标项的位置判断插到前面还是后面，可用占位符和位移预览。原生 HTML 拖放通常需要在 dragover 中阻止默认行为，才能接受 drop。
+3. **提交数组移动**：从原位置移除元素，再插到目标位置，正确处理移除后索引变化。React 等状态管理场景创建新数组并更新状态；其余项保持相对顺序，而不是简单交换两项。
+4. **持久化与兼容**：向后端保存 ID 顺序或排序字段，失败时恢复或提示重试。触摸与键盘操作需要另外设计，不能假定鼠标拖放天然覆盖所有设备。
 
-**常见追问**：如何避免「1）直接交换 DOM 节点而不更新数据源，导致 React/Vue 状态与视图不一致」？ 「2）用 index 作为 key，拖拽后组件复用错位」在真实项目中应如何规避？
+已有拖拽库可负责手势和动画，但业务仍应负责数据更新、权限和保存结果。
+
+**常见追问**：为什么只修改 DOM 顺序，下一次框架渲染后可能恢复原状？
+
+**核验资料**：[MDN Drag and Drop API](https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API)
 
 ---
 
@@ -8534,7 +11761,16 @@ opacity 不是“给元素刷一层透明漆”，而是对元素及其所有后
 
 错误边界用于捕获 React 组件树渲染、生命周期和构造函数中的 JS 错误，防止整棵组件树崩溃，适合放在路由级、页面级或独立功能模块外层做兜底。
 
-错误边界（Error Boundary）是 React 16 引入的组件，本质是一个实现了 static getDerivedStateFromError 或 componentDidCatch 的类组件。它只能捕获其子组件树在渲染阶段、生命周期方法以及构造函数中抛出的错误，不能捕获事件处理、异步代码（setTimeout/Promise）、服务端渲染、错误边界自身抛出的错误。 通俗类比：错误边界像一栋楼里的“防火分区”。某个房间着火（子组件报错），防火门把火挡在局部，不让整栋楼塌掉；同时可以展示一个“该区域暂时不可用”的提示，而不是白屏。 典型业务场景： 1. 路由级/页面级兜底：每个路由页面外包一层错误边界，某个页面代码出错时只显示该页面的错误 UI，导航和其他页面仍可用。 2. 独立功能模块：如仪表盘中的某个图表、推荐位、评论区、广告位，单个模块崩溃不影响主内容。 3. 第三方/低可信组件：嵌入外部 SDK、富文本渲染、插件化组件时，隔离不可控错误。 4. 微前端或动态加载模块：子应用加载或渲染失败时，主应用可降级展示。 放在哪里比较好：优先放在“故障影响范围可控、且能提供有意义降级 UI”的边界上，例如路由出口外层、每个独立业务卡片/面板外层。不要在每个小组件上都包一层，否则错误处理碎片化、性能与维护成本上升；也不要只放一个根级错误边界，否则一个局部错误会导致整页降级。 实现示例： class ErrorBoundary extends React.Component { state = { hasError: false }; static getDerivedStateFromError(error) { return { hasError: true }; } componentDidCatch(error, info) { report(error, info.componentStack); } render() { return this.state.hasError ? <Fallback /> : this.props.children; } } 使用：<ErrorBoundary><Dashboard /></ErrorBoundary>。 注意：错误边界不能替代 try/catch 处理事件和异步错误，这些需要在业务代码里自行捕获后交给错误边界或全局上报。
+错误边界（Error Boundary）是 React 16 引入的组件，本质是一个实现了 static getDerivedStateFromError 或 componentDidCatch 的类组件。它只能捕获其子组件树在渲染阶段、生命周期方法以及构造函数中抛出的错误，不能捕获事件处理、异步代码（setTimeout/Promise）、服务端渲染、错误边界自身抛出的错误。
+
+通俗类比：错误边界像一栋楼里的“防火分区”。某个房间着火（子组件报错），防火门把火挡在局部，不让整栋楼塌掉；同时可以展示一个“该区域暂时不可用”的提示，而不是白屏。 典型业务场景：
+
+1. 路由级/页面级兜底：每个路由页面外包一层错误边界，某个页面代码出错时只显示该页面的错误 UI，导航和其他页面仍可用。
+2. 独立功能模块：如仪表盘中的某个图表、推荐位、评论区、广告位，单个模块崩溃不影响主内容。
+3. 第三方/低可信组件：嵌入外部 SDK、富文本渲染、插件化组件时，隔离不可控错误。
+4. 微前端或动态加载模块：子应用加载或渲染失败时，主应用可降级展示。 放在哪里比较好：优先放在“故障影响范围可控、且能提供有意义降级 UI”的边界上，例如路由出口外层、每个独立业务卡片/面板外层。不要在每个小组件上都包一层，否则错误处理碎片化、性能与维护成本上升；也不要只放一个根级错误边界，否则一个局部错误会导致整页降级。 实现示例： class ErrorBoundary extends React.Component { state = { hasError: false }; static getDerivedStateFromError(error) { return { hasError: true }; } componentDidCatch(error, info) { report(error, info.componentStack); } render() { return this.state.hasError ? <Fallback /> : this.props.children; } } 使用：<ErrorBoundary><Dashboard /></ErrorBoundary>。
+
+注意：错误边界不能替代 try/catch 处理事件和异步错误，这些需要在业务代码里自行捕获后交给错误边界或全局上报。
 
 **常见追问**：如何避免「误以为错误边界能捕获所有错误，包括事件处理、setTimeout、Promise、接口请求错误。」？ 「误以为函数组件可以直接当错误边界，实际上必须用类组件或第三方库封装。」在真实项目中应如何规避？
 
@@ -8556,7 +11792,19 @@ opacity 不是“给元素刷一层透明漆”，而是对元素及其所有后
 
 自定义 Hook 是把可复用状态逻辑抽成 useXxx 函数，常用如 useRequest/useLocalStorage/useDebounce/useToggle/usePagination 等，数量按项目复杂度而定，核心是逻辑复用而非 UI 复用。
 
-自定义 Hook 本质是一个以 use 开头、内部调用其他 Hook 的普通函数，它把组件里的状态逻辑（state + effect + 副作用）抽离出来，让多个组件共享同一套逻辑，但不共享状态实例——每次调用都会创建独立的状态。 为什么需要：React 官方推崇 Hooks 的初衷之一就是替代 HOC/render props 做逻辑复用。HOC 会造成 props 命名冲突和嵌套地狱，render props 会造成回调嵌套，而自定义 Hook 是纯函数组合，没有额外组件层级，类型推导也更好。 常用场景举例： 1) useRequest/useFetch：封装 loading、error、data、取消请求、竞态处理； 2) useLocalStorage：读写 localStorage 并同步 state； 3) useDebounce/useThrottle：防抖节流，常用于搜索框； 4) useToggle/useBoolean：布尔开关； 5) usePagination/useTable：分页与表格逻辑； 6) useEventListener/useIntersectionObserver：事件与观察器绑定； 7) usePrevious/useUpdateEffect：记录上一次值、跳过首次执行。 通俗类比：自定义 Hook 像把一段“做菜流程”写成菜谱，谁都能照着做，但每个人做出来的是各自锅里的一份菜，互不影响。 数量上：中小项目通常 5~15 个，中后台/复杂业务可能几十个。关键不是多，而是边界清晰、职责单一、可测试。
+自定义 Hook 本质是一个以 use 开头、内部调用其他 Hook 的普通函数，它把组件里的状态逻辑（state + effect + 副作用）抽离出来，让多个组件共享同一套逻辑，但不共享状态实例——每次调用都会创建独立的状态。 为什么需要：React 官方推崇 Hooks 的初衷之一就是替代 HOC/render props 做逻辑复用。
+
+HOC 会造成 props 命名冲突和嵌套地狱，render props 会造成回调嵌套，而自定义 Hook 是纯函数组合，没有额外组件层级，类型推导也更好。 常用场景举例：
+
+1) useRequest/useFetch：封装 loading、error、data、取消请求、竞态处理；
+2) useLocalStorage：读写 localStorage 并同步 state；
+3) useDebounce/useThrottle：防抖节流，常用于搜索框；
+4) useToggle/useBoolean：布尔开关；
+5) usePagination/useTable：分页与表格逻辑；
+6) useEventListener/useIntersectionObserver：事件与观察器绑定；
+7) usePrevious/useUpdateEffect：记录上一次值、跳过首次执行。
+
+通俗类比：自定义 Hook 像把一段“做菜流程”写成菜谱，谁都能照着做，但每个人做出来的是各自锅里的一份菜，互不影响。 数量上：中小项目通常 5~15 个，中后台/复杂业务可能几十个。关键不是多，而是边界清晰、职责单一、可测试。
 
 **常见追问**：如何避免「1) 以为自定义 Hook 能共享状态——它只共享逻辑，状态各自独立，要共享状态需 Context/状态库」？ 「2) 命名不以 use 开头，导致 Hook 规则失效」在真实项目中应如何规避？
 
@@ -8578,7 +11826,9 @@ opacity 不是“给元素刷一层透明漆”，而是对元素及其所有后
 
 Reducers 是纯函数，接收当前状态和 action，返回新状态，用于描述状态如何根据 action 变化。
 
-在 Redux 等状态管理库中，reducer 是一个形如 (state, action) => newState 的纯函数。它根据 action 的类型决定如何更新 state，且必须返回新的 state 对象（不可直接修改原 state）。当应用复杂时，通常按功能模块拆分多个 reducer，每个 reducer 独立管理 state 树的一部分，最后通过 combineReducers 合并成一个根 reducer。例如，一个 Todo 应用可以有 todosReducer 管理列表，filterReducer 管理过滤条件。每个 reducer 只关心自己那部分状态，action 会被广播到所有 reducer，但只有匹配的 reducer 会响应。这种设计遵循单一职责原则，便于维护和测试。
+在 Redux 等状态管理库中，reducer 是一个形如 (state, action) => newState 的纯函数。它根据 action 的类型决定如何更新 state，且必须返回新的 state 对象（不可直接修改原 state）。当应用复杂时，通常按功能模块拆分多个 reducer，每个 reducer 独立管理 state 树的一部分，最后通过 combineReducers 合并成一个根 reducer。
+
+例如，一个 Todo 应用可以有 todosReducer 管理列表，filterReducer 管理过滤条件。每个 reducer 只关心自己那部分状态，action 会被广播到所有 reducer，但只有匹配的 reducer 会响应。这种设计遵循单一职责原则，便于维护和测试。
 
 **常见追问**：如何避免「误以为 reducer 可以修改原 state（直接赋值），导致状态不可变被破坏。2. 在 reducer 中执行副作用操作（如 API 调用、路由跳转），这违反了纯函数原则，应使用中间件处理。3. 认为多个 reducer 会按顺序执行并相互影响，实际上它们独立处理同一 action，各自返回新 state 片段。4. 混淆 reducer 与 action creator 或 store 的概念。」？ 能否结合「Reducer 的纯函数特性要求无副作用、不修改参数、相同输入必得相同输出，这使状态变化可预测、可回溯（时间旅行调试）。2. combineReducers 的实现原理：它返回一个函数，该函数调用每个子 reducer，并将结果按 key 组合成新 state；如果所有子 reducer 返回的 state 与之前相同，则返回原 state 以优化性能。3. 在 Redux 源码中，dispatch 会调用根 reducer，并将新 state 保存，同时通知订阅者。4. 可以提及 reducer 的命名来源于 Array.prototype.reduce，因为其行为类似：将一系列 action 累积成最终 state。」进一步展开？
 
@@ -8600,7 +11850,16 @@ Reducers 是纯函数，接收当前状态和 action，返回新状态，用于�
 
 FormData 是一种用于构造 multipart/form-data 请求体的浏览器 API，其格式由 boundary 分隔的多个 part 组成，每个 part 包含 Content-Disposition 等头部和内容。
 
-FormData 是浏览器提供的接口，用于以键值对形式收集表单数据，并通过 XMLHttpRequest 或 fetch 发送。当使用 FormData 时，请求的 Content-Type 会自动设置为 multipart/form-data，并生成一个 boundary 字符串（如 ----WebKitFormBoundaryABC123）。请求体格式如下： --boundary\r\n Content-Disposition: form-data; name="username"\r\n \r\n 张三\r\n --boundary\r\n Content-Disposition: form-data; name="avatar"; filename="photo.jpg"\r\n Content-Type: image/jpeg\r\n \r\n <二进制数据>\r\n --boundary--\r\n 每个 part 以 --boundary 开始，以 \r\n 结束，最后以 --boundary-- 表示结束。普通字段只有 Content-Disposition，文件字段还会包含 filename 和 Content-Type。FormData 常用于文件上传和混合表单提交，因为它能同时发送文本和二进制数据，且无需手动设置 Content-Type。
+FormData 是浏览器提供的接口，用于以键值对形式收集表单数据，并通过 XMLHttpRequest 或 fetch 发送。当使用 FormData 时，请求的 Content-Type 会自动设置为 multipart/form-data，并生成一个 boundary 字符串（如 ----WebKitFormBoundaryABC123）。
+
+请求体格式如下：
+
+- --boundary\r\n Content-Disposition: form-data;
+- name="username"\r\n \r\n 张三\r\n --boundary\r\n Content-Disposition: form-data;
+- name="avatar";
+- filename="photo.jpg"\r\n Content-Type: image/jpeg\r\n \r\n <二进制数据>\r\n --boundary--\r\n 每个 part 以 --boundary 开始，以 \r\n 结束，最后以 --boundary-- 表示结束。
+
+普通字段只有 Content-Disposition，文件字段还会包含 filename 和 Content-Type。FormData 常用于文件上传和混合表单提交，因为它能同时发送文本和二进制数据，且无需手动设置 Content-Type。
 
 **常见追问**：如何避免「误以为 FormData 的 Content-Type 是 application/x-www-form-urlencoded。」？ 「手动设置 Content-Type 为 multipart/form-data 但未指定 boundary，导致服务端无法解析。」在真实项目中应如何规避？
 
@@ -8622,7 +11881,26 @@ Promise 是一个状态机，内部状态只有三种：pending（待定）、fu
 
 Promise 的 then 里区分状态，是为了让回调只在 Promise 真正敲定（fulfilled 或 rejected）后执行，并保证同一个 Promise 的后续 then 能按状态走成功或失败分支，从而把异步结果和错误处理解耦。
 
-Promise 是一个状态机，内部状态只有三种：pending（待定）、fulfilled（成功）、rejected（失败）。pending 时 then 注册的回调不会执行，只是被挂起；一旦状态变成 fulfilled 或 rejected，就会分别触发 onFulfilled 或 onRejected。 为什么要区分？因为异步操作的结果天然有两种：正常返回值和抛出的错误。如果不区分，调用方就没法知道这次异步到底成功了还是失败了，只能自己判断返回值，容易把错误当数据。区分状态后，then 的第二个参数或 catch 就能专门处理失败，形成“成功走一条路、失败走另一条路”的分支。 通俗类比：Promise 像外卖订单。下单后是 pending；骑手送到是 fulfilled，你可以开心吃饭；商家做不了/骑手摔了是 rejected，你就得走退款或投诉流程。then 里的两个回调就像“收到餐怎么办”和“出问题怎么办”，状态决定了走哪个。 另外，状态一旦从 pending 变成 fulfilled 或 rejected，就不可逆，后续再调用 resolve/reject 都会被忽略。这保证了 then 链上的回调最多执行一次，且执行时机确定。 例子： const p = new Promise((resolve, reject) => { setTimeout(() => resolve(1), 1000); }); p.then(v => console.log('成功', v), e => console.log('失败', e)); 这里 1 秒后状态变 fulfilled，走第一个回调；如果改成 reject(new Error('x'))，就走第二个。 再比如 fetch： fetch('/api').then(res => res.json()).then(data => ...).catch(err => ...) fetch 只在网络层失败时 reject，HTTP 404 仍是 fulfilled，所以需要自己判断 res.ok。这也说明状态区分的是 Promise 本身的敲定，不是业务成功失败。
+Promise 是一个状态机，内部状态只有三种：pending（待定）、fulfilled（成功）、rejected（失败）。pending 时 then 注册的回调不会执行，只是被挂起；一旦状态变成 fulfilled 或 rejected，就会分别触发 onFulfilled 或 onRejected。
+
+为什么要区分？因为异步操作的结果天然有两种：正常返回值和抛出的错误。如果不区分，调用方就没法知道这次异步到底成功了还是失败了，只能自己判断返回值，容易把错误当数据。区分状态后，then 的第二个参数或 catch 就能专门处理失败，形成“成功走一条路、失败走另一条路”的分支。
+
+通俗类比：Promise 像外卖订单。
+
+- 下单后是 pending；
+- 骑手送到是 fulfilled，你可以开心吃饭；
+- 商家做不了/骑手摔了是 rejected，你就得走退款或投诉流程。
+
+then 里的两个回调就像“收到餐怎么办”和“出问题怎么办”，状态决定了走哪个。 另外，状态一旦从 pending 变成 fulfilled 或 rejected，就不可逆，后续再调用 resolve/reject 都会被忽略。这保证了 then 链上的回调最多执行一次，且执行时机确定。
+
+- 例子： const p = new Promise((resolve, reject) => { setTimeout(() => resolve(1), 1000); });
+- p.then(v => console.log('成功', v), e => console.log('失败', e));
+- 这里 1 秒后状态变 fulfilled，走第一个回调；
+- 如果改成 reject(new Error('x'))，就走第二个。
+
+再比如 fetch： fetch('/api').then(res => res.json()).then(data => ...).catch(err => ...) fetch 只在网络层失败时 reject，HTTP 404 仍是 fulfilled，所以需要自己判断 res.ok。
+
+这也说明状态区分的是 Promise 本身的敲定，不是业务成功失败。
 
 **常见追问**：如何避免「误以为 then 里的回调会立刻执行：其实 pending 时只是注册，状态敲定后才异步执行。」？ 「误以为 fetch 的 HTTP 404/500 会走 reject：不会，只有网络错误才 reject，业务错误要自己判断。」在真实项目中应如何规避？
 
@@ -8644,7 +11922,23 @@ Promise 是一个状态机，内部状态只有三种：pending（待定）、fu
 
 不可以。Promise 的状态机是规范强制的，即使 executor 里全是同步代码，也必须先进入 pending，再通过 resolve/reject 同步迁移到 fulfilled/rejected；只是这个 pending 阶段在同一个微任务 tick 内就结束了，外部几乎观察不到。
 
-Promise 的本质是一个状态机：它只有三种状态 pending、fulfilled、rejected，且只能从 pending 单向迁移到 fulfilled 或 rejected，迁移后不可逆。这个状态机不是由 executor 里有没有异步代码决定的，而是由 Promise 规范（ECMAScript 的 Promise 抽象操作、Promises/A+）决定的。 new Promise(executor) 的执行流程大致是： 1. 创建一个 Promise 实例，初始状态为 pending，内部维护 [[PromiseState]]、[[PromiseResult]] 以及用于存放 then/catch 回调的队列。 2. 同步调用 executor(resolve, reject)。 3. 如果 executor 里全是同步代码，比如 new Promise(resolve => resolve(1))，那么 resolve(1) 会在 executor 执行期间被同步调用。 4. resolve 内部会执行 FulfillPromise：把 [[PromiseState]] 从 pending 改成 fulfilled，把 [[PromiseResult]] 设为 1，然后触发 then/catch 回调的调度（注意是调度到微任务，不是立刻执行）。 5. executor 返回后，new Promise 返回这个已经 fulfilled 的实例。 所以从外部看，new Promise(...) 返回时 Promise 已经是 fulfilled 了，pending 阶段确实“短到看不见”。但内部状态机仍然完整地经历了 pending -> fulfilled，只是这个迁移发生在同一个同步执行栈里。 为什么不能省掉 pending？因为： - 规范要求状态只能从 pending 迁移，如果初始不是 pending，resolve/reject 就没有合法的迁移起点，多次调用 resolve/reject 的“只认第一次”语义也无法实现。 - then/catch 的回调必须异步执行（微任务），这个“异步”依赖的是状态迁移后的调度机制，而不是 executor 里有没有异步代码。即使 Promise 已经 fulfilled，then 回调也不会同步执行，而是被放入微任务队列。 - 如果省掉 pending，Promise 就退化成“同步容器”，无法统一处理同步和异步两种 executor，也无法和 async/await、Promise.all 等组合子正确协作。 通俗类比：Promise 像一张“取餐凭证”。下单时凭证状态是“等待中”（pending），厨房做好后盖一个“已完成”章（fulfilled）。即使厨房是瞬间做好的，凭证也一定经历了“等待中 -> 已完成”这个盖章过程；你不能因为做得快就说这张凭证不需要“等待中”这个状态。而且顾客拿到凭证后，即使餐已经好了，也不会在柜台前立刻被塞饭，而是等叫号（微任务）才去取。
+Promise 的本质是一个状态机：它只有三种状态 pending、fulfilled、rejected，且只能从 pending 单向迁移到 fulfilled 或 rejected，迁移后不可逆。这个状态机不是由 executor 里有没有异步代码决定的，而是由 Promise 规范（ECMAScript 的 Promise 抽象操作、Promises/A+）决定的。
+
+new Promise(executor) 的执行流程大致是：
+
+1. 创建一个 Promise 实例，初始状态为 pending，内部维护 [[PromiseState]]、[[PromiseResult]] 以及用于存放 then/catch 回调的队列。
+2. 同步调用 executor(resolve, reject)。
+3. 如果 executor 里全是同步代码，比如 new Promise(resolve => resolve(1))，那么 resolve(1) 会在 executor 执行期间被同步调用。
+4. resolve 内部会执行 FulfillPromise：把 [[PromiseState]] 从 pending 改成 fulfilled，把 [[PromiseResult]] 设为 1，然后触发 then/catch 回调的调度（注意是调度到微任务，不是立刻执行）。
+5. executor 返回后，new Promise 返回这个已经 fulfilled 的实例。
+
+所以从外部看，new Promise(...) 返回时 Promise 已经是 fulfilled 了，pending 阶段确实“短到看不见”。但内部状态机仍然完整地经历了 pending -> fulfilled，只是这个迁移发生在同一个同步执行栈里。 为什么不能省掉 pending？
+
+因为： - 规范要求状态只能从 pending 迁移，如果初始不是 pending，resolve/reject 就没有合法的迁移起点，多次调用 resolve/reject 的“只认第一次”语义也无法实现。 - then/catch 的回调必须异步执行（微任务），这个“异步”依赖的是状态迁移后的调度机制，而不是 executor 里有没有异步代码。
+
+即使 Promise 已经 fulfilled，then 回调也不会同步执行，而是被放入微任务队列。 - 如果省掉 pending，Promise 就退化成“同步容器”，无法统一处理同步和异步两种 executor，也无法和 async/await、Promise.all 等组合子正确协作。
+
+通俗类比：Promise 像一张“取餐凭证”。下单时凭证状态是“等待中”（pending），厨房做好后盖一个“已完成”章（fulfilled）。即使厨房是瞬间做好的，凭证也一定经历了“等待中 -> 已完成”这个盖章过程；你不能因为做得快就说这张凭证不需要“等待中”这个状态。而且顾客拿到凭证后，即使餐已经好了，也不会在柜台前立刻被塞饭，而是等叫号（微任务）才去取。
 
 **常见追问**：如何避免「误以为“executor 里没有异步代码，Promise 就不需要 pending”，把 Promise 的状态机和 executor 的同步/异步混为一谈。」？ 「误以为 new Promise(resolve => resolve(1)).then(...) 的回调会同步执行；实际上 then 回调永远是微任务，不会同步执行。」在真实项目中应如何规避？
 
@@ -8666,7 +11960,20 @@ Promise 的本质是一个状态机：它只有三种状态 pending、fulfilled�
 
 rem 是相对于根元素 html 的 font-size 的长度单位，根据设计稿尺寸计算 rem 的核心是：先确定一个基准（通常把设计稿宽度等分为若干份，1 份 = 1rem），再用「元素设计稿像素值 ÷ 基准像素值」得到 rem 值。
 
-rem（root em）是 CSS 中相对于根元素 <html> 的 font-size 计算的长度单位。例如 html { font-size: 16px } 时，1rem = 16px，2rem = 32px。 根据设计稿计算 rem 的通用流程： 1. 拿到设计稿宽度，例如 750px（常见移动端 2 倍图）。 2. 约定把屏幕宽度分成 N 份，每份作为 1rem 的基准。移动端常用 N=10 或 N=75。若 N=10，则设计稿下 1rem = 750 / 10 = 75px。 3. 把设计稿上某元素的像素尺寸换算成 rem：rem 值 = 元素设计稿 px / 基准 px。例如设计稿上一个按钮宽 150px，则 150 / 75 = 2rem。 4. 在页面运行时，根据实际视口宽度动态设置 html 的 font-size，使 1rem 等于「当前视口宽度 / N」。例如 JS：document.documentElement.style.fontSize = document.documentElement.clientWidth / 10 + 'px'。这样在 375px 宽的手机上，1rem = 37.5px，按钮渲染为 2rem = 75px，正好是设计稿的一半，实现等比缩放。 通俗类比：把设计稿想象成一张固定宽度的地图，rem 就是地图上的「比例尺格子」。设计稿宽 750px 分成 10 格，每格 75px；到了真实屏幕上，屏幕多宽就重新把屏幕分成 10 格，每格就是 1rem。元素占几格（几 rem）不变，于是整体等比缩放。 也可以用纯 CSS 方案：html { font-size: calc(100vw / 10); }，避免 JS 依赖；或用媒体查询在断点处改 html font-size。 适用场景：移动端 H5 等比适配、需要按设计稿 1:1 还原且屏幕宽度差异大的页面。
+rem（root em）是 CSS 中相对于根元素 <html> 的 font-size 计算的长度单位。
+
+例如 html { font-size: 16px } 时，1rem = 16px，2rem = 32px。 根据设计稿计算 rem 的通用流程：
+
+1. 拿到设计稿宽度，例如 750px（常见移动端 2 倍图）。
+2. 约定把屏幕宽度分成 N 份，每份作为 1rem 的基准。移动端常用 N=10 或 N=75。若 N=10，则设计稿下 1rem = 750 / 10 = 75px。
+3. 把设计稿上某元素的像素尺寸换算成 rem：rem 值 = 元素设计稿 px / 基准 px。例如设计稿上一个按钮宽 150px，则 150 / 75 = 2rem。
+4. 在页面运行时，根据实际视口宽度动态设置 html 的 font-size，使 1rem 等于「当前视口宽度 / N」。
+
+例如 JS：document.documentElement.style.fontSize = document.documentElement.clientWidth / 10 + 'px'。这样在 375px 宽的手机上，1rem = 37.5px，按钮渲染为 2rem = 75px，正好是设计稿的一半，实现等比缩放。
+
+通俗类比：把设计稿想象成一张固定宽度的地图，rem 就是地图上的「比例尺格子」。设计稿宽 750px 分成 10 格，每格 75px；到了真实屏幕上，屏幕多宽就重新把屏幕分成 10 格，每格就是 1rem。元素占几格（几 rem）不变，于是整体等比缩放。 也可以用纯 CSS 方案：html { font-size: calc(100vw / 10); }，避免 JS 依赖；或用媒体查询在断点处改 html font-size。
+
+适用场景：移动端 H5 等比适配、需要按设计稿 1:1 还原且屏幕宽度差异大的页面。
 
 **常见追问**：如何避免「误以为 rem 相对父元素 font-size——那是 em；rem 只相对 html。」？ 「忘记设置根元素 font-size，导致 1rem 取浏览器默认 16px，换算全错。」在真实项目中应如何规避？
 
@@ -8688,7 +11995,18 @@ rem（root em）是 CSS 中相对于根元素 <html> 的 font-size 计算的长�
 
 服务端渲染（SSR）是在服务器上把页面渲染成完整 HTML 返回给浏览器，浏览器先展示内容再 hydration 接管交互，核心是让首屏更快、更利于 SEO。
 
-服务端渲染（Server-Side Rendering，SSR）指的是：用户请求页面时，由服务端执行页面渲染逻辑，生成包含真实内容的 HTML 字符串，直接返回给浏览器。浏览器收到后可以立刻解析并展示首屏内容，同时下载 JS，等 JS 加载并执行后，再通过 hydration（注水/激活）把服务端生成的静态 DOM 与前端框架的虚拟 DOM 关联起来，绑定事件、恢复状态，使页面变成可交互的 SPA。 通俗类比：传统 SPA 像“先给你一个空房子，再让装修队现场装修”，用户先看到白屏；SSR 像“装修好的房子直接交钥匙”，用户马上能住，之后工人再进来把水电和智能设备接通。 实现流程通常分几步： 1. 服务端收到 HTTP 请求，路由匹配到对应页面组件。 2. 服务端执行组件渲染逻辑，可能先请求数据（如调用 API、查数据库），把数据注入组件。 3. 使用框架的服务端渲染 API 把组件树渲染成 HTML 字符串，例如 React 的 renderToString/renderToPipeableStream，Vue 的 renderToString。 4. 把 HTML 字符串、页面初始数据（如 window.__INITIAL_STATE__）和客户端 bundle 的 script 标签拼成完整响应返回。 5. 浏览器解析 HTML，立即展示首屏；同时下载并执行 JS。 6. 客户端框架用同一份组件树和初始数据执行 hydration，复用服务端 DOM，绑定事件，接管后续路由和交互。 关键点：服务端和客户端必须渲染出结构一致的 DOM，否则会出现 hydration mismatch。数据获取通常要在服务端完成，并序列化给客户端，避免客户端二次请求导致闪烁。 适用场景：首屏性能要求高、SEO 要求高、内容型页面（电商、新闻、官网、营销页）。不适用场景：后台管理系统、强交互且不关心 SEO 的应用，SSR 会增加服务器成本和复杂度。 现代方案还有 SSG（构建时生成静态 HTML）、ISR（增量静态再生）、流式 SSR（边渲染边返回，如 React 18 的 renderToPipeableStream、Vue 的流式渲染），以及 RSC（React Server Components）等，本质都是在“首屏速度、SEO、交互性、服务器成本”之间做权衡。
+服务端渲染（Server-Side Rendering，SSR）指的是：用户请求页面时，由服务端执行页面渲染逻辑，生成包含真实内容的 HTML 字符串，直接返回给浏览器。浏览器收到后可以立刻解析并展示首屏内容，同时下载 JS，等 JS 加载并执行后，再通过 hydration（注水/激活）把服务端生成的静态 DOM 与前端框架的虚拟 DOM 关联起来，绑定事件、恢复状态，使页面变成可交互的 SPA。
+
+通俗类比：传统 SPA 像“先给你一个空房子，再让装修队现场装修”，用户先看到白屏；SSR 像“装修好的房子直接交钥匙”，用户马上能住，之后工人再进来把水电和智能设备接通。 实现流程通常分几步：
+
+1. 服务端收到 HTTP 请求，路由匹配到对应页面组件。
+2. 服务端执行组件渲染逻辑，可能先请求数据（如调用 API、查数据库），把数据注入组件。
+3. 使用框架的服务端渲染 API 把组件树渲染成 HTML 字符串，例如 React 的 renderToString/renderToPipeableStream，Vue 的 renderToString。
+4. 把 HTML 字符串、页面初始数据（如 window.__INITIAL_STATE__）和客户端 bundle 的 script 标签拼成完整响应返回。
+5. 浏览器解析 HTML，立即展示首屏；同时下载并执行 JS。
+6. 客户端框架用同一份组件树和初始数据执行 hydration，复用服务端 DOM，绑定事件，接管后续路由和交互。 关键点：服务端和客户端必须渲染出结构一致的 DOM，否则会出现 hydration mismatch。数据获取通常要在服务端完成，并序列化给客户端，避免客户端二次请求导致闪烁。
+
+适用场景：首屏性能要求高、SEO 要求高、内容型页面（电商、新闻、官网、营销页）。不适用场景：后台管理系统、强交互且不关心 SEO 的应用，SSR 会增加服务器成本和复杂度。 现代方案还有 SSG（构建时生成静态 HTML）、ISR（增量静态再生）、流式 SSR（边渲染边返回，如 React 18 的 renderToPipeableStream、Vue 的流式渲染），以及 RSC（React Server Components）等，本质都是在“首屏速度、SEO、交互性、服务器成本”之间做权衡。
 
 **常见追问**：如何避免「把 SSR 等同于“服务端返回静态 HTML 模板”，忽略 hydration 和同构，导致无法解释为什么首屏后还能交互。」？ 「认为 SSR 后就不需要客户端 JS，或者认为 SSR 能完全替代 SPA。」在真实项目中应如何规避？
 
@@ -8710,7 +12028,16 @@ rem（root em）是 CSS 中相对于根元素 <html> 的 font-size 计算的长�
 
 V8 引擎主要用 C++ 编写，并大量使用自研的 Torque 语言来生成高效的运行时代码；选择 C++ 是为了兼顾性能、内存控制、跨平台和与宿主环境（如 Chrome、Node.js）的集成。
 
-V8 是 Google 为 Chrome 和 Node.js 开发的高性能 JavaScript/WebAssembly 引擎。它的主体实现语言是 C++，原因如下： 1. 性能与底层控制：JS 引擎需要做即时编译（JIT）、垃圾回收（GC）、内存管理、机器码生成等，这些都需要直接操作内存、CPU 寄存器、系统调用。C++ 能提供接近硬件的性能，同时有零成本抽象、手动内存管理、内联汇编等能力。 2. 跨平台：V8 要运行在 Windows、macOS、Linux、Android、iOS 等多种平台和 CPU 架构（x64、ARM、ARM64、RISC-V 等）。C++ 编译器生态成熟，可以针对不同平台生成原生代码。 3. 与宿主集成：Chrome 本身是 C++ 写的，Node.js 也是 C++ 写的。V8 用 C++ 实现，可以方便地暴露 C++ API（如 v8.h），让宿主嵌入引擎、绑定原生对象和函数。 4. 自举与优化：早期 V8 的 JS 内置函数（如 Array.prototype.map）直接用 C++ 写，但这样启动慢、优化难。后来 V8 团队开发了 Torque 语言——一种专门用来写 V8 内置函数的 DSL，它会被编译成 C++ 和汇编。Torque 让内置函数既有高级语言的表达力，又能生成高效的机器码，同时减少手写汇编的维护成本。 通俗类比：V8 就像一辆赛车的发动机。C++ 是制造发动机的钢材和精密机床——能承受高温高压、精确控制每个零件；Torque 则是专门为发动机设计的自动化装配线，让工人用更安全、更高效的方式生产零件，而不是每次都手工打磨。 适用场景：任何需要高性能、跨平台、可嵌入的 JS 运行时都适合这种架构。V8 的设计也影响了其他引擎，如 JavaScriptCore、SpiderMonkey 也主要用 C++ 实现。
+V8 是 Google 为 Chrome 和 Node.js 开发的高性能 JavaScript/WebAssembly 引擎。它的主体实现语言是 C++，原因如下：
+
+1. 性能与底层控制：JS 引擎需要做即时编译（JIT）、垃圾回收（GC）、内存管理、机器码生成等，这些都需要直接操作内存、CPU 寄存器、系统调用。C++ 能提供接近硬件的性能，同时有零成本抽象、手动内存管理、内联汇编等能力。
+2. 跨平台：V8 要运行在 Windows、macOS、Linux、Android、iOS 等多种平台和 CPU 架构（x64、ARM、ARM64、RISC-V 等）。C++ 编译器生态成熟，可以针对不同平台生成原生代码。
+3. 与宿主集成：Chrome 本身是 C++ 写的，Node.js 也是 C++ 写的。V8 用 C++ 实现，可以方便地暴露 C++ API（如 v8.h），让宿主嵌入引擎、绑定原生对象和函数。
+4. 自举与优化：早期 V8 的 JS 内置函数（如 Array.prototype.map）直接用 C++ 写，但这样启动慢、优化难。后来 V8 团队开发了 Torque 语言——一种专门用来写 V8 内置函数的 DSL，它会被编译成 C++ 和汇编。Torque 让内置函数既有高级语言的表达力，又能生成高效的机器码，同时减少手写汇编的维护成本。
+
+通俗类比：V8 就像一辆赛车的发动机。C++ 是制造发动机的钢材和精密机床——能承受高温高压、精确控制每个零件；Torque 则是专门为发动机设计的自动化装配线，让工人用更安全、更高效的方式生产零件，而不是每次都手工打磨。
+
+适用场景：任何需要高性能、跨平台、可嵌入的 JS 运行时都适合这种架构。V8 的设计也影响了其他引擎，如 JavaScriptCore、SpiderMonkey 也主要用 C++ 实现。
 
 **常见追问**：如何避免「误以为 V8 是用 JavaScript 写的（虽然部分内置函数用 JS 写，但核心是 C++/Torque）。」？ 「误以为 V8 是解释器，不知道它有 JIT 编译。」在真实项目中应如何规避？
 
@@ -8732,7 +12059,17 @@ V8 是 Google 为 Chrome 和 Node.js 开发的高性能 JavaScript/WebAssembly �
 
 每次调用外部函数都会创建一个新的词法环境，因此调用 10 次会产生 10 个相互独立的闭包，每个闭包捕获的是该次调用的那份变量。
 
-闭包的本质是「函数 + 它定义时所处的词法环境（Lexical Environment）」。在 JS 中，每次函数被调用时，都会为该次调用创建一个新的执行上下文和新的词法环境（变量对象），函数内部声明的局部变量就存在这个环境里。 当外部函数内部返回一个内部函数，且内部函数引用了外部函数的局部变量时，这个内部函数会通过 [[Environment]]（或 [[Scope]]）内部槽持有对外部函数那次调用词法环境的引用。只要返回出去的内部函数还活着，这个环境就不会被回收，于是形成闭包。 关键点：闭包是「按调用次数」产生的，而不是「按函数定义」产生的。函数定义只有一份，但每次调用都会生成一份新的环境，所以： ```js function outer() { let count = 0; // 每次调用都新建一个 count return function inner() { count++; return count; }; } const a = outer(); const b = outer(); a(); a(); // 2 b(); // 1 —— 互不影响 ``` 调用 outer() 10 次，就得到 10 个 inner 函数，各自绑定 10 份不同的 count，即 10 个闭包。 类比：外部函数像一台「自动售货机」，每次投币（调用）都会吐出一瓶带独立编号的饮料（内部函数）和它专属的储物格（词法环境）。投 10 次币，就有 10 瓶饮料、10 个储物格，彼此独立。 适用场景：需要「私有状态」时非常有用，比如计数器、模块模式、防抖/节流、柯里化、缓存（memoize）等。每个闭包实例都持有自己的一份状态，天然隔离。 注意：如果内部函数没有引用外部函数的任何变量，严格来说不构成闭包（或说没有捕获任何东西），此时 10 次调用不会产生 10 份被保留的环境。所以「是否引用外部变量」是判断闭包是否真正产生的关键。
+闭包的本质是「函数 + 它定义时所处的词法环境（Lexical Environment）」。在 JS 中，每次函数被调用时，都会为该次调用创建一个新的执行上下文和新的词法环境（变量对象），函数内部声明的局部变量就存在这个环境里。 当外部函数内部返回一个内部函数，且内部函数引用了外部函数的局部变量时，这个内部函数会通过 [[Environment]]（或 [[Scope]]）内部槽持有对外部函数那次调用词法环境的引用。
+
+只要返回出去的内部函数还活着，这个环境就不会被回收，于是形成闭包。 关键点：闭包是「按调用次数」产生的，而不是「按函数定义」产生的。函数定义只有一份，但每次调用都会生成一份新的环境，所以： ```js function outer() { let count = 0; // 每次调用都新建一个 count return function inner() { count++; return count; }; } const a = outer(); const b = outer(); a(); a(); // 2 b(); // 1 —— 互不影响 ``` 调用 outer() 10 次，就得到 10 个 inner 函数，各自绑定 10 份不同的 count，即 10 个闭包。
+
+类比：外部函数像一台「自动售货机」，每次投币（调用）都会吐出一瓶带独立编号的饮料（内部函数）和它专属的储物格（词法环境）。投 10 次币，就有 10 瓶饮料、10 个储物格，彼此独立。
+
+适用场景：需要「私有状态」时非常有用，比如计数器、模块模式、防抖/节流、柯里化、缓存（memoize）等。每个闭包实例都持有自己的一份状态，天然隔离。
+
+注意：如果内部函数没有引用外部函数的任何变量，严格来说不构成闭包（或说没有捕获任何东西），此时 10 次调用不会产生 10 份被保留的环境。
+
+所以「是否引用外部变量」是判断闭包是否真正产生的关键。
 
 **常见追问**：如何避免「误答「只有 1 个闭包」：把闭包理解成函数定义层面的东西，忽略了每次调用都会新建词法环境。」？ 「误答「10 个闭包共享同一份变量」：混淆了闭包实例与变量作用域，实际上每个闭包持有独立的环境副本。」在真实项目中应如何规避？
 
@@ -8754,7 +12091,14 @@ useLayoutEffect：需要“先测量、后修改”以避免闪烁。例如根�
 
 useEffect 在浏览器绘制后异步执行，不阻塞渲染；useLayoutEffect 在 DOM 更新后、浏览器绘制前同步执行，会阻塞绘制，常用于需要读取布局并同步修改 DOM 的场景。
 
-两者都是 React 的副作用 Hook，核心区别在“执行时机”和“是否阻塞渲染”。 1) 执行时机：React 完成 DOM 更新后，会先执行 useLayoutEffect 的回调（同步、在 commit 阶段），然后浏览器进行绘制（paint），最后才在下一个宏任务/微任务时机执行 useEffect 的回调（异步、在 passive effect 阶段）。 2) 是否阻塞：useLayoutEffect 是同步执行的，如果里面做耗时计算或大量 DOM 操作，会阻塞浏览器绘制，导致页面卡顿、白屏时间变长；useEffect 不阻塞绘制，用户能更快看到界面。 3) 适用场景： - useLayoutEffect：需要“先测量、后修改”以避免闪烁。例如根据元素尺寸动态调整位置/样式、tooltip 定位、滚动位置恢复、在渲染前同步更新 DOM。 - useEffect：绝大多数副作用，如数据请求、事件订阅、日志上报、定时器、与外部系统同步等，不需要阻塞绘制。 通俗类比：useLayoutEffect 像“装修完立刻检查并调整家具位置，确认没问题才让客人进门”；useEffect 像“客人已经进门参观，你再去慢慢整理和补充”。 4) 服务端渲染（SSR）：useLayoutEffect 在服务端无法执行，React 会发出警告（useLayoutEffect does nothing on the server）。如果组件可能在 SSR 中渲染，应改用 useEffect，或使用 useIsomorphicLayoutEffect 做环境判断。 5) 执行顺序示例： ```jsx function App() { const ref = useRef(null); useLayoutEffect(() => { console.log('layout effect'); ref.current.style.color = 'red'; }, []); useEffect(() => { console.log('effect'); }, []); return <div ref={ref}>hello</div>; } ``` 控制台先输出 'layout effect'，再输出 'effect'；且颜色修改在浏览器绘制前完成，用户不会看到颜色闪烁。
+两者都是 React 的副作用 Hook，核心区别在“执行时机”和“是否阻塞渲染”。
+
+1) 执行时机：React 完成 DOM 更新后，会先执行 useLayoutEffect 的回调（同步、在 commit 阶段），然后浏览器进行绘制（paint），最后才在下一个宏任务/微任务时机执行 useEffect 的回调（异步、在 passive effect 阶段）。
+2) 是否阻塞：useLayoutEffect 是同步执行的，如果里面做耗时计算或大量 DOM 操作，会阻塞浏览器绘制，导致页面卡顿、白屏时间变长；useEffect 不阻塞绘制，用户能更快看到界面。
+3) 适用场景：
+
+- useLayoutEffect：需要“先测量、后修改”以避免闪烁。例如根据元素尺寸动态调整位置/样式、tooltip 定位、滚动位置恢复、在渲染前同步更新 DOM。
+- useEffect：绝大多数副作用，如数据请求、事件订阅、日志上报、定时器、与外部系统同步等，不需要阻塞绘制。 通俗类比：useLayoutEffect 像“装修完立刻检查并调整家具位置，确认没问题才让客人进门”；useEffect 像“客人已经进门参观，你再去慢慢整理和补充”。 4) 服务端渲染（SSR）：useLayoutEffect 在服务端无法执行，React 会发出警告（useLayoutEffect does nothing on the server）。如果组件可能在 SSR 中渲染，应改用 useEffect，或使用 useIsomorphicLayoutEffect 做环境判断。 5) 执行顺序示例： ```jsx function App() { const ref = useRef(null); useLayoutEffect(() => { console.log('layout effect'); ref.current.style.color = 'red'; }, []); useEffect(() => { console.log('effect'); }, []); return <div ref={ref}>hello</div>; } ``` 控制台先输出 'layout effect'，再输出 'effect'；且颜色修改在浏览器绘制前完成，用户不会看到颜色闪烁。
 
 **常见追问**：如何避免「1) 认为两者只是“执行顺序不同”，忽略 useLayoutEffect 会阻塞浏览器绘制，可能造成性能问题」？ 「2) 在 useLayoutEffect 中做数据请求或大量计算，导致首屏卡顿」在真实项目中应如何规避？
 
@@ -8776,7 +12120,41 @@ useEffect 在浏览器绘制后异步执行，不阻塞渲染；useLayoutEffect 
 
 useMemo 缓存计算结果，useCallback 缓存函数引用，二者都是性能优化手段，本质是依赖不变时复用上一次的值，不应作为语义保证使用。
 
-一、概念 useMemo(fn, deps)：在渲染期间执行 fn，把返回值缓存起来；只有 deps 中任一依赖发生引用/值变化时才重新计算，否则返回上次缓存的结果。 useCallback(fn, deps)：把传入的函数本身缓存起来，deps 不变时返回同一个函数引用，deps 变化时返回新函数。 二、关系与区别 useCallback(fn, deps) 在语义上等价于 useMemo(() => fn, deps)。区别在于缓存的对象：useMemo 缓存的是“计算结果”（任意值），useCallback 缓存的是“函数引用”。因此 useCallback 是 useMemo 的一个特例，只是更语义化、可读性更好。 三、为什么需要它们 React 每次渲染都会重新执行函数组件，函数体内定义的变量、函数、对象都会重新创建，引用发生变化。这会导致： 1) 子组件被 React.memo 包裹时，因为 props 引用变化而失效，重新渲染； 2) 作为 useEffect/useMemo/useCallback 的依赖时，触发不必要的副作用或重算； 3) 作为 Context value 时，导致所有消费者重渲染。 useMemo/useCallback 通过“依赖不变则复用旧引用”来解决这些问题。 四、通俗类比 把组件渲染想象成每次都要重新写一份购物清单：useMemo 是“这道菜的成本算过一次就记下来，食材没变就不重算”；useCallback 是“这个下单电话的号码印好一张卡片，号码没变就一直用同一张卡”，别人（子组件）比对卡片是否同一张就知道要不要重新处理。 五、适用场景 useMemo 适合： - 计算开销大的派生数据（大数组过滤/排序、复杂统计、递归计算）； - 需要保持引用稳定的对象/数组，作为 memo 子组件的 props 或其它 hook 的依赖； - 构造 Context 的 value，避免消费者全量重渲染。 useCallback 适合： - 传给 React.memo 子组件的回调，避免子组件无谓重渲染； - 作为 useEffect 等 hook 的依赖，避免因函数引用变化导致副作用反复执行； - 自定义 hook 对外暴露的稳定函数。 六、使用原则 不要无脑加：缓存本身有内存与比较依赖的开销，简单计算或没有引用稳定性需求时反而更慢、更难读。应先定位性能瓶颈（React DevTools Profiler），再针对性优化。同时要保证依赖数组完整，否则会读到过期闭包值。
+**一、概念**
+
+useMemo(fn, deps)：在渲染期间执行 fn，把返回值缓存起来；只有 deps 中任一依赖发生引用/值变化时才重新计算，否则返回上次缓存的结果。 useCallback(fn, deps)：把传入的函数本身缓存起来，deps 不变时返回同一个函数引用，deps 变化时返回新函数。
+
+**二、关系与区别**
+
+useCallback(fn, deps) 在语义上等价于 useMemo(() => fn, deps)。区别在于缓存的对象：useMemo 缓存的是“计算结果”（任意值），useCallback 缓存的是“函数引用”。
+
+因此 useCallback 是 useMemo 的一个特例，只是更语义化、可读性更好。
+
+**三、为什么需要它们**
+
+React 每次渲染都会重新执行函数组件，函数体内定义的变量、函数、对象都会重新创建，引用发生变化。这会导致：
+
+1) 子组件被 React.memo 包裹时，因为 props 引用变化而失效，重新渲染；
+2) 作为 useEffect/useMemo/useCallback 的依赖时，触发不必要的副作用或重算；
+3) 作为 Context value 时，导致所有消费者重渲染。 useMemo/useCallback 通过“依赖不变则复用旧引用”来解决这些问题。
+
+**四、通俗类比**
+
+把组件渲染想象成每次都要重新写一份购物清单：useMemo 是“这道菜的成本算过一次就记下来，食材没变就不重算”；useCallback 是“这个下单电话的号码印好一张卡片，号码没变就一直用同一张卡”，别人（子组件）比对卡片是否同一张就知道要不要重新处理。
+
+**五、适用场景**
+
+- useMemo 适合： - 计算开销大的派生数据（大数组过滤/排序、复杂统计、递归计算）；
+- - 需要保持引用稳定的对象/数组，作为 memo 子组件的 props 或其它 hook 的依赖；
+- - 构造 Context 的 value，避免消费者全量重渲染。
+
+- useCallback 适合： - 传给 React.memo 子组件的回调，避免子组件无谓重渲染；
+- - 作为 useEffect 等 hook 的依赖，避免因函数引用变化导致副作用反复执行；
+- - 自定义 hook 对外暴露的稳定函数。
+
+**六、使用原则**
+
+不要无脑加：缓存本身有内存与比较依赖的开销，简单计算或没有引用稳定性需求时反而更慢、更难读。应先定位性能瓶颈（React DevTools Profiler），再针对性优化。同时要保证依赖数组完整，否则会读到过期闭包值。
 
 **常见追问**：如何避免「1) 认为 useMemo 能保证计算只执行一次：依赖变化或缓存被丢弃时会重算，它只是优化」？ 「2) 把 useCallback 当成“让函数只创建一次”的万能药，忽略 deps 变化仍会创建新函数」在真实项目中应如何规避？
 
@@ -8798,7 +12176,15 @@ React 规定 useEffect 的回调要么不返回，要么返回一个清理函数
 
 useEffect 的回调不能直接是 async 函数，因为 async 函数返回 Promise，而 effect 的返回值必须是清理函数；正确做法是在回调内部定义一个 async 函数并调用，或用 IIFE 包裹。
 
-React 规定 useEffect 的回调要么不返回，要么返回一个清理函数（cleanup function）。而 async 函数总是返回一个 Promise，React 拿到 Promise 后无法把它当清理函数调用，还会在卸载时报警告（React 18 之前是 'An effect function must not return anything besides a function'，React 18 之后可能提示销毁时无法调用 Promise）。 通俗类比：useEffect 就像给 React 一张“退房时打扫房间”的纸条，React 只认“打扫动作”这张纸条；如果你递过去一个 async 函数，相当于递过去一个“未来会给你打扫动作”的承诺（Promise），React 不知道怎么执行它，所以会报错。 三种常见写法： 1) 内部定义 async 函数再调用（推荐，可读性好）： useEffect(() => { let cancelled = false; async function fetchData() { const res = await fetch(url); const data = await res.json(); if (!cancelled) setData(data); } fetchData(); return () => { cancelled = true; }; }, [url]); 2) IIFE（立即执行函数）： useEffect(() => { (async () => { const res = await fetch(url); setData(await res.json()); })(); }, [url]); 注意 IIFE 返回的是 Promise，所以不能直接 return 它，否则又违反规则。 3) 把异步逻辑抽到组件外/自定义 Hook 中，effect 里只调用并处理取消。 为什么不能直接写 async？因为 async 函数返回 Promise，React 会把返回值当作清理函数，Promise 不是函数，卸载时调用会抛错或产生内存泄漏风险。 适用场景：数据请求、异步初始化、订阅异步资源等。核心是：effect 本身保持同步，异步逻辑在内部启动，并处理竞态和卸载。
+React 规定 useEffect 的回调要么不返回，要么返回一个清理函数（cleanup function）。而 async 函数总是返回一个 Promise，React 拿到 Promise 后无法把它当清理函数调用，还会在卸载时报警告（React 18 之前是 'An effect function must not return anything besides a function'，React 18 之后可能提示销毁时无法调用 Promise）。
+
+通俗类比：useEffect 就像给 React 一张“退房时打扫房间”的纸条，React 只认“打扫动作”这张纸条；如果你递过去一个 async 函数，相当于递过去一个“未来会给你打扫动作”的承诺（Promise），React 不知道怎么执行它，所以会报错。 三种常见写法：
+
+1) 内部定义 async 函数再调用（推荐，可读性好）： useEffect(() => { let cancelled = false; async function fetchData() { const res = await fetch(url); const data = await res.json(); if (!cancelled) setData(data); } fetchData(); return () => { cancelled = true; }; }, [url]);
+2) IIFE（立即执行函数）： useEffect(() => { (async () => { const res = await fetch(url); setData(await res.json()); })(); }, [url]); 注意 IIFE 返回的是 Promise，所以不能直接 return 它，否则又违反规则。
+3) 把异步逻辑抽到组件外/自定义 Hook 中，effect 里只调用并处理取消。 为什么不能直接写 async？因为 async 函数返回 Promise，React 会把返回值当作清理函数，Promise 不是函数，卸载时调用会抛错或产生内存泄漏风险。
+
+适用场景：数据请求、异步初始化、订阅异步资源等。核心是：effect 本身保持同步，异步逻辑在内部启动，并处理竞态和卸载。
 
 **常见追问**：如何避免「1) 直接写 useEffect(async () => {...}, [])，这是最常见错误，会返回 Promise 导致警告或报错」？ 「2) 用 IIFE 时写成 useEffect(() => (async () => {...})(), [])，把 Promise 当返回值返回，同样违规」在真实项目中应如何规避？
 
@@ -8820,7 +12206,15 @@ React 规定 useEffect 的回调要么不返回，要么返回一个清理函数
 
 静态内容排在最前面，是为了让请求尽早命中缓存、尽早开始传输，避免被动态逻辑阻塞，从而降低首字节时间并提升整体加载速度。
 
-这里的“静态内容”通常指 HTML、CSS、JS、图片、字体等不依赖用户身份和实时数据、可被 CDN 或浏览器缓存的内容；“排在最前面”一般指在页面资源加载顺序、HTTP 响应生成顺序或服务端处理链路中，优先处理静态资源。 原理有三层： 1. 缓存命中优先：静态资源可设置强缓存/协商缓存，命中后无需回源，直接由浏览器或 CDN 返回，延迟极低。 2. 关键渲染路径优先：浏览器解析 HTML 时，遇到 CSS、首屏 JS、关键图片会阻塞或影响渲染；把它们放在前面，能让首屏更早开始渲染。 3. 避免动态阻塞：动态内容往往要查数据库、调 RPC、做鉴权、拼模板，耗时且不稳定。如果先等动态内容，静态资源也要排队，首字节和首屏都会被拖慢。 通俗类比：去餐厅吃饭，先上凉菜和餐具（静态内容），再等现炒的热菜（动态内容）。如果非要等热菜做好才给餐具，顾客会干等很久。 适用场景：SSR/同构渲染、CDN 边缘缓存、网关路由、Nginx 配置、前端资源加载优化。典型做法是静态资源走 CDN 并设长缓存，HTML 走短缓存或协商缓存，动态接口按需异步加载。
+这里的“静态内容”通常指 HTML、CSS、JS、图片、字体等不依赖用户身份和实时数据、可被 CDN 或浏览器缓存的内容；“排在最前面”一般指在页面资源加载顺序、HTTP 响应生成顺序或服务端处理链路中，优先处理静态资源。 原理有三层：
+
+1. 缓存命中优先：静态资源可设置强缓存/协商缓存，命中后无需回源，直接由浏览器或 CDN 返回，延迟极低。
+2. 关键渲染路径优先：浏览器解析 HTML 时，遇到 CSS、首屏 JS、关键图片会阻塞或影响渲染；把它们放在前面，能让首屏更早开始渲染。
+3. 避免动态阻塞：动态内容往往要查数据库、调 RPC、做鉴权、拼模板，耗时且不稳定。如果先等动态内容，静态资源也要排队，首字节和首屏都会被拖慢。
+
+通俗类比：去餐厅吃饭，先上凉菜和餐具（静态内容），再等现炒的热菜（动态内容）。如果非要等热菜做好才给餐具，顾客会干等很久。
+
+适用场景：SSR/同构渲染、CDN 边缘缓存、网关路由、Nginx 配置、前端资源加载优化。典型做法是静态资源走 CDN 并设长缓存，HTML 走短缓存或协商缓存，动态接口按需异步加载。
 
 **常见追问**：如何避免「误以为“静态内容”就是“不重要的内容”，其实它常是首屏关键资源。」？ 「把所有 JS 都放前面，反而阻塞渲染；应区分关键与非关键，非关键用 defer/async。」在真实项目中应如何规避？
 
@@ -8842,7 +12236,22 @@ React 规定 useEffect 的回调要么不返回，要么返回一个清理函数
 
 ReadableStream 的 reader 本身不解析 JSON，它只负责按 chunk 读取字节/文本；处理半截 JSON 需要你在应用层维护缓冲区，把 chunk 拼接后尝试解析，失败则等待下一个 chunk，直到得到完整 JSON。
 
-ReadableStream 是 Web Streams API 中的可读流，reader 是通过 stream.getReader() 得到的读取器。它提供 read() 方法，每次返回 { value, done }，value 通常是 Uint8Array（字节流）或字符串（文本流）。关键点：reader 只保证“按块交付”，不保证每个 chunk 是完整消息。网络传输、分块编码、背压等都会导致一个 JSON 对象被拆成多个 chunk，例如 {"a":1} 可能先到 {"a":，再到 1}。 处理半截 JSON 的通用模式是“缓冲区 + 增量解析”： 1. 创建 TextDecoder（如果是字节流）和字符串缓冲区 buffer = ''。 2. 循环 await reader.read()。 3. 对每个 chunk 解码并追加到 buffer。 4. 尝试从 buffer 中提取完整 JSON。若协议是 NDJSON（每行一个 JSON），按换行切分，保留最后不完整的一行；若协议是 JSON 数组或对象流，需要括号/引号计数或使用流式 JSON 解析器。 5. 对能完整解析的部分 JSON.parse，处理业务；解析失败且不是语法错误位置在末尾，则继续读下一个 chunk。 6. done 为 true 时，处理 buffer 中剩余内容，若仍不完整则报错。 通俗类比：reader 像快递员，每次只送一个包裹的一部分；你不能要求他每次送完整包裹。你要在门口放一个箱子（buffer），把送来的碎片先放进去，等能拼出完整物品（JSON）再拿走。 适用场景：SSE、fetch 流式响应、LLM 流式输出、大文件分块上传/下载、NDJSON 日志流。注意：如果使用 response.json()，浏览器会等整个响应体结束再解析，无法处理流式半截 JSON；必须用 response.body.getReader() 手动读。
+ReadableStream 是 Web Streams API 中的可读流，reader 是通过 stream.getReader() 得到的读取器。它提供 read() 方法，每次返回 { value, done }，value 通常是 Uint8Array（字节流）或字符串（文本流）。
+
+关键点：reader 只保证“按块交付”，不保证每个 chunk 是完整消息。网络传输、分块编码、背压等都会导致一个 JSON 对象被拆成多个 chunk，例如 {"a":1} 可能先到 {"a":，再到 1}。 处理半截 JSON 的通用模式是“缓冲区 + 增量解析”：
+
+1. 创建 TextDecoder（如果是字节流）和字符串缓冲区 buffer = ''。
+2. 循环 await reader.read()。
+3. 对每个 chunk 解码并追加到 buffer。
+4. 尝试从 buffer 中提取完整 JSON。若协议是 NDJSON（每行一个 JSON），按换行切分，保留最后不完整的一行；若协议是 JSON 数组或对象流，需要括号/引号计数或使用流式 JSON 解析器。
+5. 对能完整解析的部分 JSON.parse，处理业务；解析失败且不是语法错误位置在末尾，则继续读下一个 chunk。
+6. done 为 true 时，处理 buffer 中剩余内容，若仍不完整则报错。
+
+通俗类比：reader 像快递员，每次只送一个包裹的一部分；你不能要求他每次送完整包裹。你要在门口放一个箱子（buffer），把送来的碎片先放进去，等能拼出完整物品（JSON）再拿走。
+
+适用场景：SSE、fetch 流式响应、LLM 流式输出、大文件分块上传/下载、NDJSON 日志流。
+
+注意：如果使用 response.json()，浏览器会等整个响应体结束再解析，无法处理流式半截 JSON；必须用 response.body.getReader() 手动读。
 
 **常见追问**：如何避免「误以为 reader.read() 每次返回一个完整 JSON，直接 JSON.parse(value) 导致 SyntaxError。」？ 「误以为 response.json() 可以流式解析，实际上它会缓冲整个响应。」在真实项目中应如何规避？
 
@@ -8864,7 +12273,15 @@ SSE 全称 Server-Sent Events，是 HTML5 规范中的一项能力；它让服�
 
 SSE（Server-Sent Events）是一种基于 HTTP 的单向、长连接服务器推送技术，服务器可主动向浏览器持续发送文本事件流，浏览器用 EventSource 接收。
 
-SSE 全称 Server-Sent Events，是 HTML5 规范中的一项能力。它让服务器通过一个保持打开的 HTTP 连接，以 text/event-stream 的 MIME 类型持续向客户端推送数据。客户端通常用浏览器内置的 EventSource API 订阅，收到的是按行分隔的文本事件。 原理：客户端发起普通 HTTP GET 请求，服务端响应头包含 Content-Type: text/event-stream、Cache-Control: no-cache、Connection: keep-alive。之后服务端不结束响应，而是不断写入形如 data: xxx\n\n 的消息块。浏览器解析这些块，触发 message 事件；还支持 event: 指定事件名、id: 指定事件 ID、retry: 指定重连间隔。若连接断开，浏览器会自动按 retry 时间重连，并通过 Last-Event-ID 请求头告知服务端上次收到的事件 ID，便于断点续传。 通俗类比：SSE 像收音机广播。你调到一个频道（建立连接）后，电台（服务器）持续播报新闻（推送消息），你只能听不能通过这个频道回话；如果信号中断，收音机会自动重新搜台（自动重连）。而 WebSocket 像打电话，双方可以随时互相说话；轮询则像你每隔几秒打电话问“有新消息吗”。 适用场景：适合服务器到客户端的单向实时推送，如股票行情、新闻直播、日志流、AI 大模型流式输出、任务进度通知等。不适合需要客户端高频双向通信的场景，如在线游戏、协同编辑。 与 WebSocket 对比：SSE 基于 HTTP/1.1 或 HTTP/2，实现简单、自动重连、支持文本，但只能服务器到客户端单向、默认只支持文本；WebSocket 是独立协议，全双工、支持二进制，但需要额外握手和心跳管理。
+SSE 全称 Server-Sent Events，是 HTML5 规范中的一项能力。它让服务器通过一个保持打开的 HTTP 连接，以 text/event-stream 的 MIME 类型持续向客户端推送数据。客户端通常用浏览器内置的 EventSource API 订阅，收到的是按行分隔的文本事件。
+
+原理：客户端发起普通 HTTP GET 请求，服务端响应头包含 Content-Type: text/event-stream、Cache-Control: no-cache、Connection: keep-alive。之后服务端不结束响应，而是不断写入形如 data: xxx\n\n 的消息块。
+
+浏览器解析这些块，触发 message 事件；还支持 event: 指定事件名、id: 指定事件 ID、retry: 指定重连间隔。若连接断开，浏览器会自动按 retry 时间重连，并通过 Last-Event-ID 请求头告知服务端上次收到的事件 ID，便于断点续传。
+
+通俗类比：SSE 像收音机广播。你调到一个频道（建立连接）后，电台（服务器）持续播报新闻（推送消息），你只能听不能通过这个频道回话；如果信号中断，收音机会自动重新搜台（自动重连）。而 WebSocket 像打电话，双方可以随时互相说话；轮询则像你每隔几秒打电话问“有新消息吗”。
+
+适用场景：适合服务器到客户端的单向实时推送，如股票行情、新闻直播、日志流、AI 大模型流式输出、任务进度通知等。不适合需要客户端高频双向通信的场景，如在线游戏、协同编辑。 与 WebSocket 对比：SSE 基于 HTTP/1.1 或 HTTP/2，实现简单、自动重连、支持文本，但只能服务器到客户端单向、默认只支持文本；WebSocket 是独立协议，全双工、支持二进制，但需要额外握手和心跳管理。
 
 **常见追问**：如何避免「误以为 SSE 是双向通信，实际上它是单向服务器推送。2. 误以为 SSE 需要 WebSocket 或特殊协议，其实基于普通 HTTP。3. 忽略浏览器对 SSE 的自动重连和 Last-Event-ID 机制。4. 认为 SSE 只能传文本所以没用，实际很多场景文本足够。5. 把 SSE 和 WebSocket 混为一谈，或说 SSE 不支持跨域（实际支持 CORS）。6. 忽略 HTTP/1.1 并发连接数限制和代理超时问题。」？ 能否结合「可提到 SSE 在 HTTP/1.1 下受浏览器同域并发连接数限制（通常 6 个），HTTP/2 多路复用可缓解。2. 可提到 EventSource 不支持自定义请求头，若需鉴权常用 Cookie 或 URL 参数，或改用 fetch + ReadableStream 手动解析。3. 可提到服务端需正确处理背压、心跳（如定期发注释行 : ping）防止代理超时断开。4. 可提到 OpenAI 流式接口、ChatGPT 网页版等实际采用 SSE 或类似 chunked 流式传输。5. 可提到 Last-Event-ID 实现断点续传的细节。」进一步展开？
 
@@ -8886,7 +12303,13 @@ SSE 全称 Server-Sent Events，是 HTML5 规范中的一项能力。它让服�
 
 手动拼 buffer 是为了避免多次小数据包写入导致的系统调用开销、内存碎片和 TCP 粘包/拆包问题，通过合并成一次完整写入来提升性能与可控性。
 
-在 Node.js 等后端环境中，Buffer 是二进制数据块。当需要发送或处理多个小片段（如日志、协议帧、文件分片）时，如果每次都直接 write 或 push，会带来三个问题：1) 系统调用频繁：每次 write 都可能触发一次 syscall，开销远大于内存拷贝；2) 网络层粘包/拆包：TCP 是流式协议，多次小写入可能被合并或拆分，接收方难以按业务边界解析；3) 内存碎片：大量小 Buffer 对象增加 GC 压力。手动拼 buffer 就是先分配一个足够大的 Buffer（或使用 Buffer.concat），把多个片段按顺序拷贝进去，最后一次性写入。类比：寄快递时，不会每件小物品单独叫一次快递，而是先打包进一个大箱子再寄，省运费也方便对方签收。适用场景：自定义协议编解码、批量日志上报、文件分片上传、WebSocket 帧组装等。
+在 Node.js 等后端环境中，Buffer 是二进制数据块。当需要发送或处理多个小片段（如日志、协议帧、文件分片）时，如果每次都直接 write 或 push，会带来三个问题：
+
+1) 系统调用频繁：每次 write 都可能触发一次 syscall，开销远大于内存拷贝；
+2) 网络层粘包/拆包：TCP 是流式协议，多次小写入可能被合并或拆分，接收方难以按业务边界解析；
+3) 内存碎片：大量小 Buffer 对象增加 GC 压力。手动拼 buffer 就是先分配一个足够大的 Buffer（或使用 Buffer.concat），把多个片段按顺序拷贝进去，最后一次性写入。类比：寄快递时，不会每件小物品单独叫一次快递，而是先打包进一个大箱子再寄，省运费也方便对方签收。
+
+适用场景：自定义协议编解码、批量日志上报、文件分片上传、WebSocket 帧组装等。
 
 **常见追问**：如何避免「1) 认为手动拼 buffer 只是为了“代码好看”，忽略系统调用和粘包本质」？ 「2) 混淆 Buffer 与字符串拼接，直接 str += 在大量数据时性能极差且可能破坏二进制」在真实项目中应如何规避？
 
@@ -8908,7 +12331,19 @@ SSE 全称 Server-Sent Events，是 HTML5 规范中的一项能力。它让服�
 
 ReadableStream 是 Web Streams API 中表示可读数据源的接口，通过 getReader() 逐块读取，支持背压、异步拉取和取消，常用于 fetch 响应体、文件流和自定义数据源。
 
-ReadableStream 的核心是“按需拉取”的数据流。它不一次性把数据全加载到内存，而是由消费者调用 reader.read() 请求数据，底层 source 的 pull(controller) 被调用，通过 controller.enqueue(chunk) 推入一块数据，返回 {value, done} 的 Promise。用通俗类比：它像水龙头，你拧一下（read）才出一杯水（chunk），而不是把整桶水倒给你。 基本用法： 1. 创建：new ReadableStream({ start(controller){...}, pull(controller){...}, cancel(reason){...} })。start 在构造时调用，适合初始化；pull 在消费者需要数据且内部队列未满时反复调用；cancel 在消费者取消时清理资源。 2. 读取：const reader = stream.getReader(); 循环 await reader.read()，直到 done 为 true；也可用 for await (const chunk of stream) 异步迭代。 3. 取消与释放：reader.cancel() 通知源停止；reader.releaseLock() 释放锁，让其他 reader 或 pipe 接管。 4. 管道：stream.pipeTo(writableStream) 或 pipeThrough(transformStream) 做转换，如 TextDecoderStream、CompressionStream。 典型场景：fetch 的 response.body 就是 ReadableStream，可边下载边处理大文件、做进度条、流式解析 SSE/JSON；也可把异步生成器、事件源、文件切片包装成流。 背压：ReadableStream 有内部队列，默认 highWaterMark 为 1（对字节流为 0）。当队列满时，pull 不会被调用，消费者不 read 就不会继续拉取，从而自然形成背压，避免内存爆炸。 例子： const stream = new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode('hello ')); }, pull(controller) { controller.enqueue(new TextEncoder().encode('world')); controller.close(); } }); const reader = stream.getReader(); while (true) { const {done, value} = await reader.read(); if (done) break; console.log(new TextDecoder().decode(value)); } 注意：ReadableStream 默认不是字节流，chunk 可以是任意类型；若要按字节读取，用 new ReadableStream({ type: 'bytes' }) 或 response.body 的 BYOB reader。
+ReadableStream 的核心是“按需拉取”的数据流。它不一次性把数据全加载到内存，而是由消费者调用 reader.read() 请求数据，底层 source 的 pull(controller) 被调用，通过 controller.enqueue(chunk) 推入一块数据，返回 {value, done} 的 Promise。
+
+用通俗类比：它像水龙头，你拧一下（read）才出一杯水（chunk），而不是把整桶水倒给你。 基本用法：
+
+1. 创建：new ReadableStream({ start(controller){...}, pull(controller){...}, cancel(reason){...} })。start 在构造时调用，适合初始化；pull 在消费者需要数据且内部队列未满时反复调用；cancel 在消费者取消时清理资源。
+2. 读取：const reader = stream.getReader(); 循环 await reader.read()，直到 done 为 true；也可用 for await (const chunk of stream) 异步迭代。
+3. 取消与释放：reader.cancel() 通知源停止；reader.releaseLock() 释放锁，让其他 reader 或 pipe 接管。
+4. 管道：stream.pipeTo(writableStream) 或 pipeThrough(transformStream) 做转换，如 TextDecoderStream、CompressionStream。 典型场景：fetch 的 response.body 就是 ReadableStream，可边下载边处理大文件、做进度条、流式解析 SSE/JSON；也可把异步生成器、事件源、文件切片包装成流。 背压：ReadableStream 有内部队列，默认 highWaterMark 为 1（对字节流为 0）。当队列满时，pull 不会被调用，消费者不 read 就不会继续拉取，从而自然形成背压，避免内存爆炸。
+
+- 例子： const stream = new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode('hello ')); }, pull(controller) { controller.enqueue(new TextEncoder().encode('world')); controller.close(); } });
+- const reader = stream.getReader();
+- while (true) { const {done, value} = await reader.read(); if (done) break; console.log(new TextDecoder().decode(value)); } 注意：ReadableStream 默认不是字节流，chunk 可以是任意类型；
+- 若要按字节读取，用 new ReadableStream({ type: 'bytes' }) 或 response.body 的 BYOB reader。
 
 **常见追问**：如何避免「误以为 ReadableStream 会自动开始拉取所有数据，其实只有 read 或 pipe 时才拉；2. 忘记 releaseLock 导致后续 pipeTo 报“已锁定”错误；3. 把 chunk 当成字符串直接拼接，忽略它可能是 Uint8Array，需 TextDecoder；4. 认为 highWaterMark 是总大小限制，其实只是内部队列阈值，不限制总数据量；5. 在 pull 里同步无限 enqueue 而不检查 desiredSize，导致队列膨胀或死循环。」？ 能否结合「能说出 ReadableStream 的三种 reader：默认 reader、BYOB reader（type:'bytes' 时用 read(view) 复用缓冲区，减少拷贝）；2. 知道 pipeTo 会处理背压、错误传播和关闭，比手动 read/write 更安全；3. 理解 tee() 可把流分叉成两个独立流，但会缓存未消费分支的数据，可能内存增长；4. 知道 Node.js 的 stream.Readable 与 Web ReadableStream 可通过 Readable.fromWeb/toWeb 互转；5. 能提到 fetch 的 response.body 在未读取时若被垃圾回收，浏览器可能取消请求，需显式 cancel 或消费。」进一步展开？
 
@@ -8930,7 +12365,16 @@ ReadableStream 的核心是“按需拉取”的数据流。它不一次性把�
 
 把侧边栏拆成多个可复用的「组」组件，再按页面组用配置/路由元信息动态组合渲染，而不是为每个页面组写死一个侧边栏。
 
-核心思路是「数据驱动 + 组件化」： 1. 定义侧边栏组（SidebarGroup）：每个组是一个独立组件或配置对象，包含标题、图标、菜单项列表。例如： - 组A：基础导航（首页、仪表盘） - 组B：内容管理（文章、分类、标签） - 组C：系统设置（用户、权限、日志） 2. 页面组与侧边栏组的映射：用一份配置表或路由 meta 描述「哪个页面组显示哪些组」。例如： ```js const sidebarMap = { admin: ['basic', 'content', 'system'], editor: ['basic', 'content'], guest: ['basic'] } ``` 路由里写 `meta: { pageGroup: 'admin' }`。 3. 渲染层：侧边栏组件根据当前路由的 pageGroup，从 sidebarMap 取出组名列表，再按顺序渲染对应的 SidebarGroup 组件。组内菜单项可继续用递归组件支持多级。 4. 为什么这样做： - 复用：同一个组在多个页面组间共享，改一处全生效。 - 可维护：新增页面组只需加一条映射，不用复制侧边栏代码。 - 权限友好：组可以按角色过滤，天然支持动态菜单。 类比：侧边栏像乐高底板，每个「组」是一块乐高模块，页面组就是不同的拼装图纸，按图纸把模块扣上去即可。
+核心思路是「数据驱动 + 组件化」： 1. 定义侧边栏组（SidebarGroup）：每个组是一个独立组件或配置对象，包含标题、图标、菜单项列表。
+
+例如：
+
+- 组A：基础导航（首页、仪表盘）
+- 组B：内容管理（文章、分类、标签）
+- 组C：系统设置（用户、权限、日志） 2. 页面组与侧边栏组的映射：用一份配置表或路由 meta 描述「哪个页面组显示哪些组」。例如： ```js const sidebarMap = { admin: ['basic', 'content', 'system'], editor: ['basic', 'content'], guest: ['basic'] } ``` 路由里写 `meta: { pageGroup: 'admin' }`。 3. 渲染层：侧边栏组件根据当前路由的 pageGroup，从 sidebarMap 取出组名列表，再按顺序渲染对应的 SidebarGroup 组件。组内菜单项可继续用递归组件支持多级。 4. 为什么这样做：
+- 复用：同一个组在多个页面组间共享，改一处全生效。
+- 可维护：新增页面组只需加一条映射，不用复制侧边栏代码。
+- 权限友好：组可以按角色过滤，天然支持动态菜单。 类比：侧边栏像乐高底板，每个「组」是一块乐高模块，页面组就是不同的拼装图纸，按图纸把模块扣上去即可。
 
 **常见追问**：如何避免「为每个页面组复制一份侧边栏代码，导致后期维护灾难。」？ 「只按路由路径硬编码 if/else 判断显示哪些菜单，扩展性差。」在真实项目中应如何规避？
 
@@ -8952,7 +12396,18 @@ ReadableStream 的核心是“按需拉取”的数据流。它不一次性把�
 
 Lighthouse 是 Google 开源的自动化网页质量审计工具，通过模拟加载与运行时采集性能、可访问性、最佳实践、SEO 等指标；再跑一次是为了对比优化前后的数据，验证改动是否真正生效。
 
-Lighthouse 的核心原理是：在 Chrome 中通过 DevTools Protocol 驱动一个受控的页面加载过程，注入采集脚本，记录从导航开始到页面稳定后的各类事件与指标，最后按内置的评分模型（0-100）输出报告。它主要采集五类指标： 1. 性能（Performance）：FCP、LCP、TBT、CLS、SI、TTI 等，其中 LCP、CLS、TBT 是核心。 2. 可访问性（Accessibility）：基于 axe-core 规则检查对比度、ARIA、语义标签等。 3. 最佳实践（Best Practices）：HTTPS、图片格式、控制台错误等。 4. SEO：meta 描述、可抓取性、结构化数据等。 5. PWA（旧版）：Service Worker、离线能力等。 为什么需要“再跑一次”对比？因为性能优化是一个假设-验证循环：你改了代码（比如压缩图片、懒加载、预连接），必须用同一套测量条件复测，才能判断改动是正收益还是负收益。对比时要注意： - 环境一致：同一设备、同一网络节流（如 Slow 4G）、同一 CPU 降速倍数、同一浏览器版本、同一构建产物。 - 多次采样：单次 Lighthouse 分数波动可达 ±10 分，建议跑 3-5 次取中位数或看置信区间。 - 看指标而非只看总分：总分是加权后的，可能掩盖某个指标恶化。比如总分涨了，但 CLS 变差，说明布局稳定性退步。 - 区分实验室数据与真实用户数据：Lighthouse 是实验室合成数据（Lab），适合定位问题；真实用户监控（RUM，如 CrUX、web-vitals）才是线上真实体验。两者要结合看。 通俗类比：Lighthouse 就像给网页做一次“体检”，再跑一次就是“复查”。你不能只凭一次体检报告就断定药有效，得在相同条件下再查一次，对比各项指标的变化，才能确认治疗方向对不对。
+Lighthouse 的核心原理是：在 Chrome 中通过 DevTools Protocol 驱动一个受控的页面加载过程，注入采集脚本，记录从导航开始到页面稳定后的各类事件与指标，最后按内置的评分模型（0-100）输出报告。它主要采集五类指标：
+
+1. 性能（Performance）：FCP、LCP、TBT、CLS、SI、TTI 等，其中 LCP、CLS、TBT 是核心。
+2. 可访问性（Accessibility）：基于 axe-core 规则检查对比度、ARIA、语义标签等。
+3. 最佳实践（Best Practices）：HTTPS、图片格式、控制台错误等。
+4. SEO：meta 描述、可抓取性、结构化数据等。
+5. PWA（旧版）：Service Worker、离线能力等。 为什么需要“再跑一次”对比？因为性能优化是一个假设-验证循环：你改了代码（比如压缩图片、懒加载、预连接），必须用同一套测量条件复测，才能判断改动是正收益还是负收益。对比时要注意：
+
+- 环境一致：同一设备、同一网络节流（如 Slow 4G）、同一 CPU 降速倍数、同一浏览器版本、同一构建产物。
+- 多次采样：单次 Lighthouse 分数波动可达 ±10 分，建议跑 3-5 次取中位数或看置信区间。
+- 看指标而非只看总分：总分是加权后的，可能掩盖某个指标恶化。比如总分涨了，但 CLS 变差，说明布局稳定性退步。
+- 区分实验室数据与真实用户数据：Lighthouse 是实验室合成数据（Lab），适合定位问题；真实用户监控（RUM，如 CrUX、web-vitals）才是线上真实体验。两者要结合看。 通俗类比：Lighthouse 就像给网页做一次“体检”，再跑一次就是“复查”。你不能只凭一次体检报告就断定药有效，得在相同条件下再查一次，对比各项指标的变化，才能确认治疗方向对不对。
 
 **常见追问**：如何避免「只看总分，不看具体指标：总分受权重和版本影响，不同版本分数不可直接比。」？ 「单次跑分就下结论：Lighthouse 分数波动大，必须多次采样取中位数。」在真实项目中应如何规避？
 
@@ -8974,7 +12429,18 @@ Lighthouse 的核心原理是：在 Chrome 中通过 DevTools Protocol 驱动一
 
 首屏优化的核心是让关键渲染路径最短：优先加载并渲染首屏必需的 HTML/CSS/字体/图片，把非关键资源全部延后或异步化。
 
-这道题本质是问“关键渲染路径（Critical Rendering Path）优化”。浏览器要把页面画到屏幕上，必须依次完成：拿到 HTML → 解析出 DOM → 拿到 CSS 解析出 CSSOM → 合成渲染树 → 布局 → 绘制。任何阻塞这一步的资源都会推迟第一屏。 通俗类比：开餐厅时，客人坐下后先上一杯水和凉菜（首屏），后厨再慢慢做硬菜（非首屏资源）。不能等所有菜都做好才让客人进门。 具体手段分几层： 1. 减少关键资源数量与体积：首屏 HTML 内联关键 CSS（Critical CSS），其余 CSS 用 media/onload 异步加载；JS 加 defer/async 或放 body 末尾，避免阻塞解析；用 gzip/brotli 压缩。 2. 提前建立连接与预加载：对首屏关键域名做 dns-prefetch/preconnect，对关键字体、首图用 preload，对下一步路由用 prefetch。 3. 图片优化：首屏图用合适尺寸和 WebP/AVIF，加 width/height 防抖动，懒加载非首屏图（loading=lazy），首屏图可考虑 base64 内联小图或 LQIP 占位。 4. 服务端与网络：SSR/同构直出首屏 HTML，避免白屏；CDN 边缘缓存；HTTP/2、HTTP/3 多路复用；开启 Brotli。 5. 渲染策略：骨架屏（Skeleton）先占位，让用户感知“已响应”；流式 SSR（React 18 renderToPipeableStream）边生成边发送，浏览器边解析边渲染。 6. 度量：用 FCP/LCP 衡量，Lighthouse、WebPageTest、Chrome Performance 面板定位阻塞点。 例子：一个电商首页，把首屏 banner 图 preload、关键 CSS 内联、商品列表接口 SSR 直出、下方推荐模块 JS 用 defer，LCP 可从 4s 降到 1.5s。
+这道题本质是问“关键渲染路径（Critical Rendering Path）优化”。浏览器要把页面画到屏幕上，必须依次完成：拿到 HTML → 解析出 DOM → 拿到 CSS 解析出 CSSOM → 合成渲染树 → 布局 → 绘制。任何阻塞这一步的资源都会推迟第一屏。
+
+通俗类比：开餐厅时，客人坐下后先上一杯水和凉菜（首屏），后厨再慢慢做硬菜（非首屏资源）。不能等所有菜都做好才让客人进门。 具体手段分几层：
+
+1. 减少关键资源数量与体积：首屏 HTML 内联关键 CSS（Critical CSS），其余 CSS 用 media/onload 异步加载；JS 加 defer/async 或放 body 末尾，避免阻塞解析；用 gzip/brotli 压缩。
+2. 提前建立连接与预加载：对首屏关键域名做 dns-prefetch/preconnect，对关键字体、首图用 preload，对下一步路由用 prefetch。
+3. 图片优化：首屏图用合适尺寸和 WebP/AVIF，加 width/height 防抖动，懒加载非首屏图（loading=lazy），首屏图可考虑 base64 内联小图或 LQIP 占位。
+4. 服务端与网络：SSR/同构直出首屏 HTML，避免白屏；CDN 边缘缓存；HTTP/2、HTTP/3 多路复用；开启 Brotli。
+5. 渲染策略：骨架屏（Skeleton）先占位，让用户感知“已响应”；流式 SSR（React 18 renderToPipeableStream）边生成边发送，浏览器边解析边渲染。
+6. 度量：用 FCP/LCP 衡量，Lighthouse、WebPageTest、Chrome Performance 面板定位阻塞点。
+
+例子：一个电商首页，把首屏 banner 图 preload、关键 CSS 内联、商品列表接口 SSR 直出、下方推荐模块 JS 用 defer，LCP 可从 4s 降到 1.5s。
 
 **常见追问**：如何避免「只说“压缩、CDN、缓存”这些通用优化，没抓住“关键渲染路径”这个核心。」？ 「把 async 和 defer 混为一谈：async 下载完立即执行可能阻塞，defer 保证 DOM 解析完按序执行。」在真实项目中应如何规避？
 
@@ -8996,7 +12462,16 @@ Lighthouse 的核心原理是：在 Chrome 中通过 DevTools Protocol 驱动一
 
 虚拟列表遇到不定高 item，核心是“先测量、后缓存、再按累计偏移定位”，常用动态高度虚拟列表（如 react-window 的 VariableSizeList、vue-virtual-scroller 的 DynamicScroller）或基于 ResizeObserver 的测量方案。
 
-虚拟列表的原理是只渲染可视区域内的 item，因此必须知道每个 item 的位置（offset）和总高度。定高时 offset = index * itemHeight，O(1) 可算；不定高时无法直接算，常见做法分三步： 1. 预估高度：先给每个 item 一个估计高度（如 50px），据此算出初始总高度和滚动条。 2. 测量并缓存：item 渲染到 DOM 后，用 ref 读取真实高度（getBoundingClientRect / offsetHeight），写入 heights[index] 缓存，并更新该 item 之后所有 item 的累计偏移。 3. 按累计偏移定位：维护一个前缀和数组 offsets，offsets[i] = offsets[i-1] + heights[i-1]。滚动时用二分查找（binary search）找到 startIndex，再根据可视高度找到 endIndex，只渲染 [startIndex, endIndex]。 关键点： - 测量时机：在 useLayoutEffect / nextTick 中测量，避免闪烁；测量后触发一次重排。 - 缓存复用：已测量过的 item 不再重复测量，滚动时直接查表。 - 动态变化：item 内容可能异步变化（图片加载、展开收起），需用 ResizeObserver 监听高度变化并更新缓存。 - 滚动锚定：测量导致上方 item 高度变化时，要补偿 scrollTop，避免可视区域跳动。 通俗类比：就像图书馆书架，每本书厚度不一。你不知道每本书多厚，就先按平均厚度摆，摆上去后量出真实厚度并记录，之后找第 N 本书时用累计厚度表定位，而不是一本本数。
+虚拟列表的原理是只渲染可视区域内的 item，因此必须知道每个 item 的位置（offset）和总高度。定高时 offset = index * itemHeight，O(1) 可算；不定高时无法直接算，常见做法分三步：
+
+1. 预估高度：先给每个 item 一个估计高度（如 50px），据此算出初始总高度和滚动条。
+2. 测量并缓存：item 渲染到 DOM 后，用 ref 读取真实高度（getBoundingClientRect / offsetHeight），写入 heights[index] 缓存，并更新该 item 之后所有 item 的累计偏移。
+3. 按累计偏移定位：维护一个前缀和数组 offsets，offsets[i] = offsets[i-1] + heights[i-1]。滚动时用二分查找（binary search）找到 startIndex，再根据可视高度找到 endIndex，只渲染 [startIndex, endIndex]。 关键点：
+
+- 测量时机：在 useLayoutEffect / nextTick 中测量，避免闪烁；测量后触发一次重排。
+- 缓存复用：已测量过的 item 不再重复测量，滚动时直接查表。
+- 动态变化：item 内容可能异步变化（图片加载、展开收起），需用 ResizeObserver 监听高度变化并更新缓存。
+- 滚动锚定：测量导致上方 item 高度变化时，要补偿 scrollTop，避免可视区域跳动。 通俗类比：就像图书馆书架，每本书厚度不一。你不知道每本书多厚，就先按平均厚度摆，摆上去后量出真实厚度并记录，之后找第 N 本书时用累计厚度表定位，而不是一本本数。
 
 **常见追问**：如何避免「以为不定高只能靠“全部渲染再隐藏”，失去虚拟列表意义。」？ 「忘记测量后更新总高度和偏移，导致滚动条长度错误、滚动到底部看不到最后几项。」在真实项目中应如何规避？
 
@@ -9018,7 +12493,16 @@ Lighthouse 的核心原理是：在 Chrome 中通过 DevTools Protocol 驱动一
 
 小程序本身没有平面检测能力，它只是通过调用宿主 App（如微信）暴露的 AR/视觉 API，把设备摄像头与 IMU 数据交给底层 AR 引擎（如 ARKit/ARCore/自研 SLAM）做平面检测，再把结果回传给小程序。
 
-先澄清一个常见误解：平面检测不是小程序框架（逻辑层/渲染层）自带的能力，而是宿主环境提供的原生能力。 原理链路可以这样理解： 1. 小程序通过 wx.createVKSession（微信 VisionKit）等接口，请求开启 AR/视觉会话。 2. 宿主 App 拿到摄像头视频流和陀螺仪/加速度计数据，交给底层 AR 引擎。 3. AR 引擎做 SLAM（同步定位与建图）：提取图像特征点、跟踪相机位姿、三角化出三维点云，再用 RANSAC 等算法拟合出水平/垂直平面，输出平面位置、大小、朝向。 4. 结果通过 JSAPI 回调给小程序，小程序用这些平面数据做放置虚拟物体、测量、游戏等。 通俗类比：小程序像餐厅服务员，它不会做菜；平面检测是后厨（宿主 App + AR 引擎）做的，服务员只负责把订单递进去、把菜端出来。 为什么小程序要这么做？因为小程序运行在受限的沙箱里，不能直接访问摄像头原始帧、不能直接调系统 ARKit/ARCore，必须由宿主统一封装、统一权限和隐私管控。适用场景：AR 试穿/试摆、AR 测量、AR 游戏、空间识别等。
+先澄清一个常见误解：平面检测不是小程序框架（逻辑层/渲染层）自带的能力，而是宿主环境提供的原生能力。 原理链路可以这样理解：
+
+1. 小程序通过 wx.createVKSession（微信 VisionKit）等接口，请求开启 AR/视觉会话。
+2. 宿主 App 拿到摄像头视频流和陀螺仪/加速度计数据，交给底层 AR 引擎。
+3. AR 引擎做 SLAM（同步定位与建图）：提取图像特征点、跟踪相机位姿、三角化出三维点云，再用 RANSAC 等算法拟合出水平/垂直平面，输出平面位置、大小、朝向。
+4. 结果通过 JSAPI 回调给小程序，小程序用这些平面数据做放置虚拟物体、测量、游戏等。
+
+通俗类比：小程序像餐厅服务员，它不会做菜；平面检测是后厨（宿主 App + AR 引擎）做的，服务员只负责把订单递进去、把菜端出来。 为什么小程序要这么做？因为小程序运行在受限的沙箱里，不能直接访问摄像头原始帧、不能直接调系统 ARKit/ARCore，必须由宿主统一封装、统一权限和隐私管控。
+
+适用场景：AR 试穿/试摆、AR 测量、AR 游戏、空间识别等。
 
 **常见追问**：如何避免「误以为小程序框架本身有计算机视觉能力，能直接读摄像头帧做检测。」？ 「把平面检测和图像识别/OCR 混为一谈，以为只是识别图片里的平面。」在真实项目中应如何规避？
 
@@ -9040,7 +12524,14 @@ mouseOver 会冒泡。当鼠标从父元素移动到其子元素上时，父元�
 
 mouseOver 会因事件冒泡在子元素间反复触发，mouseEnter 不冒泡，只在进入绑定元素自身边界时触发一次。
 
-两者都是鼠标进入元素时触发，但触发机制不同： 1. mouseOver 会冒泡。当鼠标从父元素移动到其子元素上时，父元素上绑定的 mouseOver 会再次触发，因为鼠标“进入”了子元素，而子元素的事件冒泡到了父元素。 2. mouseEnter 不冒泡。它只在鼠标进入绑定该事件的元素本身（不包含其子元素）时触发一次，进入子元素不会触发父元素的 mouseEnter。 通俗类比：把父元素想象成一个房间，子元素是房间里的桌子。mouseOver 像“有人踏进房间任何区域都报告”，你从地板走到桌子上，也会报告“进入”；mouseEnter 像“只报告有人从门外跨进房间”，在房间里从地板走到桌子上不会再次报告。 适用场景： - 需要给整个容器做悬停高亮、显示下拉菜单时，用 mouseEnter 更合适，避免鼠标在子元素间移动导致菜单闪烁。 - 需要知道鼠标具体进入了哪个子元素（如列表项高亮）时，用 mouseOver 配合 event.target 判断。 对应还有 mouseleave（不冒泡）和 mouseout（冒泡），区别同理。
+两者都是鼠标进入元素时触发，但触发机制不同：
+
+1. mouseOver 会冒泡。当鼠标从父元素移动到其子元素上时，父元素上绑定的 mouseOver 会再次触发，因为鼠标“进入”了子元素，而子元素的事件冒泡到了父元素。
+2. mouseEnter 不冒泡。它只在鼠标进入绑定该事件的元素本身（不包含其子元素）时触发一次，进入子元素不会触发父元素的 mouseEnter。
+
+通俗类比：把父元素想象成一个房间，子元素是房间里的桌子。mouseOver 像“有人踏进房间任何区域都报告”，你从地板走到桌子上，也会报告“进入”；mouseEnter 像“只报告有人从门外跨进房间”，在房间里从地板走到桌子上不会再次报告。
+
+适用场景： - 需要给整个容器做悬停高亮、显示下拉菜单时，用 mouseEnter 更合适，避免鼠标在子元素间移动导致菜单闪烁。 - 需要知道鼠标具体进入了哪个子元素（如列表项高亮）时，用 mouseOver 配合 event.target 判断。 对应还有 mouseleave（不冒泡）和 mouseout（冒泡），区别同理。
 
 **常见追问**：如何避免「误以为 mouseEnter 也会冒泡，或以为 mouseOver 不冒泡。」？ 「认为 mouseEnter 是 mouseOver 的别名，可以互换使用。」在真实项目中应如何规避？
 
@@ -9062,7 +12553,18 @@ mouseOver 会因事件冒泡在子元素间反复触发，mouseEnter 不冒泡�
 
 跨标签页通信主要靠浏览器提供的共享存储与事件机制：BroadcastChannel、localStorage 的 storage 事件、SharedWorker、Service Worker、postMessage + window.open/iframe，以及 WebSocket/SSE 经服务端中转。
 
-同一浏览器下不同标签页属于不同渲染进程/上下文，不能直接访问对方变量，所以要么借助同源共享的存储介质，要么借助浏览器提供的跨上下文消息通道，要么绕到服务端。 1) BroadcastChannel：最现代、最推荐。同源页面 new BroadcastChannel('name') 后 postMessage，其他同源标签页的 onmessage 都能收到。原理是浏览器维护一个同源广播总线，消息结构化克隆，不落盘、不触发存储。适合登录态同步、主题切换、数据刷新通知。缺点：IE 不支持，Safari 15.4 之前支持不全。 2) localStorage + storage 事件：A 页写入 localStorage，B 页监听 window.onstorage 拿到 key/newValue/oldValue。注意 storage 事件只在“其他”标签页触发，当前页不触发；且是同步 API、有容量限制、只能传字符串。适合兼容性要求高的场景，常配合 JSON 序列化。 3) SharedWorker：多个同源标签页共享同一个 Worker 实例，通过 port.postMessage 互相转发消息，Worker 里可维护共享状态。适合需要中心化状态或长连接的场景。缺点是兼容性和调试体验一般，移动端支持差。 4) Service Worker：本质是页面与 SW 之间 postMessage，SW 再广播给所有受控客户端 clients.matchAll()。适合 PWA、离线与推送场景，但生命周期复杂、必须 HTTPS。 5) window.postMessage：通过 window.open 或 iframe 拿到对方 window 引用后 postMessage，需校验 origin。适合有打开关系的页面，无法覆盖任意两个独立标签页。 6) 服务端中转：WebSocket/SSE/轮询，由后端广播。跨浏览器、跨设备都能用，但有延迟和服务器成本。 选型：现代项目优先 BroadcastChannel，需要兼容旧浏览器降级到 storage 事件；需要共享状态用 SharedWorker；跨设备只能走服务端。
+同一浏览器下不同标签页属于不同渲染进程/上下文，不能直接访问对方变量，所以要么借助同源共享的存储介质，要么借助浏览器提供的跨上下文消息通道，要么绕到服务端。
+
+1) BroadcastChannel：最现代、最推荐。同源页面 new BroadcastChannel('name') 后 postMessage，其他同源标签页的 onmessage 都能收到。原理是浏览器维护一个同源广播总线，消息结构化克隆，不落盘、不触发存储。适合登录态同步、主题切换、数据刷新通知。缺点：IE 不支持，Safari 15.4 之前支持不全。
+2) localStorage + storage 事件：A 页写入 localStorage，B 页监听 window.onstorage 拿到 key/newValue/oldValue。注意 storage 事件只在“其他”标签页触发，当前页不触发；且是同步 API、有容量限制、只能传字符串。适合兼容性要求高的场景，常配合 JSON 序列化。
+3) SharedWorker：多个同源标签页共享同一个 Worker 实例，通过 port.postMessage 互相转发消息，Worker 里可维护共享状态。适合需要中心化状态或长连接的场景。缺点是兼容性和调试体验一般，移动端支持差。
+4) Service Worker：本质是页面与 SW 之间 postMessage，SW 再广播给所有受控客户端 clients.matchAll()。适合 PWA、离线与推送场景，但生命周期复杂、必须 HTTPS。
+5) window.postMessage：通过 window.open 或 iframe 拿到对方 window 引用后 postMessage，需校验 origin。适合有打开关系的页面，无法覆盖任意两个独立标签页。
+6) 服务端中转：WebSocket/SSE/轮询，由后端广播。跨浏览器、跨设备都能用，但有延迟和服务器成本。
+
+- 选型：现代项目优先 BroadcastChannel，需要兼容旧浏览器降级到 storage 事件；
+- 需要共享状态用 SharedWorker；
+- 跨设备只能走服务端。
 
 **常见追问**：如何避免「1) 以为 localStorage 的 storage 事件在当前页也会触发——实际只在其他同源标签页触发」？ 「2) 以为 BroadcastChannel 能跨域或跨浏览器——它严格同源，且不同浏览器实例不互通」在真实项目中应如何规避？
 
@@ -9084,7 +12586,22 @@ W3C DOM 事件流把一次事件传播拆成三个阶段：1）捕获阶段（Ca
 
 W3C 标准事件流分为捕获、目标、冒泡三阶段：事件先从 window 向下捕获到目标，再在目标触发，最后从目标向上冒泡到 window。
 
-W3C DOM 事件流把一次事件传播拆成三个阶段：1）捕获阶段（Capture）：事件从 window/document 开始，沿着 DOM 树自上而下传递到目标元素的父节点；2）目标阶段（Target）：事件到达绑定事件的目标元素本身，此时触发该元素上的监听器；3）冒泡阶段（Bubble）：事件从目标元素开始，沿 DOM 树自下而上冒泡回 window/document。 通俗类比：公司发通知。老板（window）先逐级向下传达“要开会了”（捕获），传到具体员工（目标）时员工本人收到通知（目标阶段），然后员工再逐级向上反馈“我知道了”（冒泡）。 addEventListener 的第三个参数决定监听器在哪个阶段执行：默认 false 表示冒泡阶段；true 表示捕获阶段。注意目标元素上的监听器无论捕获还是冒泡，通常都在目标阶段执行，但规范中会按注册顺序处理。 示例： <div id='outer'><button id='btn'>点我</button></div> outer.addEventListener('click', ()=>console.log('outer capture'), true); outer.addEventListener('click', ()=>console.log('outer bubble'), false); btn.addEventListener('click', ()=>console.log('btn')); 点击按钮输出：outer capture -> btn -> outer bubble。 适用场景：事件委托利用冒泡，把子元素事件统一交给父元素处理，减少监听器数量；需要提前拦截时用捕获，例如在父级捕获阶段阻止事件继续传播。
+W3C DOM 事件流把一次事件传播拆成三个阶段：
+
+- 1）捕获阶段（Capture）：事件从 window/document 开始，沿着 DOM 树自上而下传递到目标元素的父节点；
+- 2）目标阶段（Target）：事件到达绑定事件的目标元素本身，此时触发该元素上的监听器；
+- 3）冒泡阶段（Bubble）：事件从目标元素开始，沿 DOM 树自下而上冒泡回 window/document。
+
+通俗类比：公司发通知。老板（window）先逐级向下传达“要开会了”（捕获），传到具体员工（目标）时员工本人收到通知（目标阶段），然后员工再逐级向上反馈“我知道了”（冒泡）。 addEventListener 的第三个参数决定监听器在哪个阶段执行：默认 false 表示冒泡阶段；true 表示捕获阶段。
+
+注意目标元素上的监听器无论捕获还是冒泡，通常都在目标阶段执行，但规范中会按注册顺序处理。
+
+- 示例： <div id='outer'><button id='btn'>点我</button></div> outer.addEventListener('click', ()=>console.log('outer capture'), true);
+- outer.addEventListener('click', ()=>console.log('outer bubble'), false);
+- btn.addEventListener('click', ()=>console.log('btn'));
+- 点击按钮输出：outer capture -> btn -> outer bubble。
+
+适用场景：事件委托利用冒泡，把子元素事件统一交给父元素处理，减少监听器数量；需要提前拦截时用捕获，例如在父级捕获阶段阻止事件继续传播。
 
 **常见追问**：如何避免「常见错误：1）认为事件只有冒泡，忽略捕获阶段」？ 「2）把 addEventListener 第三个参数 true 误认为“开启冒泡”」在真实项目中应如何规避？
 
@@ -9106,7 +12623,22 @@ W3C DOM 事件流把一次事件传播拆成三个阶段：1）捕获阶段（Ca
 
 不会冒泡的事件主要是那些不产生传播路径或规范明确不冒泡的事件，如 focus/blur、mouseenter/mouseleave、load/error、scroll（元素上）、DOMContentLoaded 等。
 
-DOM 事件流通常包含捕获、目标、冒泡三个阶段，但并非所有事件都会走完整流程。所谓“不会冒泡”，一般指事件在目标元素触发后，不会继续向上层祖先节点传播。 常见不会冒泡的事件包括： 1. 焦点类：focus、blur。它们只在目标元素触发，不冒泡。对应的 focusin、focusout 会冒泡，常用于事件委托。 2. 鼠标进入离开类：mouseenter、mouseleave。它们不冒泡，且进入子元素时不会重复触发；对应的 mouseover、mouseout 会冒泡。 3. 资源与生命周期类：load、error、abort、unload、beforeunload、DOMContentLoaded、readystatechange 等。其中 load/error 在资源元素上通常不冒泡，但可以在捕获阶段监听；window 上的 load 是全局事件。 4. 滚动与视图类：scroll 在元素上不冒泡，但 document 上的 scroll 事件会冒泡到 window；resize 也不冒泡。 5. 媒体事件：play、pause、ended、volumechange 等通常不冒泡。 6. 其他：toggle（details 元素）、slotchange、invalid、reset、submit 中 submit 会冒泡，reset 也会冒泡，但 invalid 不冒泡。 原理上，事件是否冒泡由规范中的 bubbles 属性决定。例如 UI Events 规范中 focus/blur 的 bubbles 为 false，而 focusin/focusout 为 true。浏览器实现时，事件派发算法会根据 bubbles 标志决定是否向上传播。 适用场景：如果要对不冒泡事件做委托，通常改用其冒泡版本（focusin/focusout、mouseover/mouseout），或在捕获阶段监听，或直接在目标元素上绑定。例如表单校验可用 focusin 委托，鼠标悬停可用 mouseover 委托。 通俗类比：冒泡像水里的气泡从目标往上飘，捕获像从根往下抓。有些事件像“悄悄话”，只在当前元素说，不往上传递；但可以换一个“会传话”的同类事件，或者用捕获阶段从上面截听。
+DOM 事件流通常包含捕获、目标、冒泡三个阶段，但并非所有事件都会走完整流程。所谓“不会冒泡”，一般指事件在目标元素触发后，不会继续向上层祖先节点传播。 常见不会冒泡的事件包括：
+
+1. 焦点类：focus、blur。它们只在目标元素触发，不冒泡。对应的 focusin、focusout 会冒泡，常用于事件委托。
+2. 鼠标进入离开类：mouseenter、mouseleave。它们不冒泡，且进入子元素时不会重复触发；对应的 mouseover、mouseout 会冒泡。
+3. 资源与生命周期类：load、error、abort、unload、beforeunload、DOMContentLoaded、readystatechange 等。其中 load/error 在资源元素上通常不冒泡，但可以在捕获阶段监听；window 上的 load 是全局事件。
+4. 滚动与视图类：scroll 在元素上不冒泡，但 document 上的 scroll 事件会冒泡到 window；resize 也不冒泡。
+5. 媒体事件：play、pause、ended、volumechange 等通常不冒泡。
+6. 其他：toggle（details 元素）、slotchange、invalid、reset、submit 中 submit 会冒泡，reset 也会冒泡，但 invalid 不冒泡。 原理上，事件是否冒泡由规范中的 bubbles 属性决定。
+
+例如 UI Events 规范中 focus/blur 的 bubbles 为 false，而 focusin/focusout 为 true。浏览器实现时，事件派发算法会根据 bubbles 标志决定是否向上传播。
+
+适用场景：如果要对不冒泡事件做委托，通常改用其冒泡版本（focusin/focusout、mouseover/mouseout），或在捕获阶段监听，或直接在目标元素上绑定。
+
+例如表单校验可用 focusin 委托，鼠标悬停可用 mouseover 委托。
+
+通俗类比：冒泡像水里的气泡从目标往上飘，捕获像从根往下抓。有些事件像“悄悄话”，只在当前元素说，不往上传递；但可以换一个“会传话”的同类事件，或者用捕获阶段从上面截听。
 
 **常见追问**：如何避免「误以为所有事件都冒泡，或把 focus 和 focusin 混为一谈。」？ 「误以为 scroll 完全不冒泡：元素 scroll 不冒泡，但 document 的 scroll 会冒泡到 window。」在真实项目中应如何规避？
 
@@ -9128,7 +12660,12 @@ AE 是设计师最熟悉的动效工具，能产出高质量矢量动画；；Lo
 
 AE+Lottie 负责可编辑模板的设计与前端播放，Puppeteer 驱动无头浏览器逐帧渲染 Lottie，FFmpeg 负责编码合成最终视频，形成“设计-预览-导出”的完整链路。
 
-这套方案本质是把“模板制作”和“视频生成”解耦。 1) 为什么用 AE+Lottie： - AE 是设计师最熟悉的动效工具，能产出高质量矢量动画； - Lottie 是 AE 插件 Bodymovin 导出的 JSON 格式，体积小、可缩放、可运行时改文案/颜色/图片，非常适合“模板化”——同一套动画，替换数据即可生成不同视频； - 前端用 lottie-web 播放，所见即所得，方便运营预览和参数配置。 2) 为什么用 Puppeteer+FFmpeg： - Lottie 是浏览器里的矢量动画，直接转视频没有官方路径；Puppeteer 启动无头 Chrome，加载一个渲染页，通过 lottie-web 的 goToAndStop(frame) 精确控制每一帧，配合 page.screenshot 逐帧截图，保证与预览一致； - 截图得到 PNG 序列后，FFmpeg 按指定帧率编码成 MP4/H.264，并叠加音轨、字幕、水印等。 3) 通俗类比：AE 是“模具车间”，Lottie 是“可填色的模具图纸”，Puppeteer 是“按图纸逐帧拍照的相机”，FFmpeg 是“把照片装订成电影的剪辑机”。 4) 适用场景：批量生成营销短视频、节日祝福、数据播报、电商主图视频等，模板固定、数据多变、需要高一致性的场景。
+这套方案本质是把“模板制作”和“视频生成”解耦。
+
+1) 为什么用 AE+Lottie： - AE 是设计师最熟悉的动效工具，能产出高质量矢量动画； - Lottie 是 AE 插件 Bodymovin 导出的 JSON 格式，体积小、可缩放、可运行时改文案/颜色/图片，非常适合“模板化”——同一套动画，替换数据即可生成不同视频； - 前端用 lottie-web 播放，所见即所得，方便运营预览和参数配置。
+2) 为什么用 Puppeteer+FFmpeg： - Lottie 是浏览器里的矢量动画，直接转视频没有官方路径；Puppeteer 启动无头 Chrome，加载一个渲染页，通过 lottie-web 的 goToAndStop(frame) 精确控制每一帧，配合 page.screenshot 逐帧截图，保证与预览一致； - 截图得到 PNG 序列后，FFmpeg 按指定帧率编码成 MP4/H.264，并叠加音轨、字幕、水印等。
+3) 通俗类比：AE 是“模具车间”，Lottie 是“可填色的模具图纸”，Puppeteer 是“按图纸逐帧拍照的相机”，FFmpeg 是“把照片装订成电影的剪辑机”。
+4) 适用场景：批量生成营销短视频、节日祝福、数据播报、电商主图视频等，模板固定、数据多变、需要高一致性的场景。
 
 **常见追问**：如何避免「误以为 Lottie 能直接导出视频，忽略必须逐帧渲染；」？ 「忘记等待动画加载完成，导致首帧或尾帧缺失；」在真实项目中应如何规避？
 
@@ -9150,7 +12687,16 @@ AE+Lottie 负责可编辑模板的设计与前端播放，Puppeteer 驱动无头
 
 清除浮动是为了让父容器重新包裹浮动子元素、避免后续布局错乱，常用 clearfix（伪元素 + clear:both）或 BFC（如 overflow:hidden/auto、display:flow-root）。
 
-浮动（float）会让元素脱离普通文档流、向左/右移动并允许文字环绕，但它仍占据一定空间且不撑开父元素高度，所以父容器可能出现高度塌陷，后续元素也可能被浮动元素覆盖或环绕。清除浮动本质是让某个元素或父容器重新把浮动元素纳入布局计算。 常见方案： 1. 额外标签法：在浮动元素后加一个空元素并设置 clear:both。原理是 clear 会让该元素的顶部低于前面所有浮动元素，从而撑开父容器。缺点是增加无意义 DOM。 2. 父元素伪元素 clearfix： .clearfix::after { content:''; display:block; clear:both; } 这是现代最常用写法，不污染 HTML。 3. 触发父元素 BFC：如 overflow:hidden/auto、display:flow-root、float:left、position:absolute、display:inline-block 等。BFC 会独立计算内部浮动高度，因此父容器能包住浮动子元素。其中 display:flow-root 是专门为创建 BFC 设计的，语义最干净。 4. 给父元素也设置浮动或绝对定位：也能包住，但会影响父元素自身布局，一般不推荐。 通俗类比：浮动元素像从教室里跑出去站到走廊上的学生，父容器这个班主任点名时发现教室里没人，身高（高度）就塌了。clear 相当于在走廊学生后面放一个“必须站在他们下面”的排队牌；BFC 相当于把教室改成封闭房间，班主任能重新统计到走廊上的学生。 适用场景：传统 float 布局、图文环绕、旧项目兼容；现代布局优先用 flex/grid，但理解清除浮动仍是 CSS 基础。
+浮动（float）会让元素脱离普通文档流、向左/右移动并允许文字环绕，但它仍占据一定空间且不撑开父元素高度，所以父容器可能出现高度塌陷，后续元素也可能被浮动元素覆盖或环绕。清除浮动本质是让某个元素或父容器重新把浮动元素纳入布局计算。 常见方案：
+
+1. 额外标签法：在浮动元素后加一个空元素并设置 clear:both。原理是 clear 会让该元素的顶部低于前面所有浮动元素，从而撑开父容器。缺点是增加无意义 DOM。
+2. 父元素伪元素 clearfix： .clearfix::after { content:''; display:block; clear:both; } 这是现代最常用写法，不污染 HTML。
+3. 触发父元素 BFC：如 overflow:hidden/auto、display:flow-root、float:left、position:absolute、display:inline-block 等。BFC 会独立计算内部浮动高度，因此父容器能包住浮动子元素。其中 display:flow-root 是专门为创建 BFC 设计的，语义最干净。
+4. 给父元素也设置浮动或绝对定位：也能包住，但会影响父元素自身布局，一般不推荐。
+
+通俗类比：浮动元素像从教室里跑出去站到走廊上的学生，父容器这个班主任点名时发现教室里没人，身高（高度）就塌了。clear 相当于在走廊学生后面放一个“必须站在他们下面”的排队牌；BFC 相当于把教室改成封闭房间，班主任能重新统计到走廊上的学生。
+
+适用场景：传统 float 布局、图文环绕、旧项目兼容；现代布局优先用 flex/grid，但理解清除浮动仍是 CSS 基础。
 
 **常见追问**：如何避免「以为清除浮动只是给浮动元素自己加 clear，实际上 clear 要加在浮动元素之后的元素或父元素伪元素上。2. 把 clear:both 和 BFC 混为一谈。3. 认为 overflow:hidden 永远安全，忽略它会裁剪下拉菜单、阴影等溢出内容。4. 只背 clearfix 代码，说不出为什么能撑开父元素。5. 在现代 flex/grid 布局中仍滥用 float 和清除浮动。」？ 能否结合「能区分 clear 与 BFC：clear 作用于后续元素，BFC 作用于父容器，两者都能解决高度塌陷但机制不同。2. 知道 display:flow-root 是标准 BFC 方案，无 overflow 裁剪副作用。3. 能提到 clearfix 的 zoom:1 是为了兼容 IE6/7 的 hasLayout。4. 能说明 BFC 触发条件及副作用：overflow:hidden 会裁剪溢出内容，float/absolute 会改变父元素定位。5. 能联系到 margin 塌陷、BFC 包含浮动、flex/grid 不产生浮动问题。」进一步展开？
 
@@ -9172,7 +12718,14 @@ call：立即调用函数，第一个参数是 this 要指向的对象，后续�
 
 call 和 bind 都是用来改变函数执行时的 this 指向，区别在于 call 会立即执行函数，而 bind 不会执行，只返回一个绑定了 this 的新函数。
 
-在 JavaScript 中，函数的 this 由调用方式决定。call 和 bind 都是 Function.prototype 上的方法，用于显式指定 this。 1. call：立即调用函数，第一个参数是 this 要指向的对象，后续参数是函数调用时传入的实参。例如： function greet(a, b) { console.log(this.name, a, b); } const obj = { name: 'Tom' }; greet.call(obj, 1, 2); // 立即输出 Tom 1 2 2. bind：不会立即调用，而是返回一个原函数的拷贝，这个新函数的 this 被永久绑定为 bind 的第一个参数，后续参数会作为新函数的预设参数（偏函数）。例如： const bound = greet.bind(obj, 1); bound(2); // 输出 Tom 1 2 通俗类比：call 像“立刻打电话给某人并让他按你的要求做事”；bind 像“先给某人写一份委托书，约定好他以后做事时听谁的，但暂时不让他做，等你需要时再让他做”。 适用场景：call 常用于借用方法、继承（如 Array.prototype.slice.call(arguments)）；bind 常用于事件处理、回调函数中固定 this，或创建偏函数。
+在 JavaScript 中，函数的 this 由调用方式决定。call 和 bind 都是 Function.prototype 上的方法，用于显式指定 this。
+
+1. call：立即调用函数，第一个参数是 this 要指向的对象，后续参数是函数调用时传入的实参。例如： function greet(a, b) { console.log(this.name, a, b); } const obj = { name: 'Tom' }; greet.call(obj, 1, 2); // 立即输出 Tom 1 2
+2. bind：不会立即调用，而是返回一个原函数的拷贝，这个新函数的 this 被永久绑定为 bind 的第一个参数，后续参数会作为新函数的预设参数（偏函数）。
+
+例如： const bound = greet.bind(obj, 1); bound(2); // 输出 Tom 1 2 通俗类比：call 像“立刻打电话给某人并让他按你的要求做事”；bind 像“先给某人写一份委托书，约定好他以后做事时听谁的，但暂时不让他做，等你需要时再让他做”。
+
+适用场景：call 常用于借用方法、继承（如 Array.prototype.slice.call(arguments)）；bind 常用于事件处理、回调函数中固定 this，或创建偏函数。
 
 **常见追问**：如何避免「误以为 bind 会立即执行函数。」？ 「误以为 bind 后 this 永远无法改变，忽略 new 调用时 this 会指向新实例。」在真实项目中应如何规避？
 
@@ -9194,7 +12747,17 @@ Promise.all(iterable) 接收一组 Promise，返回一个新 Promise；它的内
 
 Promise.all 本身是“快速失败”语义，一旦有任一 Promise reject 就立即 reject，无法继续等待其余结果；若想在异常后仍拿到全部结果，应改用 Promise.allSettled，或对每个 Promise 做 catch 包装使其不 reject。
 
-Promise.all(iterable) 接收一组 Promise，返回一个新 Promise。它的内部逻辑是：为每个输入注册 then(onFulfilled, onRejected)，用一个计数器统计完成数，把结果按索引写入数组；只要有一个输入 reject，就立刻调用外层 reject，后续输入的结果被丢弃（但输入 Promise 本身仍在执行，只是没人接收）。所以“让 Promise.all 在抛出异常后依然有效”这个说法本身是矛盾的——它的设计目标就是 fail-fast，适合“全部成功才有意义”的场景，比如并行请求多个接口后合并数据、批量上传必须全部成功。 如果业务需要“即使某个失败，也要拿到所有成功/失败的结果”，正确做法有三种： 1) Promise.allSettled(promises)：等所有 Promise 落定，返回 [{status:'fulfilled',value} | {status:'rejected',reason}]，不会 reject，最推荐。 2) 对每个 Promise 先 catch 成哨兵值：promises.map(p => p.catch(e => ({error:e})))，再 Promise.all，这样外层永远 resolve，由调用方判断哪些是错误。 3) 用 Promise.all 但配合“部分失败可接受”的语义，例如只关心成功数，失败项 catch 成 null。 通俗类比：Promise.all 像小组交作业，只要有一个人没交，组长立刻上报“失败”，不再等其他人的作业；Promise.allSettled 像老师收齐所有人的作业后再统一批改，谁交谁没交都记录在案。 注意：Promise.all 的 reject 是“主动 reject”，不是异常穿透；即使某个 Promise 已经 reject，其他 Promise 也不会被取消（JS 没有内置取消），它们仍会继续执行，只是结果被忽略。
+Promise.all(iterable) 接收一组 Promise，返回一个新 Promise。它的内部逻辑是：为每个输入注册 then(onFulfilled, onRejected)，用一个计数器统计完成数，把结果按索引写入数组；只要有一个输入 reject，就立刻调用外层 reject，后续输入的结果被丢弃（但输入 Promise 本身仍在执行，只是没人接收）。
+
+所以“让 Promise.all 在抛出异常后依然有效”这个说法本身是矛盾的——它的设计目标就是 fail-fast，适合“全部成功才有意义”的场景，比如并行请求多个接口后合并数据、批量上传必须全部成功。 如果业务需要“即使某个失败，也要拿到所有成功/失败的结果”，正确做法有三种：
+
+1) Promise.allSettled(promises)：等所有 Promise 落定，返回 [{status:'fulfilled',value} | {status:'rejected',reason}]，不会 reject，最推荐。
+2) 对每个 Promise 先 catch 成哨兵值：promises.map(p => p.catch(e => ({error:e})))，再 Promise.all，这样外层永远 resolve，由调用方判断哪些是错误。
+3) 用 Promise.all 但配合“部分失败可接受”的语义，例如只关心成功数，失败项 catch 成 null。
+
+通俗类比：Promise.all 像小组交作业，只要有一个人没交，组长立刻上报“失败”，不再等其他人的作业；Promise.allSettled 像老师收齐所有人的作业后再统一批改，谁交谁没交都记录在案。
+
+注意：Promise.all 的 reject 是“主动 reject”，不是异常穿透；即使某个 Promise 已经 reject，其他 Promise 也不会被取消（JS 没有内置取消），它们仍会继续执行，只是结果被忽略。
 
 **常见追问**：如何避免「1) 误以为 Promise.all 会等所有 Promise 完成再决定，实际上它是快速失败」？ 「2) 误以为某个 Promise reject 后其他 Promise 会被取消，实际不会，它们继续执行」在真实项目中应如何规避？
 
@@ -9216,35 +12779,27 @@ rem + 动态根字号：rem 是相对于根元素 html 的 font-size。用 JS �
 
 H5 字体自适应屏幕的核心是让字号随视口宽度（或设备像素比）动态缩放，常用方案有 rem + 动态根字号、vw/vh、clamp() 与媒体查询，其中 rem 配合 JS 动态设置 html 字号最经典。
 
-在 H5 中，字体自适应屏幕的本质是：设计稿通常基于固定宽度（如 375px 或 750px），但用户设备宽度千差万别，如果直接用 px，小屏会显得字太大、大屏字太小。因此需要把字号与视口宽度建立比例关系。 常见方案： 1. rem + 动态根字号：rem 是相对于根元素 html 的 font-size。用 JS 监听 resize，根据 document.documentElement.clientWidth 计算 html.style.fontSize = clientWidth / 设计稿份数。例如设计稿 750px，把屏幕分成 10 份，则 html 字号 = clientWidth / 10，设计稿中 32px 的字写成 32 / 75 = 0.4267rem。这样所有 rem 元素等比缩放。 2. vw 方案：1vw = 视口宽度的 1%。设计稿 750px 时，1px = 100 / 750 vw = 0.1333vw，所以 32px 字 = 32 * 0.1333 = 4.2667vw。纯 CSS 即可，无需 JS，但兼容性在旧安卓上略差。 3. clamp()/min()/max()：如 font-size: clamp(14px, 4vw, 20px)，让字号在最小和最大之间随视口平滑变化，避免极端屏幕下字过大或过小。 4. 媒体查询：针对不同断点设置不同字号，简单但不够连续。 5. 移动端还可配合 viewport meta 的 width=device-width, initial-scale=1，让布局视口等于理想视口。 通俗类比：px 像固定尺寸的砖块，rem 像按比例缩放的橡皮泥，vw 像按屏幕宽度切蛋糕，clamp 像给橡皮泥加了上下限，防止捏得太离谱。 适用场景：rem 适合需要整体等比缩放的营销页、活动页；vw 适合纯 CSS 轻量方案；clamp 适合正文阅读类页面，保证可读性。
+在 H5 中，字体自适应屏幕的本质是：设计稿通常基于固定宽度（如 375px 或 750px），但用户设备宽度千差万别，如果直接用 px，小屏会显得字太大、大屏字太小。
+
+因此需要把字号与视口宽度建立比例关系。 常见方案：
+
+1. rem + 动态根字号：rem 是相对于根元素 html 的 font-size。用 JS 监听 resize，根据 document.documentElement.clientWidth 计算 html.style.fontSize = clientWidth / 设计稿份数。例如设计稿 750px，把屏幕分成 10 份，则 html 字号 = clientWidth / 10，设计稿中 32px 的字写成 32 / 75 = 0.4267rem。这样所有 rem 元素等比缩放。
+2. vw 方案：1vw = 视口宽度的 1%。设计稿 750px 时，1px = 100 / 750 vw = 0.1333vw，所以 32px 字 = 32 * 0.1333 = 4.2667vw。纯 CSS 即可，无需 JS，但兼容性在旧安卓上略差。
+3. clamp()/min()/max()：如 font-size: clamp(14px, 4vw, 20px)，让字号在最小和最大之间随视口平滑变化，避免极端屏幕下字过大或过小。
+4. 媒体查询：针对不同断点设置不同字号，简单但不够连续。
+5. 移动端还可配合 viewport meta 的 width=device-width, initial-scale=1，让布局视口等于理想视口。
+
+通俗类比：px 像固定尺寸的砖块，rem 像按比例缩放的橡皮泥，vw 像按屏幕宽度切蛋糕，clamp 像给橡皮泥加了上下限，防止捏得太离谱。
+
+- 适用场景：rem 适合需要整体等比缩放的营销页、活动页；
+- vw 适合纯 CSS 轻量方案；
+- clamp 适合正文阅读类页面，保证可读性。
 
 **常见追问**：如何避免「只答媒体查询，忽略连续缩放，导致断点之间字号突变。」？ 「把 rem 和 em 混淆：em 相对于父元素字号，会层层累积，rem 只相对于根元素。」在真实项目中应如何规避？
 
 ---
 
-## 402. rem是什么？
-
-> 原题 ID：`q3288`
-
-**高频程度**：★★★
-
-**考察点**：考察对「追问：rem是什么」的掌握，重点看能否讲清：rem 全称 root em，是 CSS3 引入的相对长度单位
-
-**回答框架**：
-
-移动端适配：通过 JS 或 vw 动态设置 html 的 font-size，让页面整体等比缩放，元素尺寸用 rem 表达。；全局主题/无障碍：用户调整根字号后，所有 rem 尺寸同步变化，比固定 px 更友好。；组件库中统一间距、字号、圆角等设计 token。
-
-**参考回答**：
-
-rem 是 CSS 相对长度单位，1rem 等于根元素 html 的 font-size，常用于做全局可缩放、易维护的响应式布局。
-
-rem 全称 root em，是 CSS3 引入的相对长度单位。它的参照物不是父元素，而是文档根元素 html 的 font-size。默认浏览器中 html 的 font-size 通常是 16px，所以 1rem = 16px；如果设置 html{font-size:62.5%}，则 1rem = 10px，方便把设计稿 px 换算成 rem。 通俗类比：em 像“看家长脸色”，父元素字体多大，子元素就按父元素算；rem 像“看族长脸色”，不管嵌套多深，所有元素都统一看根元素 html 的字体大小。 例子： html{font-size:16px} .box{font-size:20px} .box p{font-size:1rem} /* 仍是16px，不是20px */ 适用场景： 1. 移动端适配：通过 JS 或 vw 动态设置 html 的 font-size，让页面整体等比缩放，元素尺寸用 rem 表达。 2. 全局主题/无障碍：用户调整根字号后，所有 rem 尺寸同步变化，比固定 px 更友好。 3. 组件库中统一间距、字号、圆角等设计 token。 与 em 的区别：em 相对当前元素或父元素的 font-size，嵌套时容易层层放大；rem 只相对根元素，计算稳定、可预测。
-
-**常见追问**：如何避免「误以为 rem 相对父元素 font-size，这是 em 的行为。」？ 「误以为 1rem 永远等于 16px，忽略 html 可被设置或用户默认字号变化。」在真实项目中应如何规避？
-
----
-
-## 403. vw是什么？
+## 402. vw是什么？
 
 > 原题 ID：`q3289`
 
@@ -9260,13 +12815,25 @@ rem 全称 root em，是 CSS3 引入的相对长度单位。它的参照物不�
 
 vw 是 CSS 视口宽度单位，1vw 等于视口宽度的 1%，随视口变化而动态计算。
 
-vw（viewport width）是 CSS 相对长度单位之一，基准是“视口宽度”。1vw = 当前视口宽度的 1%。例如视口宽 1000px 时，1vw = 10px；视口缩到 500px 时，1vw = 5px。 通俗类比：把浏览器可视区域想象成一根可伸缩的橡皮筋，vw 就是把这根橡皮筋等分成 100 份，取其中若干份。橡皮筋变长，每份也变长，所以用 vw 写的尺寸会“跟着屏幕一起缩放”。 同族单位还有：vh（视口高度 1%）、vmin（视口宽高中较小者的 1%）、vmax（较大者的 1%）。 典型用途： 1. 全屏布局：height: 100vh 做首屏； 2. 流式字号/间距：font-size: 4vw，让标题随屏幕缩放； 3. 与 clamp()/min()/max() 配合做响应式：font-size: clamp(16px, 4vw, 32px)，避免极端屏幕下过大或过小。 注意：vw 的“视口”通常指布局视口（layout viewport），不是视觉视口（visual viewport）。在移动端，vw 一般不受页面缩放影响，但会受滚动条影响：桌面端若出现纵向滚动条，100vw 可能略大于可用内容宽度，导致横向滚动。
+vw（viewport width）是 CSS 相对长度单位之一，基准是“视口宽度”。1vw = 当前视口宽度的 1%。
+
+例如视口宽 1000px 时，1vw = 10px；视口缩到 500px 时，1vw = 5px。
+
+通俗类比：把浏览器可视区域想象成一根可伸缩的橡皮筋，vw 就是把这根橡皮筋等分成 100 份，取其中若干份。橡皮筋变长，每份也变长，所以用 vw 写的尺寸会“跟着屏幕一起缩放”。 同族单位还有：vh（视口高度 1%）、vmin（视口宽高中较小者的 1%）、vmax（较大者的 1%）。
+
+典型用途：
+
+1. 全屏布局：height: 100vh 做首屏；
+2. 流式字号/间距：font-size: 4vw，让标题随屏幕缩放；
+3. 与 clamp()/min()/max() 配合做响应式：font-size: clamp(16px, 4vw, 32px)，避免极端屏幕下过大或过小。
+
+注意：vw 的“视口”通常指布局视口（layout viewport），不是视觉视口（visual viewport）。在移动端，vw 一般不受页面缩放影响，但会受滚动条影响：桌面端若出现纵向滚动条，100vw 可能略大于可用内容宽度，导致横向滚动。
 
 **常见追问**：如何避免「误以为 1vw 等于 1% 的父元素宽度——那是 %，不是 vw。」？ 「误以为 vw 会随页面缩放（Ctrl+滚轮）变化——通常不会，它基于布局视口。」在真实项目中应如何规避？
 
 ---
 
-## 404. vw和rem区别？
+## 403. vw和rem区别？
 
 > 原题 ID：`q3290`
 
@@ -9282,13 +12849,18 @@ vw（viewport width）是 CSS 相对长度单位之一，基准是“视口宽�
 
 vw 是视口宽度的百分比单位，随屏幕宽度线性变化；rem 是根元素 font-size 的倍数，换算比例由根字号决定，可通过 JS 或媒体查询动态控制。
 
-1) 定义：vw（viewport width）表示视口宽度的 1%，100vw 等于整个视口宽度（含滚动条时可能略大于内容区）；rem（root em）表示根元素 html 的 font-size 的倍数，1rem = html 当前 font-size。 2) 换算机制：vw 的参照物是浏览器视口宽度，屏幕一变，所有 vw 值等比缩放，无需额外计算；rem 的参照物是 html 的 font-size，默认浏览器通常 16px，但可被用户或脚本修改，因此 1rem 的实际像素值取决于根字号。 3) 典型用法：vw 常用于全屏宽度布局、字体随屏幕缩放（如 font-size: 4vw）；rem 常用于移动端适配，通过 JS 设置 document.documentElement.style.fontSize = clientWidth / 设计稿宽度 * 基准值，或配合媒体查询分段设置根字号，让页面整体等比缩放。 4) 通俗类比：vw 像“按屏幕宽度切蛋糕”，屏幕多宽，每份就多大；rem 像“按家里统一尺子量东西”，尺子（根字号）先定好，所有尺寸都按这把尺子换算。 5) 适用场景：vw 适合需要严格跟随视口宽高比的元素（如全屏 banner、宽高比盒子）；rem 适合需要整体缩放且便于统一调整的移动端页面，尤其当设计稿以固定宽度给出时。 6) 注意：vw 在移动端可能受浏览器地址栏收缩影响导致视口高度变化，且 100vw 可能包含滚动条宽度；rem 依赖根字号，若用户调整浏览器默认字体大小，rem 布局会整体变化，需考虑可访问性。
+1) 定义：vw（viewport width）表示视口宽度的 1%，100vw 等于整个视口宽度（含滚动条时可能略大于内容区）；rem（root em）表示根元素 html 的 font-size 的倍数，1rem = html 当前 font-size。
+2) 换算机制：vw 的参照物是浏览器视口宽度，屏幕一变，所有 vw 值等比缩放，无需额外计算；rem 的参照物是 html 的 font-size，默认浏览器通常 16px，但可被用户或脚本修改，因此 1rem 的实际像素值取决于根字号。
+3) 典型用法：vw 常用于全屏宽度布局、字体随屏幕缩放（如 font-size: 4vw）；rem 常用于移动端适配，通过 JS 设置 document.documentElement.style.fontSize = clientWidth / 设计稿宽度 * 基准值，或配合媒体查询分段设置根字号，让页面整体等比缩放。
+4) 通俗类比：vw 像“按屏幕宽度切蛋糕”，屏幕多宽，每份就多大；rem 像“按家里统一尺子量东西”，尺子（根字号）先定好，所有尺寸都按这把尺子换算。
+5) 适用场景：vw 适合需要严格跟随视口宽高比的元素（如全屏 banner、宽高比盒子）；rem 适合需要整体缩放且便于统一调整的移动端页面，尤其当设计稿以固定宽度给出时。
+6) 注意：vw 在移动端可能受浏览器地址栏收缩影响导致视口高度变化，且 100vw 可能包含滚动条宽度；rem 依赖根字号，若用户调整浏览器默认字体大小，rem 布局会整体变化，需考虑可访问性。
 
 **常见追问**：如何避免「1) 误以为 rem 是相对于父元素 font-size（实际是根元素，em 才是父元素）」？ 「2) 认为 vw 和百分比 % 完全一样：% 相对于父元素宽度，vw 始终相对于视口宽度」在真实项目中应如何规避？
 
 ---
 
-## 405. 网页如何去适配不同宽度？
+## 404. 网页如何去适配不同宽度？
 
 > 原题 ID：`q3291`
 
@@ -9304,13 +12876,26 @@ vw 是视口宽度的百分比单位，随屏幕宽度线性变化；rem 是根�
 
 网页适配不同宽度本质是让布局与内容随视口尺寸弹性变化，核心手段是响应式设计：视口 meta、流式布局、媒体查询、弹性/网格布局与相对单位。
 
-网页适配不同宽度，就是让同一份 HTML/CSS 在手机、平板、桌面等不同视口宽度下都能正常显示、不溢出、可读可用。原理可以类比成‘水与容器’：内容像水，容器像屏幕，好的设计让水自动适应容器形状，而不是给每种容器单独造一套水。 主要技术手段： 1. 视口声明：移动端必须加 <meta name="viewport" content="width=device-width, initial-scale=1">，否则浏览器会按约 980px 的虚拟视口渲染再缩放，导致字体过小、布局错乱。 2. 流式布局：用百分比、fr、flex、grid 替代固定 px 宽度，让容器随父级伸缩。例如 .container { width: 90%; max-width: 1200px; margin: 0 auto; }。 3. 媒体查询：@media (max-width: 768px) { ... } 在断点处切换布局，比如桌面三栏变移动端单栏。断点应依据内容而非具体设备。 4. 相对单位：rem/em 随根字号或父字号缩放，vw/vh 随视口，% 随父级；配合 clamp() 实现流体字号，如 font-size: clamp(16px, 2.5vw, 24px)。 5. 图片与媒体：img { max-width: 100%; height: auto; }，或用 srcset/sizes 按需加载不同分辨率图片。 6. 现代布局：Flexbox 适合一维排列，Grid 适合二维网格，配合 minmax()、auto-fit 可自动换行。 适用场景：响应式设计适合内容型网站、后台系统、营销页；若追求移动端极致体验，可做移动优先（mobile-first）或独立 m 站；桌面应用式复杂交互可考虑自适应布局或按设备分流。 一句话：适配不是‘为每个宽度写一套’，而是用弹性规则让布局在任意宽度下自然过渡。
+网页适配不同宽度，就是让同一份 HTML/CSS 在手机、平板、桌面等不同视口宽度下都能正常显示、不溢出、可读可用。原理可以类比成‘水与容器’：内容像水，容器像屏幕，好的设计让水自动适应容器形状，而不是给每种容器单独造一套水。 主要技术手段：
+
+1. 视口声明：移动端必须加 <meta name="viewport" content="width=device-width, initial-scale=1">，否则浏览器会按约 980px 的虚拟视口渲染再缩放，导致字体过小、布局错乱。
+2. 流式布局：用百分比、fr、flex、grid 替代固定 px 宽度，让容器随父级伸缩。例如 .container { width: 90%; max-width: 1200px; margin: 0 auto; }。
+3. 媒体查询：@media (max-width: 768px) { ... } 在断点处切换布局，比如桌面三栏变移动端单栏。断点应依据内容而非具体设备。
+4. 相对单位：rem/em 随根字号或父字号缩放，vw/vh 随视口，% 随父级；配合 clamp() 实现流体字号，如 font-size: clamp(16px, 2.5vw, 24px)。
+5. 图片与媒体：img { max-width: 100%; height: auto; }，或用 srcset/sizes 按需加载不同分辨率图片。
+6. 现代布局：Flexbox 适合一维排列，Grid 适合二维网格，配合 minmax()、auto-fit 可自动换行。
+
+- 适用场景：响应式设计适合内容型网站、后台系统、营销页；
+- 若追求移动端极致体验，可做移动优先（mobile-first）或独立 m 站；
+- 桌面应用式复杂交互可考虑自适应布局或按设备分流。
+
+一句话：适配不是‘为每个宽度写一套’，而是用弹性规则让布局在任意宽度下自然过渡。
 
 **常见追问**：如何避免「只写媒体查询却忘了 viewport meta，移动端直接按 980px 渲染，适配失效。2. 用固定 px 宽度 + 横向滚动，或 overflow-x: hidden 掩盖问题。3. 断点照抄设备宽度（如 375/414），不根据内容实际溢出调整。4. 认为响应式就是‘缩小版桌面’，忽略触摸目标、字体可读性、图片带宽。5. 滥用 vw 做字号导致小屏过小、大屏过大，不用 clamp 限制。6. 混淆自适应（adaptive，多套固定布局切换）与响应式（responsive，流式连续变化）。7. 忽略 100vh 在移动端的动态视口问题，导致首屏高度异常。」？ 能否结合「移动优先：先写小屏基础样式，再用 min-width 媒体查询增强，CSS 更简洁、性能更好。2. 容器查询 @container 让组件根据自身容器宽度响应，比媒体查询更组件化，适合设计系统。3. 断点选择应基于内容溢出点而非 iPhone/iPad 具体宽度，可用工具拖动窗口找断点。4. 视口单位坑：100vh 在移动端浏览器地址栏伸缩时会跳动，可用 100dvh 或 JS 修正。5. 图片响应式：srcset + sizes 让浏览器按 DPR 和视口选图，避免移动端加载桌面大图。6. 可用 clamp() + min()/max() 减少媒体查询，实现流体排版。7. 面试可提 CSS 像素与设备像素、DPR、viewport 缩放的关系，体现对渲染原理的理解。」进一步展开？
 
 ---
 
-## 406. 如何高效地从1000个div中删除10个div？
+## 405. 如何高效地从1000个div中删除10个div？
 
 > 原题 ID：`q3294`
 
@@ -9326,13 +12911,19 @@ vw 是视口宽度的百分比单位，随屏幕宽度线性变化；rem 是根�
 
 批量删除 DOM 的核心是减少重排/重绘次数：先摘除父节点或用 DocumentFragment 离线操作，再一次性替换，避免逐个 remove 触发多次 layout。
 
-场景：页面有 1000 个 div（比如同一个父容器下的列表项），要删掉其中 10 个。 1) 最朴素写法：对每个目标 div 调 el.remove() 或 parent.removeChild(el)。每次删除都会修改 DOM 树，浏览器可能触发样式计算、layout、paint。10 次删除 = 最多 10 次重排，虽然 10 次不算多，但如果是 100/1000 个就会明显卡顿。 2) 更高效的做法： - 先把父节点从文档流中摘除：parent.style.display='none' 或把 parent 从 DOM 中 remove，再在内存里删子节点，最后放回。这样中间所有删除都不触发页面重排。 - 或者用 DocumentFragment：把要保留的节点 append 到 fragment，再清空父节点并 append fragment。 - 或者一次性替换 innerHTML（注意会丢失事件监听和状态，且要防 XSS）。 - 现代浏览器可用 replaceChildren(...keepNodes) 一次性替换子节点。 3) 选择器层面：先收集要删的节点，再批量处理。例如： const toRemove = [...container.children].filter(el => el.dataset.remove === '1'); container.replaceChildren(...[...container.children].filter(el => !toRemove.includes(el))); 4) 为什么快：DOM 操作本身不慢，慢的是它引发的样式重算、布局和绘制。把多次写操作合并成一次，浏览器只需在最后做一次 layout/paint。 通俗类比：搬家时不是每拿一件东西就下楼跑一趟，而是先装箱，最后一次性搬走。
+场景：页面有 1000 个 div（比如同一个父容器下的列表项），要删掉其中 10 个。
+
+1) 最朴素写法：对每个目标 div 调 el.remove() 或 parent.removeChild(el)。每次删除都会修改 DOM 树，浏览器可能触发样式计算、layout、paint。10 次删除 = 最多 10 次重排，虽然 10 次不算多，但如果是 100/1000 个就会明显卡顿。
+2) 更高效的做法：
+
+- 先把父节点从文档流中摘除：parent.style.display='none' 或把 parent 从 DOM 中 remove，再在内存里删子节点，最后放回。这样中间所有删除都不触发页面重排。
+- 或者用 DocumentFragment：把要保留的节点 append 到 fragment，再清空父节点并 append fragment。 - 或者一次性替换 innerHTML（注意会丢失事件监听和状态，且要防 XSS）。 - 现代浏览器可用 replaceChildren(...keepNodes) 一次性替换子节点。 3) 选择器层面：先收集要删的节点，再批量处理。例如： const toRemove = [...container.children].filter(el => el.dataset.remove === '1'); container.replaceChildren(...[...container.children].filter(el => !toRemove.includes(el))); 4) 为什么快：DOM 操作本身不慢，慢的是它引发的样式重算、布局和绘制。把多次写操作合并成一次，浏览器只需在最后做一次 layout/paint。 通俗类比：搬家时不是每拿一件东西就下楼跑一趟，而是先装箱，最后一次性搬走。
 
 **常见追问**：如何避免「以为 remove() 比 removeChild() 快很多，其实核心都是触发 DOM 变更，关键在批量。」？ 「用 innerHTML='' 清空再重建，会丢失事件、表单状态，且可能引入 XSS。」在真实项目中应如何规避？
 
 ---
 
-## 407. 如何监听img加载完成？
+## 406. 如何监听img加载完成？
 
 > 原题 ID：`q3295`
 
@@ -9348,13 +12939,22 @@ img.onload / addEventListener('load')：图片成功加载并解码后触发。�
 
 img 加载完成可用 onload/onerror 事件或 decode() Promise 监听，注意缓存图片可能同步触发、需在设置 src 前绑定回调。
 
-监听 img 加载完成的核心是围绕 HTMLImageElement 的生命周期事件与状态属性。 1) 事件方式： - img.onload / addEventListener('load')：图片成功加载并解码后触发。 - img.onerror / addEventListener('error')：网络失败、404、格式错误、CORS 受限等导致加载失败时触发。 - 必须在设置 src 之前绑定，否则缓存命中时可能已经触发完，回调丢失。 2) 状态属性： - img.complete：布尔值，表示图片是否已经“加载完成”（成功或失败都可能为 true）。 - img.naturalWidth / naturalHeight：图片固有尺寸，成功加载后 >0，失败通常为 0。 - 因此判断成功不能只看 complete，要结合 naturalWidth > 0。 3) 现代 Promise 方式： - img.decode() 返回 Promise，在图片可安全绘制到 canvas 时 resolve，失败 reject。适合需要确保解码完成的场景，如 canvas drawImage。 - 注意 decode() 对未设置 src 或跨域图片可能 reject。 4) 通用封装： function loadImage(url) { return new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(new Error('image load failed: ' + url)); img.src = url; }); } 5) 缓存与竞态： - 浏览器缓存命中时，设置 src 后 load 可能同步或微任务内触发，所以先绑事件再赋值。 - 若图片已在 DOM 中且 complete 为 true，可直接 resolve，无需再等事件。 6) 适用场景： - 图片懒加载、预加载、占位图切换、canvas 绘图、导出海报、图片尺寸自适应布局等。 通俗类比：img 像一个快递包裹，onload 是“签收成功”，onerror 是“派送失败”，complete 是“物流状态已终结”，但终结不代表一定成功，还要看 naturalWidth 这个“包裹里有没有真货”。
+监听 img 加载完成的核心是围绕 HTMLImageElement 的生命周期事件与状态属性。
+
+1) 事件方式： - img.onload / addEventListener('load')：图片成功加载并解码后触发。 - img.onerror / addEventListener('error')：网络失败、404、格式错误、CORS 受限等导致加载失败时触发。 - 必须在设置 src 之前绑定，否则缓存命中时可能已经触发完，回调丢失。
+2) 状态属性： - img.complete：布尔值，表示图片是否已经“加载完成”（成功或失败都可能为 true）。 - img.naturalWidth / naturalHeight：图片固有尺寸，成功加载后 >0，失败通常为 0。 - 因此判断成功不能只看 complete，要结合 naturalWidth > 0。
+3) 现代 Promise 方式： - img.decode() 返回 Promise，在图片可安全绘制到 canvas 时 resolve，失败 reject。适合需要确保解码完成的场景，如 canvas drawImage。 - 注意 decode() 对未设置 src 或跨域图片可能 reject。
+4) 通用封装： function loadImage(url) { return new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(new Error('image load failed: ' + url)); img.src = url; }); }
+5) 缓存与竞态： - 浏览器缓存命中时，设置 src 后 load 可能同步或微任务内触发，所以先绑事件再赋值。 - 若图片已在 DOM 中且 complete 为 true，可直接 resolve，无需再等事件。
+6) 适用场景： - 图片懒加载、预加载、占位图切换、canvas 绘图、导出海报、图片尺寸自适应布局等。
+
+通俗类比：img 像一个快递包裹，onload 是“签收成功”，onerror 是“派送失败”，complete 是“物流状态已终结”，但终结不代表一定成功，还要看 naturalWidth 这个“包裹里有没有真货”。
 
 **常见追问**：如何避免「1) 先设置 src 再绑定 onload：缓存图片会直接命中，回调不执行，这是最常见错误」？ 「2) 只监听 onload 不监听 onerror：失败时 Promise 永远 pending，导致页面卡死或 loading 不消失」在真实项目中应如何规避？
 
 ---
 
-## 408. 怎么设计页面布局（开放题目）？
+## 407. 怎么设计页面布局（开放题目）？
 
 > 原题 ID：`q3307`
 
@@ -9370,13 +12970,22 @@ img 加载完成可用 onload/onerror 事件或 decode() Promise 监听，注意
 
 页面布局设计本质是把页面拆成可复用、可组合的区块，用栅格/弹性/网格等约束系统管理空间关系，并兼顾响应式、可访问性与性能。
 
-页面布局设计可以分四步走： 1. 信息架构先行：先明确页面要承载什么内容、用户主任务是什么，再决定视觉层级。常用方法是画线框图（Wireframe），把页面抽象成 Header、Sidebar、Main、Footer 等语义区块。类比盖房子：先定房间功能，再砌墙。 2. 选择布局系统： - 流式布局（Float/Inline-block）：早期方案，需清除浮动，维护成本高。 - Flexbox：一维布局，适合导航栏、卡片行、垂直居中。 - CSS Grid：二维布局，适合整体页面骨架，如 `grid-template-areas: 'header header' 'sidebar main' 'footer footer'`。 - 栅格系统（12/24 列）：Bootstrap/Ant Design 常用，通过列宽比例快速对齐。 实际项目常组合使用：Grid 搭骨架，Flex 排内部元素。 3. 响应式与自适应： - 媒体查询（Media Query）按断点切换布局； - 相对单位（%、rem、vw/vh、fr）让容器随视口伸缩； - 移动优先（Mobile First）：先写小屏样式，再用 `min-width` 逐级增强； - 容器查询（Container Query）让组件根据父容器宽度自适应，适合组件库。 4. 可访问性与性能： - 语义化标签（header/nav/main/aside/footer）利于 SEO 和读屏； - 避免布局抖动（CLS），给图片/广告位预留宽高； - 减少深层嵌套，避免过度重排； - 键盘 Tab 顺序与视觉顺序一致。 举例：一个后台管理页，外层用 Grid 划分侧边栏+内容区，内容区顶部用 Flex 放面包屑和操作按钮，下方卡片列表用 Grid 的 `repeat(auto-fill, minmax(280px, 1fr))` 实现自适应换行。
+页面布局设计可以分四步走：
+
+1. 信息架构先行：先明确页面要承载什么内容、用户主任务是什么，再决定视觉层级。常用方法是画线框图（Wireframe），把页面抽象成 Header、Sidebar、Main、Footer 等语义区块。类比盖房子：先定房间功能，再砌墙。
+2. 选择布局系统：
+
+- 流式布局（Float/Inline-block）：早期方案，需清除浮动，维护成本高。
+- Flexbox：一维布局，适合导航栏、卡片行、垂直居中。
+- CSS Grid：二维布局，适合整体页面骨架，如 `grid-template-areas: 'header header' 'sidebar main' 'footer footer'`。
+- 栅格系统（12/24 列）：Bootstrap/Ant Design 常用，通过列宽比例快速对齐。 实际项目常组合使用：Grid 搭骨架，Flex 排内部元素。 3. 响应式与自适应： - 媒体查询（Media Query）按断点切换布局； - 相对单位（%、rem、vw/vh、fr）让容器随视口伸缩；
+- 移动优先（Mobile First）：先写小屏样式，再用 `min-width` 逐级增强； - 容器查询（Container Query）让组件根据父容器宽度自适应，适合组件库。 4. 可访问性与性能： - 语义化标签（header/nav/main/aside/footer）利于 SEO 和读屏； - 避免布局抖动（CLS），给图片/广告位预留宽高； - 减少深层嵌套，避免过度重排； - 键盘 Tab 顺序与视觉顺序一致。 举例：一个后台管理页，外层用 Grid 划分侧边栏+内容区，内容区顶部用 Flex 放面包屑和操作按钮，下方卡片列表用 Grid 的 `repeat(auto-fill, minmax(280px, 1fr))` 实现自适应换行。
 
 **常见追问**：如何避免「只谈视觉美观，忽略信息架构和用户任务；」？ 「认为响应式就是加几个媒体查询，忽略移动优先和相对单位；」在真实项目中应如何规避？
 
 ---
 
-## 409. 移动端和pc端click事件为什么差了300毫秒？
+## 408. 移动端和pc端click事件为什么差了300毫秒？
 
 > 原题 ID：`q3313`
 
@@ -9392,13 +13001,26 @@ img 加载完成可用 onload/onerror 事件或 decode() Promise 监听，注意
 
 移动端 click 延迟约 300ms，是浏览器为区分“单击”和“双击缩放”而等待判断造成的；PC 端没有双击缩放语义，所以 click 立即触发。
 
-在早期 iPhone Safari 中，为了在窄屏上保留桌面网页的可用性，浏览器引入了双击缩放（double-tap to zoom）手势：用户快速点两下屏幕，页面会放大到对应区域。问题在于，浏览器收到第一次 tap 时，无法立刻判断用户是想“单击”还是“双击”的第一下，于是只能等待一个时间窗口（约 300ms），看是否会有第二次 tap。如果 300ms 内没有第二次点击，才把第一次 tap 派发为 click 事件；如果有第二次，就触发缩放，不派发 click。PC 端鼠标没有这种“双击缩放页面”的默认行为，单击就是单击，所以 click 可以立即触发。 通俗类比：你按门铃，门卫不确定你是“按一下叫人”还是“按两下表示暗号”，于是先等 300ms，确认没有第二下，才开门。PC 端相当于门卫知道按一下就是叫人，所以立刻开门。 这个延迟主要影响移动端 Web 的点击响应，表现为按钮点下去要等约 300ms 才有反馈，在快速连续点击、游戏、表单提交等场景下体验很差。现代浏览器已经大幅缓解： 1. 设置 viewport meta：<meta name="viewport" content="width=device-width, initial-scale=1">，让页面按设备宽度布局，浏览器可认为不需要双击缩放，从而去掉延迟。 2. CSS touch-action：给元素设置 touch-action: manipulation，告诉浏览器只允许滚动和连续缩放，不允许双击缩放，click 可立即触发。 3. 使用 FastClick 等库：在 touchend 时手动派发 click，绕过等待。 4. 现代浏览器（Chrome 32+、iOS 9.3+ 等）在满足 viewport 条件时默认移除 300ms 延迟。 注意：300ms 不是所有移动端都固定存在，它取决于浏览器是否启用了双击缩放判定；如果页面禁用了缩放或设置了合适的 viewport，延迟会消失。
+在早期 iPhone Safari 中，为了在窄屏上保留桌面网页的可用性，浏览器引入了双击缩放（double-tap to zoom）手势：用户快速点两下屏幕，页面会放大到对应区域。问题在于，浏览器收到第一次 tap 时，无法立刻判断用户是想“单击”还是“双击”的第一下，于是只能等待一个时间窗口（约 300ms），看是否会有第二次 tap。
+
+如果 300ms 内没有第二次点击，才把第一次 tap 派发为 click 事件；如果有第二次，就触发缩放，不派发 click。PC 端鼠标没有这种“双击缩放页面”的默认行为，单击就是单击，所以 click 可以立即触发。
+
+通俗类比：你按门铃，门卫不确定你是“按一下叫人”还是“按两下表示暗号”，于是先等 300ms，确认没有第二下，才开门。PC 端相当于门卫知道按一下就是叫人，所以立刻开门。 这个延迟主要影响移动端 Web 的点击响应，表现为按钮点下去要等约 300ms 才有反馈，在快速连续点击、游戏、表单提交等场景下体验很差。
+
+现代浏览器已经大幅缓解：
+
+1. 设置 viewport meta：<meta name="viewport" content="width=device-width, initial-scale=1">，让页面按设备宽度布局，浏览器可认为不需要双击缩放，从而去掉延迟。
+2. CSS touch-action：给元素设置 touch-action: manipulation，告诉浏览器只允许滚动和连续缩放，不允许双击缩放，click 可立即触发。
+3. 使用 FastClick 等库：在 touchend 时手动派发 click，绕过等待。
+4. 现代浏览器（Chrome 32+、iOS 9.3+ 等）在满足 viewport 条件时默认移除 300ms 延迟。
+
+注意：300ms 不是所有移动端都固定存在，它取决于浏览器是否启用了双击缩放判定；如果页面禁用了缩放或设置了合适的 viewport，延迟会消失。
 
 **常见追问**：如何避免「误以为 300ms 是移动端系统或硬件性能问题，其实是浏览器为双击缩放做的等待。2. 误以为所有移动端、所有浏览器都固定有 300ms，实际上现代浏览器在设置 viewport 或 touch-action 后已移除。3. 把 300ms 延迟和“点击穿透”混为一谈：延迟是 click 派发晚，穿透是事件目标错位，两者相关但不同。4. 认为只要用 touchstart 替代 click 就万事大吉，忽略了 touchstart 会立即触发、可能误触，且不兼容键盘/辅助设备。5. 认为 PC 端也有 300ms 延迟，PC 端没有双击缩放页面的默认行为，click 是即时的。」？ 能否结合「源码/规范层面：WebKit 的 EventHandler 中有双击缩放判定逻辑，会设置一个约 300ms 的 timer 来等待第二次 tap；如果第二次 tap 到来则触发 zoom，否则派发 click。2. 现代方案：touch-action: manipulation 是 CSS 规范中用于声明触摸行为的方式，浏览器可据此跳过双击缩放等待。3. 实测差异：可以用 performance.now() 在 touchstart 和 click 中打点，观察延迟；在设置 viewport 后延迟从约 300ms 降到接近 0。4. 与 300ms 相关的还有“点击穿透”：touchstart 后 300ms 才触发 click，如果上层元素在 touchend 时被移除，click 可能落到下层元素，FastClick 等方案需要处理。5. 移动端事件顺序：touchstart -> touchend -> click，理解这个顺序有助于解释延迟和穿透。」进一步展开？
 
 ---
 
-## 410. 如何实现一个swiper？
+## 409. 如何实现一个swiper？
 
 > 原题 ID：`q3315`
 
@@ -9414,13 +13036,23 @@ img 加载完成可用 onload/onerror 事件或 decode() Promise 监听，注意
 
 Swiper 的核心是「容器裁剪 + 轨道位移 + 手势/自动切换 + 惯性吸附」，用 transform 平移轨道并配合 transition 实现滑动，再通过触摸/鼠标事件和索引状态控制切换。
 
-实现一个轮播（swiper）可以拆成四层：结构、样式、状态、交互。 1) 结构：外层容器 .swiper 设置 overflow:hidden 作为可视窗口；内层轨道 .track 横向排列所有 slide，宽度为 N*100% 或 flex 布局；每个 .slide 宽度等于容器宽度。 2) 样式：轨道用 transform: translateX(-index*100%) 移动，而不是改 left，因为 transform 走合成层、性能更好且不触发重排。切换时加 transition: transform .3s ease 实现动画。 3) 状态：维护 currentIndex、是否拖拽中 isDragging、拖拽起始坐标 startX、当前位移 offset。渲染时根据 index 计算目标位移。 4) 交互： - 触摸/鼠标：pointerdown 记录 startX，pointermove 计算 delta，实时设置 translateX(baseOffset + delta)，此时去掉 transition 保证跟手；pointerup 时根据 delta 阈值（如容器宽度的 1/4）或速度判断翻页，加上 transition 吸附到目标页。 - 自动播放：setInterval 定时 index+1，循环时用取模或首尾克隆实现无缝。 - 循环：常见做法是首尾各克隆一张，滑到克隆页后无动画瞬移回真实页。 - 指示器/箭头：点击更新 index 并触发同样的位移逻辑。 通俗类比：像一列火车（轨道）在窗口后面平移，窗口只露出当前车厢；手指拖动就是手动推火车，松手后根据推的距离决定停在哪节车厢。 适用场景：移动端图片/卡片轮播、引导页、商品展示。若只需简单切换也可用 CSS scroll-snap 实现，无需 JS 计算。
+实现一个轮播（swiper）可以拆成四层：结构、样式、状态、交互。
+
+1) 结构：外层容器 .swiper 设置 overflow:hidden 作为可视窗口；内层轨道 .track 横向排列所有 slide，宽度为 N*100% 或 flex 布局；每个 .slide 宽度等于容器宽度。
+2) 样式：轨道用 transform: translateX(-index*100%) 移动，而不是改 left，因为 transform 走合成层、性能更好且不触发重排。切换时加 transition: transform .3s ease 实现动画。
+3) 状态：维护 currentIndex、是否拖拽中 isDragging、拖拽起始坐标 startX、当前位移 offset。渲染时根据 index 计算目标位移。
+4) 交互：
+
+- 触摸/鼠标：pointerdown 记录 startX，pointermove 计算 delta，实时设置 translateX(baseOffset + delta)，此时去掉 transition 保证跟手；pointerup 时根据 delta 阈值（如容器宽度的 1/4）或速度判断翻页，加上 transition 吸附到目标页。
+- 自动播放：setInterval 定时 index+1，循环时用取模或首尾克隆实现无缝。
+- 循环：常见做法是首尾各克隆一张，滑到克隆页后无动画瞬移回真实页。
+- 指示器/箭头：点击更新 index 并触发同样的位移逻辑。 通俗类比：像一列火车（轨道）在窗口后面平移，窗口只露出当前车厢；手指拖动就是手动推火车，松手后根据推的距离决定停在哪节车厢。 适用场景：移动端图片/卡片轮播、引导页、商品展示。若只需简单切换也可用 CSS scroll-snap 实现，无需 JS 计算。
 
 **常见追问**：如何避免「1) 只改 left 或 margin-left 做动画，导致频繁重排、性能差」？ 「2) 忘记在拖拽开始时移除 transition，导致跟手延迟、拖不动」在真实项目中应如何规避？
 
 ---
 
-## 411. vw em rem的区别和使用场景？
+## 410. vw em rem的区别和使用场景？
 
 > 原题 ID：`q3322`
 
@@ -9436,13 +13068,27 @@ vw/vh：全屏背景、弹窗遮罩、随视口变化的字体或间距、宽高
 
 vw 是视口宽度的 1%，em 相对当前元素（或父元素）font-size，rem 相对根元素 html 的 font-size；vw 适合视口自适应布局，em 适合组件内相对缩放，rem 适合全局统一缩放与移动端适配。
 
-三者都是 CSS 相对长度单位，但参照物不同。 1) vw（viewport width）：1vw = 视口宽度的 1%。例如视口宽 375px，则 1vw = 3.75px，100vw 就是整个视口宽度。类似还有 vh、vmin、vmax。它直接跟屏幕/窗口尺寸挂钩，适合做全屏、宽高比、随窗口变化的布局。注意 100vw 在桌面端可能包含滚动条宽度，导致横向溢出。 2) em：相对当前元素的 font-size；如果当前元素自身 font-size 也用 em 声明，则相对父元素的 font-size。例如父元素 font-size:16px，子元素 font-size:2em 即 32px；子元素 width:2em 则等于 64px（因为此时子元素 font-size 已是 32px）。所以 em 有“继承+复合”特性，容易层层放大或缩小，适合组件内部按字号成比例缩放，比如按钮 padding、图标尺寸随文字大小变化。 3) rem（root em）：始终相对根元素 html 的 font-size，不受父级影响。默认 html font-size 为 16px，则 1rem=16px。它适合全局统一缩放，移动端常用“动态 rem”方案：用 JS 根据屏幕宽度设置 html 的 font-size，例如设计稿 750px，则 html font-size = 100 * (clientWidth / 750) px，之后所有尺寸按设计稿 px/100 写成 rem，实现整体等比适配。 通俗类比：vw 像“按窗户大小裁布”，窗户变宽布就变宽；em 像“按当前字号量尺寸”，字号变所有相关尺寸跟着变；rem 像“全公司统一按总部规定的尺子量”，不管在哪个部门都用同一把尺子。 使用场景： - vw/vh：全屏背景、弹窗遮罩、随视口变化的字体或间距、宽高比盒子。 - em：组件内部相对缩放，如按钮 padding、border-radius、图标大小随 font-size 变化；也可用于媒体查询（但媒体查询中 em 相对浏览器默认字号，不是父元素）。 - rem：移动端整体适配、全局字号与间距体系、需要统一缩放的设计系统。 现代实践中，常配合 clamp()、min()、max() 使用，例如 font-size: clamp(1rem, 2.5vw, 2rem)，兼顾可访问性与视口自适应。
+三者都是 CSS 相对长度单位，但参照物不同。
+
+1) vw（viewport width）：1vw = 视口宽度的 1%。例如视口宽 375px，则 1vw = 3.75px，100vw 就是整个视口宽度。类似还有 vh、vmin、vmax。它直接跟屏幕/窗口尺寸挂钩，适合做全屏、宽高比、随窗口变化的布局。注意 100vw 在桌面端可能包含滚动条宽度，导致横向溢出。
+2) em：相对当前元素的 font-size；如果当前元素自身 font-size 也用 em 声明，则相对父元素的 font-size。例如父元素 font-size:16px，子元素 font-size:2em 即 32px；子元素 width:2em 则等于 64px（因为此时子元素 font-size 已是 32px）。所以 em 有“继承+复合”特性，容易层层放大或缩小，适合组件内部按字号成比例缩放，比如按钮 padding、图标尺寸随文字大小变化。
+3) rem（root em）：始终相对根元素 html 的 font-size，不受父级影响。默认 html font-size 为 16px，则 1rem=16px。它适合全局统一缩放，移动端常用“动态 rem”方案：用 JS 根据屏幕宽度设置 html 的 font-size，例如设计稿 750px，则 html font-size = 100 * (clientWidth / 750) px，之后所有尺寸按设计稿 px/100 写成 rem，实现整体等比适配。
+
+- 通俗类比：vw 像“按窗户大小裁布”，窗户变宽布就变宽；
+- em 像“按当前字号量尺寸”，字号变所有相关尺寸跟着变；
+- rem 像“全公司统一按总部规定的尺子量”，不管在哪个部门都用同一把尺子。
+
+使用场景：
+
+- vw/vh：全屏背景、弹窗遮罩、随视口变化的字体或间距、宽高比盒子。
+- em：组件内部相对缩放，如按钮 padding、border-radius、图标大小随 font-size 变化；也可用于媒体查询（但媒体查询中 em 相对浏览器默认字号，不是父元素）。
+- rem：移动端整体适配、全局字号与间距体系、需要统一缩放的设计系统。 现代实践中，常配合 clamp()、min()、max() 使用，例如 font-size: clamp(1rem, 2.5vw, 2rem)，兼顾可访问性与视口自适应。
 
 **常见追问**：如何避免「1) 误以为 em 只相对父元素：实际相对当前元素 font-size，只有 font-size 自身用 em 时才相对父元素」？ 「2) 误以为 rem 相对 body 或某个容器：rem 只认 html 根元素」在真实项目中应如何规避？
 
 ---
 
-## 412. 小程序的分包原理是什么？
+## 411. 小程序的分包原理是什么？
 
 > 原题 ID：`q3352`
 
@@ -9458,13 +13104,19 @@ vw 是视口宽度的 1%，em 相对当前元素（或父元素）font-size，re
 
 小程序分包是把代码按路由拆成主包和多个分包，主包随启动加载，分包在用户进入其页面时才下载并注入执行，从而减小首屏包体积、加快启动。
 
-原理：小程序运行在宿主（微信/支付宝等）的双线程架构里，逻辑层（JSCore/V8）执行 JS，视图层渲染 WebView。平台对单包体积有硬限制（微信主包/总包各 2MB/20MB，整体 20MB），所以需要分包。 构建期：开发者用 app.json 的 subpackages 声明分包，每个分包有自己的 root 和 pages。打包工具（微信开发者工具/uni-app/Taro）会把每个分包的 JS、WXML、WXSS、静态资源单独打成一份，主包只保留公共依赖、tabBar 页面、启动页和 app.js。 运行期：启动时先下载并执行主包，渲染首页；当 wx.navigateTo 跳到某个分包页面时，框架检查该分包是否已加载，未加载则先下载分包代码（可并行预下载），下载完成后注入逻辑层执行，再创建页面。分包之间默认不能互相 require，只能引用主包；分包可以引用主包，主包不能引用分包。 类比：主包像商场一楼大厅和总服务台，必须一开始就开；分包像三楼电影院、四楼餐厅，只有你按电梯去那一层时才开门营业，平时不占大厅面积。 适用场景：页面多、体积大的小程序，如电商（商品详情、订单、个人中心拆包）、内容社区、工具类多模块应用。配合分包预下载（preloadRule）在空闲时提前拉取高频分包，减少跳转白屏。
+原理：小程序运行在宿主（微信/支付宝等）的双线程架构里，逻辑层（JSCore/V8）执行 JS，视图层渲染 WebView。平台对单包体积有硬限制（微信主包/总包各 2MB/20MB，整体 20MB），所以需要分包。 构建期：开发者用 app.json 的 subpackages 声明分包，每个分包有自己的 root 和 pages。
+
+打包工具（微信开发者工具/uni-app/Taro）会把每个分包的 JS、WXML、WXSS、静态资源单独打成一份，主包只保留公共依赖、tabBar 页面、启动页和 app.js。 运行期：启动时先下载并执行主包，渲染首页；当 wx.navigateTo 跳到某个分包页面时，框架检查该分包是否已加载，未加载则先下载分包代码（可并行预下载），下载完成后注入逻辑层执行，再创建页面。
+
+分包之间默认不能互相 require，只能引用主包；分包可以引用主包，主包不能引用分包。 类比：主包像商场一楼大厅和总服务台，必须一开始就开；分包像三楼电影院、四楼餐厅，只有你按电梯去那一层时才开门营业，平时不占大厅面积。
+
+适用场景：页面多、体积大的小程序，如电商（商品详情、订单、个人中心拆包）、内容社区、工具类多模块应用。配合分包预下载（preloadRule）在空闲时提前拉取高频分包，减少跳转白屏。
 
 **常见追问**：如何避免「1) 误以为分包是懒加载 JS 模块，其实它是按页面路由粒度下载整包并注入执行」？ 「2) 以为分包能无限拆、总体积不受限，实际总包仍有 20MB 上限」在真实项目中应如何规避？
 
 ---
 
-## 413. 哪些静态资源会阻塞页面渲染，怎么解决，有什区别？
+## 412. 哪些静态资源会阻塞页面渲染，怎么解决，有什区别？
 
 > 原题 ID：`q3355`
 
@@ -9480,13 +13132,32 @@ vw 是视口宽度的 1%，em 相对当前元素（或父元素）font-size，re
 
 浏览器解析 HTML 时，同步的 <script>（无 async/defer）和 <link rel=stylesheet> 会阻塞渲染，脚本还会阻塞 DOM 解析；解决办法是 defer/async、把脚本放底部、CSS 内联关键样式/异步加载非关键 CSS。
 
-先讲原理：浏览器渲染流程是 解析 HTML 构建 DOM → 构建 CSSOM → 合成渲染树 → 布局 → 绘制。CSS 是渲染阻塞资源（render-blocking），因为渲染树必须等 CSSOM 完成，否则会出现无样式闪烁（FOUC）；JS 是解析阻塞资源（parser-blocking），因为脚本可能用 document.write 或读取/修改 DOM，浏览器必须暂停 HTML 解析、等脚本下载并执行完再继续，同时脚本执行前还要等它前面的 CSS 加载完（因为脚本可能读取样式）。 阻塞情况分类： 1) 普通 <script src>：阻塞 DOM 解析 + 阻塞渲染，且会等待前面 CSS。 2) <script async>：下载与解析并行，下载完立即执行，执行时仍阻塞解析，执行顺序不确定，适合独立无依赖脚本（如统计）。 3) <script defer>：下载与解析并行，等 HTML 解析完、DOMContentLoaded 之前按顺序执行，不阻塞解析，适合有依赖的脚本。 4) <link rel=stylesheet>：阻塞渲染，也间接阻塞其后脚本执行。 5) 图片、字体、iframe、video 等：不阻塞 DOM 解析，图片不阻塞渲染树构建但影响布局/绘制；字体可能造成 FOIT/FOUT。 通俗类比：HTML 解析像流水线装配，遇到同步脚本就像工人被叫停去处理一个必须先完成的任务，整条线停住；async 像叫了个外包，干完随时插进来打断；defer 像预约好等主体装配完再按顺序处理。CSS 像设计图纸，没有图纸就没法上色（渲染），所以必须先拿到。 解决方案： - 脚本：加 defer（保序）或 async（不保序）；或把脚本放 </body> 前；用动态 import()/type=module（默认 defer 语义）。 - CSS：关键 CSS 内联到 <head>，非关键 CSS 用 media 属性（如 media=print onload 切换）、preload + onload 异步加载，避免 @import（串行阻塞）。 - 资源提示：preload/prefetch/preconnect/dns-prefetch 提前建立连接与下载。 - 服务端：HTTP/2 多路复用、压缩、CDN、缓存。 区别核心：async 不保证顺序、下载完即执行、仍阻塞解析；defer 保证顺序、解析完执行、不阻塞解析；同步脚本两者都阻塞。CSS 阻塞渲染但不阻塞 DOM 解析（除非后面有脚本）。
+先讲原理：浏览器渲染流程是 解析 HTML 构建 DOM → 构建 CSSOM → 合成渲染树 → 布局 → 绘制。CSS 是渲染阻塞资源（render-blocking），因为渲染树必须等 CSSOM 完成，否则会出现无样式闪烁（FOUC）；JS 是解析阻塞资源（parser-blocking），因为脚本可能用 document.write 或读取/修改 DOM，浏览器必须暂停 HTML 解析、等脚本下载并执行完再继续，同时脚本执行前还要等它前面的 CSS 加载完（因为脚本可能读取样式）。
+
+阻塞情况分类：
+
+1) 普通 <script src>：阻塞 DOM 解析 + 阻塞渲染，且会等待前面 CSS。
+2) <script async>：下载与解析并行，下载完立即执行，执行时仍阻塞解析，执行顺序不确定，适合独立无依赖脚本（如统计）。
+3) <script defer>：下载与解析并行，等 HTML 解析完、DOMContentLoaded 之前按顺序执行，不阻塞解析，适合有依赖的脚本。
+4) <link rel=stylesheet>：阻塞渲染，也间接阻塞其后脚本执行。
+5) 图片、字体、iframe、video 等：不阻塞 DOM 解析，图片不阻塞渲染树构建但影响布局/绘制；字体可能造成 FOIT/FOUT。
+
+- 通俗类比：HTML 解析像流水线装配，遇到同步脚本就像工人被叫停去处理一个必须先完成的任务，整条线停住；
+- async 像叫了个外包，干完随时插进来打断；
+- defer 像预约好等主体装配完再按顺序处理。
+
+CSS 像设计图纸，没有图纸就没法上色（渲染），所以必须先拿到。 解决方案：
+
+- 脚本：加 defer（保序）或 async（不保序）；或把脚本放 </body> 前；用动态 import()/type=module（默认 defer 语义）。
+- CSS：关键 CSS 内联到 <head>，非关键 CSS 用 media 属性（如 media=print onload 切换）、preload + onload 异步加载，避免 @import（串行阻塞）。
+- 资源提示：preload/prefetch/preconnect/dns-prefetch 提前建立连接与下载。
+- 服务端：HTTP/2 多路复用、压缩、CDN、缓存。 区别核心：async 不保证顺序、下载完即执行、仍阻塞解析；defer 保证顺序、解析完执行、不阻塞解析；同步脚本两者都阻塞。CSS 阻塞渲染但不阻塞 DOM 解析（除非后面有脚本）。
 
 **常见追问**：如何避免「1) 误以为 async/defer 能减少下载时间——它们只改变执行时机，不改变下载并行性（其实都是并行下载）」？ 「2) 误以为 CSS 会阻塞 DOM 解析——CSS 只阻塞渲染和其后脚本，不阻塞 DOM 构建」在真实项目中应如何规避？
 
 ---
 
-## 414. 如何实现事件监听？
+## 413. 如何实现事件监听？
 
 > 原题 ID：`q3360`
 
@@ -9502,13 +13173,21 @@ vw 是视口宽度的 1%，em 相对当前元素（或父元素）font-size，re
 
 事件监听就是先把回调函数注册到事件源上，事件触发时由事件源按注册顺序调用回调，浏览器 DOM 用 addEventListener 实现，Node.js 用 EventEmitter 实现。
 
-事件监听本质是“发布-订阅”或“观察者模式”的一种实现：事件源维护一个回调列表，外部通过注册接口把 callback 放进去；当事件发生时，事件源遍历列表并调用回调，同时把事件对象作为参数传入。 通俗类比：你给快递站留了电话（注册 callback），快递到了（事件触发）快递站就按你留的号码通知你（调用 callback）。你可以留多个号码，也可以随时取消。 浏览器 DOM 中，addEventListener(type, listener, options) 会把 listener 注册到当前元素对应事件类型的监听器列表里。事件触发时，浏览器会经历捕获、目标、冒泡三个阶段，默认在冒泡阶段调用监听器；options 可传 capture、once、passive、signal。同一个 listener 对同一 type 和 capture 值只会注册一次，重复注册会被忽略。 Node.js 中对应的是 EventEmitter：on/once/addListener 注册，emit 触发，removeListener/off 移除。emit 时同步按注册顺序调用监听器，返回是否有监听器。 实现一个最小版事件监听器，核心就是： class EventBus { constructor() { this.events = new Map(); } on(type, cb) { if (!this.events.has(type)) this.events.set(type, []); this.events.get(type).push(cb); return () => this.off(type, cb); } off(type, cb) { const list = this.events.get(type); if (!list) return; const i = list.indexOf(cb); if (i > -1) list.splice(i, 1); } emit(type, ...args) { const list = this.events.get(type); if (!list) return false; [...list].forEach(cb => cb(...args)); return true; } } 适用场景：UI 交互、组件通信、异步任务完成通知、解耦模块。选择 callback 还是 addEventListener，取决于事件源是否原生支持事件模型；自定义对象通常自己实现 on/emit。
+事件监听本质是“发布-订阅”或“观察者模式”的一种实现：事件源维护一个回调列表，外部通过注册接口把 callback 放进去；当事件发生时，事件源遍历列表并调用回调，同时把事件对象作为参数传入。
+
+通俗类比：你给快递站留了电话（注册 callback），快递到了（事件触发）快递站就按你留的号码通知你（调用 callback）。你可以留多个号码，也可以随时取消。 浏览器 DOM 中，addEventListener(type, listener, options) 会把 listener 注册到当前元素对应事件类型的监听器列表里。
+
+事件触发时，浏览器会经历捕获、目标、冒泡三个阶段，默认在冒泡阶段调用监听器；options 可传 capture、once、passive、signal。同一个 listener 对同一 type 和 capture 值只会注册一次，重复注册会被忽略。 Node.js 中对应的是 EventEmitter：on/once/addListener 注册，emit 触发，removeListener/off 移除。
+
+emit 时同步按注册顺序调用监听器，返回是否有监听器。 实现一个最小版事件监听器，核心就是： class EventBus { constructor() { this.events = new Map(); } on(type, cb) { if (!this.events.has(type)) this.events.set(type, []); this.events.get(type).push(cb); return () => this.off(type, cb); } off(type, cb) { const list = this.events.get(type); if (!list) return; const i = list.indexOf(cb); if (i > -1) list.splice(i, 1); } emit(type, ...args) { const list = this.events.get(type); if (!list) return false; [...list].forEach(cb => cb(...args)); return true; } } 适用场景：UI 交互、组件通信、异步任务完成通知、解耦模块。
+
+选择 callback 还是 addEventListener，取决于事件源是否原生支持事件模型；自定义对象通常自己实现 on/emit。
 
 **常见追问**：如何避免「认为 addEventListener 会覆盖同名事件，实际是叠加；2. 用匿名函数注册后想 removeEventListener 却移除不掉；3. 混淆捕获和冒泡阶段，以为默认在捕获阶段触发；4. 认为 emit 是异步的，Node EventEmitter 默认同步调用；5. 在循环里给每个元素绑定监听器，不知道用事件委托；6. 忘记事件对象在异步回调里可能已被回收或属性失效。」？ 能否结合「浏览器 addEventListener 的 listener 可以是对象，只要有 handleEvent 方法；2. 重复注册同一 listener 同一 capture 会被去重，但匿名函数每次都是新引用，无法 remove；3. 事件触发时如果监听器内部 remove 自己，浏览器会复制当前监听器列表再遍历，避免漏调；4. 可以用 AbortController.signal 一次性移除多个监听器；5. Node EventEmitter 对 error 事件有特殊处理，没有监听器会抛异常；6. 内存泄漏常见原因是组件销毁时没 removeEventListener，或闭包持有 DOM 引用。」进一步展开？
 
 ---
 
-## 415. fix的显示问题？（宽度塌陷）没答全，还有z-index覆盖？
+## 414. fix的显示问题？（宽度塌陷）没答全，还有z-index覆盖？
 
 > 原题 ID：`q3385`
 
@@ -9524,13 +13203,23 @@ vw 是视口宽度的 1%，em 相对当前元素（或父元素）font-size，re
 
 `position: fixed` 元素宽度塌陷是因为脱离文档流后失去父级宽度参照，需显式设宽；z-index 覆盖问题则源于 fixed 元素创建了新的层叠上下文，且其层叠顺序受父级层叠上下文限制。
 
-一、宽度塌陷：普通块级元素宽度默认 `auto`，会撑满父容器（`width: auto` 表现为 fill-available）。但 `position: fixed` 后元素脱离文档流，其包含块变成视口（viewport），不再参照父元素宽度。此时若元素是 `div` 这类块级元素且未设 `width`，宽度会收缩为内容宽度（shrink-to-fit），表现为“塌陷”。 类比：原本靠墙（父容器）站着的箱子，被吊到空中（fixed）后，没人给它撑宽度，只能按自己内容大小缩起来。 解决：显式设置 `width`、`left/right` 配合（如 `left:0; right:0` 可拉伸）、或 `width: 100%`（相对视口）。 二、z-index 覆盖：`position: fixed` 会创建新的层叠上下文（stacking context）。z-index 只在同一个层叠上下文内比较。若 fixed 元素的某个祖先也创建了层叠上下文（如设置了 `transform`、`opacity<1`、`filter`、`will-change`、`position`+`z-index` 等），则 fixed 元素的 z-index 再大，也只能在该祖先的层叠上下文内部排序，无法覆盖祖先之外的更高层级元素。 类比：z-index 像楼层号，但每栋楼（层叠上下文）独立编号，A 楼 100 层也压不过 B 楼 1 层。 解决：把 fixed 元素移到 body 直接子级（如用 Portal/Teleport），或调整祖先的层叠上下文，或提升祖先整体层级。
+**一、宽度塌陷：**
+
+普通块级元素宽度默认 `auto`，会撑满父容器（`width: auto` 表现为 fill-available）。但 `position: fixed` 后元素脱离文档流，其包含块变成视口（viewport），不再参照父元素宽度。此时若元素是 `div` 这类块级元素且未设 `width`，宽度会收缩为内容宽度（shrink-to-fit），表现为“塌陷”。
+
+类比：原本靠墙（父容器）站着的箱子，被吊到空中（fixed）后，没人给它撑宽度，只能按自己内容大小缩起来。 解决：显式设置 `width`、`left/right` 配合（如 `left:0; right:0` 可拉伸）、或 `width: 100%`（相对视口）。
+
+**二、z-index**
+
+覆盖：`position: fixed` 会创建新的层叠上下文（stacking context）。z-index 只在同一个层叠上下文内比较。若 fixed 元素的某个祖先也创建了层叠上下文（如设置了 `transform`、`opacity<1`、`filter`、`will-change`、`position`+`z-index` 等），则 fixed 元素的 z-index 再大，也只能在该祖先的层叠上下文内部排序，无法覆盖祖先之外的更高层级元素。
+
+类比：z-index 像楼层号，但每栋楼（层叠上下文）独立编号，A 楼 100 层也压不过 B 楼 1 层。 解决：把 fixed 元素移到 body 直接子级（如用 Portal/Teleport），或调整祖先的层叠上下文，或提升祖先整体层级。
 
 **常见追问**：如何避免「误以为 fixed 元素宽度默认 100%，实际是 shrink-to-fit。」？ 「认为 z-index 数值大就一定在最上层，忽略层叠上下文隔离。」在真实项目中应如何规避？
 
 ---
 
-## 416. CORS 为什么需要预检请求（Preflight）？
+## 415. CORS 为什么需要预检请求（Preflight）？
 
 > 原题 ID：`q2557`
 
@@ -9546,13 +13235,21 @@ vw 是视口宽度的 1%，em 相对当前元素（或父元素）font-size，re
 
 预检请求（Preflight）是浏览器在发送跨域非简单请求前，先用 OPTIONS 请求询问服务器是否允许该跨域请求，目的是在不真正发送敏感数据/产生副作用的前提下，确认服务器是否授权，从而保护用户数据和服务器资源。
 
-要理解预检请求，先看浏览器的同源策略：它默认阻止页面读取跨域响应，但某些请求（如表单提交）仍会发出。CORS 通过响应头授权跨域读取，但有些请求会带来副作用或携带敏感信息，比如 PUT/DELETE、Content-Type: application/json、自定义头。如果浏览器直接发送，服务器可能已经执行了操作（如删除数据），而攻击者页面却无法读取响应——这依然造成了 CSRF 式的破坏。因此浏览器先发一个 OPTIONS 预检请求，带上 Origin、Access-Control-Request-Method、Access-Control-Request-Headers，询问服务器：是否允许来自该源的该方法和头？服务器用 Access-Control-Allow-Origin、Access-Control-Allow-Methods、Access-Control-Allow-Headers 等响应。只有预检通过，浏览器才发送真实请求。 通俗类比：你要进一个高档小区找朋友，保安不会直接让你进去，而是先通过对讲机问业主：有个访客想进来，可以吗？业主说可以，保安才放行。预检请求就是那个对讲机确认过程。 适用场景：非简单请求，即方法不是 GET/HEAD/POST，或 POST 的 Content-Type 不是 application/x-www-form-urlencoded、multipart/form-data、text/plain，或带有自定义请求头。简单请求不触发预检，直接发送并靠响应头决定是否允许读取。
+要理解预检请求，先看浏览器的同源策略：它默认阻止页面读取跨域响应，但某些请求（如表单提交）仍会发出。CORS 通过响应头授权跨域读取，但有些请求会带来副作用或携带敏感信息，比如 PUT/DELETE、Content-Type: application/json、自定义头。如果浏览器直接发送，服务器可能已经执行了操作（如删除数据），而攻击者页面却无法读取响应——这依然造成了 CSRF 式的破坏。
+
+因此浏览器先发一个 OPTIONS 预检请求，带上 Origin、Access-Control-Request-Method、Access-Control-Request-Headers，询问服务器：是否允许来自该源的该方法和头？服务器用 Access-Control-Allow-Origin、Access-Control-Allow-Methods、Access-Control-Allow-Headers 等响应。
+
+只有预检通过，浏览器才发送真实请求。
+
+通俗类比：你要进一个高档小区找朋友，保安不会直接让你进去，而是先通过对讲机问业主：有个访客想进来，可以吗？业主说可以，保安才放行。预检请求就是那个对讲机确认过程。
+
+适用场景：非简单请求，即方法不是 GET/HEAD/POST，或 POST 的 Content-Type 不是 application/x-www-form-urlencoded、multipart/form-data、text/plain，或带有自定义请求头。简单请求不触发预检，直接发送并靠响应头决定是否允许读取。
 
 **常见追问**：如何避免「误以为所有跨域请求都会预检——简单请求不会。2. 认为预检是服务器发起的——实际由浏览器自动发起。3. 以为预检请求会携带 Cookie 或认证信息——默认不带，除非显式配置。4. 把预检失败和真实请求失败混为一谈——预检失败时真实请求不会发送。5. 认为 OPTIONS 响应必须返回 200——其实只要状态码是 2xx 即可，但常见 204。6. 忽略 Access-Control-Max-Age 导致每次请求都预检，影响性能。」？ 能否结合「预检请求可被浏览器缓存，通过 Access-Control-Max-Age 指定缓存时间，减少 OPTIONS 开销。2. 预检请求不携带凭证（除非 withCredentials 且服务器允许），且不包含实际请求体。3. 预检失败时，真实请求根本不会发出，这是与简单请求的关键区别。4. 从安全模型看，预检是浏览器替服务器做的‘授权前置检查’，防止跨站请求伪造和意外副作用。5. 源码层面，Chromium 的 CORS 预检逻辑在 services/network 中实现，会检查 method、header 是否在安全列表内。」进一步展开？
 
 ---
 
-## 417. 如果emit的时候需要传入参数，怎么处理？
+## 416. 如果emit的时候需要传入参数，怎么处理？
 
 > 原题 ID：`q2564`
 
@@ -9568,13 +13265,20 @@ emit 的本质是“触发事件并携带数据”；不同技术栈的写法略
 
 在事件驱动/发布订阅模型中，emit 传参通常通过 emit(事件名, ...args) 将参数透传给监听器，监听器按位置接收；也可用对象/数组打包参数，或借助事件总线/框架的约定（如 Vue 的 $emit、Node 的 EventEmitter）处理。
 
-emit 的本质是“触发事件并携带数据”。不同技术栈的写法略有差异，但核心都是：发布者把参数放在事件名之后，订阅者按顺序接收。 1) Node.js EventEmitter： emitter.emit('event', arg1, arg2); emitter.on('event', (a, b) => { ... }); 参数按位置一一对应，支持任意多个参数。 2) Vue 组件： this.$emit('custom-event', payload); 父组件：<Child @custom-event="handler" />，handler(payload) 接收。 多个参数：this.$emit('evt', a, b)，父组件 handler(a, b)。 3) 浏览器 CustomEvent： el.dispatchEvent(new CustomEvent('my-event', { detail: { id: 1 } })); 监听：el.addEventListener('my-event', e => e.detail.id)。 这里参数必须放在 detail 里，因为 CustomEvent 只有一个 detail 字段。 4) 通用事件总线（如 mitt）： emitter.emit('foo', { a: 1 }); emitter.on('foo', payload => ...); 为什么这样设计：事件名是“频道”，参数是“消息内容”。用位置参数简单直接，但参数多时易错；用对象打包可读性更好、可扩展（新增字段不影响旧监听器），也便于类型定义（TypeScript 中可定义事件映射类型）。 适用场景：组件通信、解耦模块、异步通知、插件系统等。选择哪种方式取决于框架约定和参数复杂度：参数少用位置参数，参数多或需要扩展用对象。
+emit 的本质是“触发事件并携带数据”。不同技术栈的写法略有差异，但核心都是：发布者把参数放在事件名之后，订阅者按顺序接收。
+
+1) Node.js EventEmitter： emitter.emit('event', arg1, arg2); emitter.on('event', (a, b) => { ... }); 参数按位置一一对应，支持任意多个参数。
+2) Vue 组件： this.$emit('custom-event', payload); 父组件：<Child @custom-event="handler" />，handler(payload) 接收。 多个参数：this.$emit('evt', a, b)，父组件 handler(a, b)。
+3) 浏览器 CustomEvent： el.dispatchEvent(new CustomEvent('my-event', { detail: { id: 1 } })); 监听：el.addEventListener('my-event', e => e.detail.id)。 这里参数必须放在 detail 里，因为 CustomEvent 只有一个 detail 字段。
+4) 通用事件总线（如 mitt）： emitter.emit('foo', { a: 1 }); emitter.on('foo', payload => ...); 为什么这样设计：事件名是“频道”，参数是“消息内容”。用位置参数简单直接，但参数多时易错；用对象打包可读性更好、可扩展（新增字段不影响旧监听器），也便于类型定义（TypeScript 中可定义事件映射类型）。
+
+适用场景：组件通信、解耦模块、异步通知、插件系统等。选择哪种方式取决于框架约定和参数复杂度：参数少用位置参数，参数多或需要扩展用对象。
 
 **常见追问**：如何避免「1) 误以为 emit 只能传一个参数，或必须用对象」？ 「实际上多数实现支持多参数」在真实项目中应如何规避？
 
 ---
 
-## 418. 前端组件如何在不破坏宿主对象语义的前提下进行包装与扩展？
+## 417. 前端组件如何在不破坏宿主对象语义的前提下进行包装与扩展？
 
 > 原题 ID：`q2816`
 
@@ -9594,13 +13298,17 @@ emit 的本质是“触发事件并携带数据”。不同技术栈的写法略
 
 **参考回答**：
 
-包裹不一定提升性能，它只是把调用链和职责重新分层，收益取决于被包裹对象的开销、包裹层引入的额外成本以及是否命中缓存/批处理等优化条件。这里的“包裹”通常指在模型/服务/数据库/工具调用外面再套一层代理、网关、SDK 封装或 Agent 中间层。性能是否变好，取决于三类因素： 1) 被包裹对象的真实瓶颈。如果瓶颈是远端 LLM 推理（几百 ms 到数秒）、跨机房 RTT、或数据库慢查询，那么加一层本地代理（通常 <1ms）几乎不影响总延迟，反而可能通过连接池复用、请求合并、结果缓存、重试与熔断减少尾延迟。 2) 包裹层自身成本。每层都会引入序列化/反序列化、协议转换、日志与埋点、鉴权、限流、上下文拼装等开销。若包裹层做了同步阻塞 IO、全量深拷贝、每请求新建连接、或把大 prompt 反复 tokenize，延迟和 CPU 会显著上升。典型例子：在 Agent 里每步都重新拼完整历史并重新计算 token，包裹后反而更慢。 3) 是否带来结构性优化。包裹的真正价值常在于：统一缓存（相同 query 命中语义缓存）、批处理（把 N 个小请求合并成 1 个大请求）、连接复用、并发编排（并行工具调用）、降级与熔断。这些能把 P99 降下来，但 P50 可能不变甚至略升。 工程判断方法：先做分层耗时打点（包裹层内/外、网络、下游），用 P50/P95/P99 而非均值评估；再做 A/B 或影子流量对比。若包裹层开销占比 <5% 且带来缓存/批处理收益，通常值得；若包裹层开销 >20% 且无结构性优化，就是负优化。 结论：包裹是“手段”不是“目的”。它可能提升吞吐、降低尾延迟、提高可维护性，但不保证降低单次延迟；很多场景下它只是把复杂度从业务代码移到了中间层。
+包裹不一定提升性能，它只是把调用链和职责重新分层，收益取决于被包裹对象的开销、包裹层引入的额外成本以及是否命中缓存/批处理等优化条件。这里的“包裹”通常指在模型/服务/数据库/工具调用外面再套一层代理、网关、SDK 封装或 Agent 中间层。性能是否变好，取决于三类因素：
+
+1) 被包裹对象的真实瓶颈。如果瓶颈是远端 LLM 推理（几百 ms 到数秒）、跨机房 RTT、或数据库慢查询，那么加一层本地代理（通常 <1ms）几乎不影响总延迟，反而可能通过连接池复用、请求合并、结果缓存、重试与熔断减少尾延迟。
+2) 包裹层自身成本。每层都会引入序列化/反序列化、协议转换、日志与埋点、鉴权、限流、上下文拼装等开销。若包裹层做了同步阻塞 IO、全量深拷贝、每请求新建连接、或把大 prompt 反复 tokenize，延迟和 CPU 会显著上升。典型例子：在 Agent 里每步都重新拼完整历史并重新计算 token，包裹后反而更慢。
+3) 是否带来结构性优化。包裹的真正价值常在于：统一缓存（相同 query 命中语义缓存）、批处理（把 N 个小请求合并成 1 个大请求）、连接复用、并发编排（并行工具调用）、降级与熔断。这些能把 P99 降下来，但 P50 可能不变甚至略升。 工程判断方法：先做分层耗时打点（包裹层内/外、网络、下游），用 P50/P95/P99 而非均值评估；再做 A/B 或影子流量对比。若包裹层开销占比 <5% 且带来缓存/批处理收益，通常值得；若包裹层开销 >20% 且无结构性优化，就是负优化。 结论：包裹是“手段”不是“目的”。它可能提升吞吐、降低尾延迟、提高可维护性，但不保证降低单次延迟；很多场景下它只是把复杂度从业务代码移到了中间层。
 
 **常见追问**：这个点在你实际项目里是怎么落地的，踩过什么坑？ 如果规模扩大十倍，这个方案哪里会先成为瓶颈？
 
 ---
 
-## 419. 怎么取消一个正在进行的流式请求？
+## 418. 怎么取消一个正在进行的流式请求？
 
 > 原题 ID：`q3133`
 
@@ -9620,13 +13328,25 @@ emit 的本质是“触发事件并携带数据”。不同技术栈的写法略
 
 **参考回答**：
 
-取消流式请求的核心是：让发起方持有可取消句柄（如 AbortController/Context/CancelToken），在传输层中断连接，并在服务端与消费端逐层传播取消信号、清理资源，避免 goroutine/连接/计费泄漏。流式请求（SSE、chunked HTTP、gRPC stream、WebSocket、LLM token 流）的取消不是单一动作，而是一条链路的协同： 1) 客户端发起侧： - 浏览器 fetch：用 AbortController，req.signal 传入 fetch，调用 controller.abort() 会中断底层连接，fetch 抛 AbortError。注意 EventSource 原生不支持取消，必须 close() 或改用 fetch+ReadableStream 手动解析 SSE。 - axios：用 CancelToken（旧）或 AbortController（新，推荐），signal 透传。 - Node/服务端调用下游：用 AbortController 或库自带的 signal 选项（如 openai SDK 支持 signal）。 2) 传输层： - HTTP/1.1：客户端 abort 会关闭 TCP 连接（或发 RST），服务端读到 EOF/写失败。 - HTTP/2：发 RST_STREAM，只取消该 stream，不影响同连接其他请求，这是推荐做法。 - gRPC：客户端 ctx cancel 会发 RST_STREAM，服务端 ctx.Done() 触发。 3) 服务端： - Go：用 r.Context()，客户端断开时 ctx 自动 Done；所有下游调用、DB 查询、goroutine 都要 select ctx.Done() 退出，否则泄漏。 - Java/Spring：用 DeferredResult/ResponseBodyEmitter/SseEmitter，监听 onCompletion/onTimeout/onError 做清理；WebFlux 用 Mono 的 cancel 信号。 - Python：asyncio 任务 cancel，注意 CancelledError 要正确传播，别吞掉。 4) 消费端（前端流式读取）： - 用 reader.read() 循环时，abort 后 read() 会 reject，要 try/catch 并停止循环，避免继续 setState。 - 要区分“用户主动取消”和“网络错误”，UI 上不要都报错。 5) 资源与一致性： - 取消后要释放：连接、buffer、定时器、上游 LLM 请求（否则继续计费）、DB 事务。 - 若已产生部分输出，要决定是否落库/回滚；流式场景通常允许部分结果，但要标记 incomplete。 - 幂等：取消后重试要避免重复副作用。 例子（Go 服务端）： func handler(w http.ResponseWriter, r *http.Request) { ctx := r.Context() for { select { case <-ctx.Done(): return // 客户端断开，退出 default: chunk := gen() if _, err := w.Write(chunk); err != nil { return } flusher.Flush() } } } 例子（前端）： const ac = new AbortController(); const res = await fetch(url, {signal: ac.signal}); const reader = res.body.getReader(); // 用户点取消：ac.abort(); // read 循环里 catch AbortError 后 return。
+取消流式请求的核心是：让发起方持有可取消句柄（如 AbortController/Context/CancelToken），在传输层中断连接，并在服务端与消费端逐层传播取消信号、清理资源，避免 goroutine/连接/计费泄漏。流式请求（SSE、chunked HTTP、gRPC stream、WebSocket、LLM token 流）的取消不是单一动作，而是一条链路的协同： 1) 客户端发起侧：
+
+- 浏览器 fetch：用 AbortController，req.signal 传入 fetch，调用 controller.abort() 会中断底层连接，fetch 抛 AbortError。注意 EventSource 原生不支持取消，必须 close() 或改用 fetch+ReadableStream 手动解析 SSE。
+- axios：用 CancelToken（旧）或 AbortController（新，推荐），signal 透传。
+- Node/服务端调用下游：用 AbortController 或库自带的 signal 选项（如 openai SDK 支持 signal）。 2) 传输层：
+- HTTP/1.1：客户端 abort 会关闭 TCP 连接（或发 RST），服务端读到 EOF/写失败。
+- HTTP/2：发 RST_STREAM，只取消该 stream，不影响同连接其他请求，这是推荐做法。
+- gRPC：客户端 ctx cancel 会发 RST_STREAM，服务端 ctx.Done() 触发。 3) 服务端：
+- Go：用 r.Context()，客户端断开时 ctx 自动 Done；所有下游调用、DB 查询、goroutine 都要 select ctx.Done() 退出，否则泄漏。
+- Java/Spring：用 DeferredResult/ResponseBodyEmitter/SseEmitter，监听 onCompletion/onTimeout/onError 做清理；WebFlux 用 Mono 的 cancel 信号。
+- Python：asyncio 任务 cancel，注意 CancelledError 要正确传播，别吞掉。 4) 消费端（前端流式读取）： - 用 reader.read() 循环时，abort 后 read() 会 reject，要 try/catch 并停止循环，避免继续 setState。 - 要区分“用户主动取消”和“网络错误”，UI 上不要都报错。 5) 资源与一致性：
+- 取消后要释放：连接、buffer、定时器、上游 LLM 请求（否则继续计费）、DB 事务。 - 若已产生部分输出，要决定是否落库/回滚；流式场景通常允许部分结果，但要标记 incomplete。
+- 幂等：取消后重试要避免重复副作用。 例子（Go 服务端）： func handler(w http.ResponseWriter, r *http.Request) { ctx := r.Context() for { select { case <-ctx.Done(): return // 客户端断开，退出 default: chunk := gen() if _, err := w.Write(chunk); err != nil { return } flusher.Flush() } } } 例子（前端）： const ac = new AbortController(); const res = await fetch(url, {signal: ac.signal}); const reader = res.body.getReader(); // 用户点取消：ac.abort(); // read 循环里 catch AbortError 后 return。
 
 **常见追问**：流式输出中途客户端断开，服务端如何优雅取消并释放资源？
 
 ---
 
-## 420. 流式响应中 message 与 delta 等事件字段通常如何区分和处理？
+## 419. 流式响应中 message 与 delta 等事件字段通常如何区分和处理？
 
 > 原题 ID：`q3138`
 
@@ -9643,13 +13363,23 @@ emit 的本质是“触发事件并携带数据”。不同技术栈的写法略
 
 **参考回答**：
 
-message 是完整消息对象（非流式一次性返回），delta 是流式增量片段，二者在 OpenAI 兼容协议中互斥出现，不能混用。在 OpenAI Chat Completions 协议里，流式（stream=true）与非流式（stream=false）返回的是两种不同结构： 1) 非流式：响应体是 {"choices":[{"message":{"role":"assistant","content":"完整文本"},"finish_reason":"stop"}]}。message 承载完整内容，客户端拿到后直接渲染即可。 2) 流式：服务端返回 SSE，每个 chunk 形如 {"choices":[{"delta":{"role":"assistant","content":"你"},"finish_reason":null}]}，最后一个 chunk 的 delta 为空、finish_reason 为 stop。delta 只包含本次新增的 token/片段，客户端必须按顺序拼接（accumulate）才能得到完整回答。 工程上的关键差异： - 字段位置：message.content 是字符串；delta.content 是增量字符串，且可能为 null（如首个 chunk 只有 role，或 tool_calls 分片）。 - 拼接语义：delta 必须 append，不能覆盖；message 是终态，直接赋值。 - 结束信号：流式靠 finish_reason 和 [DONE] 事件判断结束，非流式靠 HTTP 响应结束。 - 工具调用：流式下 tool_calls 也是分片 delta（index 标识第几个调用，arguments 逐段拼接），非流式下是完整数组。 典型实现：写一个统一适配层，把两种模式归一化为同一个事件流（如 onDelta/onMessage），上层业务只消费归一化后的事件，避免到处 if (stream)。
+message 是完整消息对象（非流式一次性返回），delta 是流式增量片段，二者在 OpenAI 兼容协议中互斥出现，不能混用。在 OpenAI Chat Completions 协议里，流式（stream=true）与非流式（stream=false）返回的是两种不同结构：
+
+1) 非流式：响应体是 {"choices":[{"message":{"role":"assistant","content":"完整文本"},"finish_reason":"stop"}]}。message 承载完整内容，客户端拿到后直接渲染即可。
+2) 流式：服务端返回 SSE，每个 chunk 形如 {"choices":[{"delta":{"role":"assistant","content":"你"},"finish_reason":null}]}，最后一个 chunk 的 delta 为空、finish_reason 为 stop。delta 只包含本次新增的 token/片段，客户端必须按顺序拼接（accumulate）才能得到完整回答。
+
+工程上的关键差异：
+
+- 字段位置：message.content 是字符串；delta.content 是增量字符串，且可能为 null（如首个 chunk 只有 role，或 tool_calls 分片）。
+- 拼接语义：delta 必须 append，不能覆盖；message 是终态，直接赋值。
+- 结束信号：流式靠 finish_reason 和 [DONE] 事件判断结束，非流式靠 HTTP 响应结束。
+- 工具调用：流式下 tool_calls 也是分片 delta（index 标识第几个调用，arguments 逐段拼接），非流式下是完整数组。 典型实现：写一个统一适配层，把两种模式归一化为同一个事件流（如 onDelta/onMessage），上层业务只消费归一化后的事件，避免到处 if (stream)。
 
 **常见追问**：上线后模型输出质量下降，你用什么指标和 tracing 监控？
 
 ---
 
-## 421. 前端如何统一捕获未处理异常并建立监控闭环？
+## 420. 前端如何统一捕获未处理异常并建立监控闭环？
 
 > 原题 ID：`q3375`
 
@@ -9669,13 +13399,27 @@ message 是完整消息对象（非流式一次性返回），delta 是流式增
 
 **参考回答**：
 
-仅监听 console.error 远远不够，必须在前端全局捕获（window.onerror / unhandledrejection / 框架 errorHandler）、后端全局兜底（中间件/进程级钩子）并配合 sourcemap、上报采样、去重聚合与告警闭环。监控未处理异常要分端、分层、分阶段来做。 1) 前端： - 同步运行时错误：window.onerror 或 window.addEventListener('error', handler, true)，能拿到 message、source、lineno、colno、error.stack；注意资源加载错误（img/script）也会触发 error 事件，但 error 参数为空，需要靠 event.target 判断并过滤。 - Promise 未处理拒绝：window.addEventListener('unhandledrejection', e => e.reason)，这是 console.error 抓不到的重点，很多线上白屏都来自这里。 - 框架层：Vue 用 app.config.errorHandler / Vue.config.errorHandler，React 用 ErrorBoundary + window 兜底；否则组件内异常会被框架吞掉或只打 console。 - 跨域脚本：script 标签加 crossorigin，CDN 返回 Access-Control-Allow-Origin，否则 window.onerror 只能拿到 'Script error.'，拿不到堆栈。 - 上报：用 sendBeacon 或 fetch keepalive 避免页面卸载丢数据；生产环境压缩代码必须上传 sourcemap 到监控平台做还原，不要把 sourcemap 直接暴露到公网。 2) 后端（Node/Java/Go 同理）： - Node：process.on('uncaughtException') 只能做最后兜底，捕获后进程状态可能已不可信，正确做法是记录、优雅退出并由守护进程重启；process.on('unhandledRejection') 同样要记录。 - 框架中间件：Express/Koa 的 error middleware、Nest 的 ExceptionFilter，统一捕获请求链路异常并返回标准错误码。 - 业务侧：对可预期错误用 try/catch 或 Result 类型，不要依赖全局兜底。 3) 监控平台侧： - 上报字段：错误类型、message、stack、页面/接口、用户标识、版本、设备、时间、traceId。 - 去重聚合：按 stack 指纹（如 message+首帧）聚合，避免同一错误刷爆；采样率按错误类型区分，严重错误全量、普通错误采样。 - 告警：按错误率、影响用户数、新增错误类型触发，接入钉钉/企微/PagerDuty，形成发现-定位-修复-验证闭环。 4) 工程权衡： - 全量上报会带来带宽和存储成本，需要采样+聚合； - sourcemap 上传有安全与构建流程成本； - 全局兜底不能替代局部处理，否则会掩盖真实 bug； - 监控本身不能影响主流程，上报要异步、限流、失败静默。
+仅监听 console.error 远远不够，必须在前端全局捕获（window.onerror / unhandledrejection / 框架 errorHandler）、后端全局兜底（中间件/进程级钩子）并配合 sourcemap、上报采样、去重聚合与告警闭环。监控未处理异常要分端、分层、分阶段来做。
+
+1) 前端：
+
+- 同步运行时错误：window.onerror 或 window.addEventListener('error', handler, true)，能拿到 message、source、lineno、colno、error.stack；注意资源加载错误（img/script）也会触发 error 事件，但 error 参数为空，需要靠 event.target 判断并过滤。
+- Promise 未处理拒绝：window.addEventListener('unhandledrejection', e => e.reason)，这是 console.error 抓不到的重点，很多线上白屏都来自这里。
+- 框架层：Vue 用 app.config.errorHandler / Vue.config.errorHandler，React 用 ErrorBoundary + window 兜底；否则组件内异常会被框架吞掉或只打 console。
+- 跨域脚本：script 标签加 crossorigin，CDN 返回 Access-Control-Allow-Origin，否则 window.onerror 只能拿到 'Script error.'，拿不到堆栈。
+- 上报：用 sendBeacon 或 fetch keepalive 避免页面卸载丢数据；生产环境压缩代码必须上传 sourcemap 到监控平台做还原，不要把 sourcemap 直接暴露到公网。 2) 后端（Node/Java/Go 同理）：
+- Node：process.on('uncaughtException') 只能做最后兜底，捕获后进程状态可能已不可信，正确做法是记录、优雅退出并由守护进程重启；process.on('unhandledRejection') 同样要记录。
+- 框架中间件：Express/Koa 的 error middleware、Nest 的 ExceptionFilter，统一捕获请求链路异常并返回标准错误码。
+- 业务侧：对可预期错误用 try/catch 或 Result 类型，不要依赖全局兜底。 3) 监控平台侧：
+- 上报字段：错误类型、message、stack、页面/接口、用户标识、版本、设备、时间、traceId。
+- 去重聚合：按 stack 指纹（如 message+首帧）聚合，避免同一错误刷爆；采样率按错误类型区分，严重错误全量、普通错误采样。
+- 告警：按错误率、影响用户数、新增错误类型触发，接入钉钉/企微/PagerDuty，形成发现-定位-修复-验证闭环。 4) 工程权衡： - 全量上报会带来带宽和存储成本，需要采样+聚合； - sourcemap 上传有安全与构建流程成本； - 全局兜底不能替代局部处理，否则会掩盖真实 bug； - 监控本身不能影响主流程，上报要异步、限流、失败静默。
 
 **常见追问**：上线后模型输出质量下降，你用什么指标和 tracing 监控？
 
 ---
 
-## 422. JavaScript/V8 如何判断对象可回收并执行垃圾回收？
+## 421. JavaScript/V8 如何判断对象可回收并执行垃圾回收？
 
 > 原题 ID：`q2448`
 
