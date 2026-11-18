@@ -206,6 +206,14 @@ python verify_flows.py      # 全流程回归验证
 node scripts/verify_frontend.cjs  # 前端逻辑回归（需 Node.js）
 ```
 
+**MySQL 容量迁移回归。** 准备启用严格 SQL 模式的专用空库，将其 SQLAlchemy 连接地址通过环境变量 `MYSQL_CAPACITY_TEST_URL` 传入，例如 `mysql+pymysql://user:password@127.0.0.1:3306/quiz_capacity_test?charset=utf8mb4`。运行账号需要在该库中建表、修改列和读写测试数据的权限。
+
+```bash
+python scripts/verify_mysql_capacity.py
+```
+
+脚本会创建旧版 `TEXT` 列，验证应用启动时将其扩为 `LONGTEXT`，并通过整卷提交接口核对超过 64 KiB 的报告和相同请求的重放结果。运行后测试数据保留在该专用库中。
+
 开发依赖还包含 `numpy`，用于 `crawler/scripts/test_embed_discriminative.py` 的短中文题面嵌入实验。
 真实模型实验需要本机已启动 Ollama（`http://localhost:11434`）且已安装相应嵌入模型，
 然后运行 `python crawler/scripts/test_embed_discriminative.py bge-m3`。
