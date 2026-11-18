@@ -1,5 +1,6 @@
 """外部 Agent 判题回调的回归测试。"""
 import asyncio
+import json
 
 import httpx
 import pytest
@@ -89,3 +90,45 @@ def test_llm_string_boolean_is_parsed_without_python_truthiness(monkeypatch, val
     monkeypatch.setattr(httpx, "AsyncClient", LlmClient)
     result = asyncio.run(judge.judge("问题", "参考答案", "用户答案"))
     assert result == (expected, "ok", "", "llm")
+
+
+@pytest.mark.parametrize("fenced", [False, True])
+def test_llm_json_in_explanation_is_preserved(monkeypatch, fenced):
+    content = json.dumps({"is_correct": True, "explanation": "json.loads 正确", "error_reason": None})
+    if fenced:
+        content = "```json\n" + content + "\n```"
+
+    class LlmResponse(_SuccessResponse):
+        def json(self):
+            return {"choices": [{"message": {"content": content}}]}
+
+    class LlmClient(_SuccessClient):
+        async def post(self, *args, **kwargs):
+            return LlmResponse()
+
+    monkeypatch.setenv("AGENT_JUDGE_URL", "")
+    monkeypatch.setenv("LLM_BASE_URL", "http://llm.example/v1")
+    monkeypatch.setenv("LLM_API_KEY", "test-key")
+    monkeypatch.setenv("LLM_MODEL", "test-model")
+    monkeypatch.setattr(httpx, "AsyncClient", LlmClient)
+    assert asyncio.run(judge.judge("题目", "参考", "作答")) == (
+        True, "json.loads 正确", "", "llm",
+    )
+
+
+@pytest.mark.parametrize("field", ["explanation", "error_reason"])
+@pytest.mark.parametrize("invalid", [{"text": "unexpected"}, [], 42])
+def test_malformed_agent_text_returns_pending(monkeypatch, field, invalid):
+    class InvalidResponse(_SuccessResponse):
+        def json(self):
+            return {**super().json(), field: invalid}
+
+    class InvalidClient(_SuccessClient):
+        async def post(self, *args, **kwargs):
+            return InvalidResponse()
+
+    monkeypatch.setenv("AGENT_JUDGE_URL", "http://agent.example/judge")
+    monkeypatch.setattr(httpx, "AsyncClient", InvalidClient)
+    result = asyncio.run(judge.judge("问题", "参考答案", "用户答案"))
+    assert result[0] is None
+    assert result[3] == "pending"

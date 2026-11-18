@@ -57,7 +57,7 @@ copy .env.example .env
 cp .env.example .env
 ```
 
-`.env` 用于 SMTP 邮件、Agent 判题回调、或直接连 LLM 判题。**不填也能本地跑**（判题会进入 pending 降级队列）。注意 `.env` 已被 `.gitignore` 忽略，切勿提交密钥。
+`.env` 用于 SMTP 邮件、Agent 判题回调、或直接连 LLM 判题。**不填也能本地跑**（使用本地启发式判题）。远端服务失败时结果标记为 pending 并持久化入队，后台自动退避重试，恢复后更新原作答而不重复计数。注意 `.env` 已被 `.gitignore` 忽略，切勿提交密钥。
 
 ### 4. 启动后端
 
@@ -89,9 +89,10 @@ python -m http.server 8088 --directory frontend
 - **方式 B（批量 JSON）**：把你的题目 JSON 通过接口导入
 
   ```bash
-  curl -X POST http://localhost:8000/api/questions/import-batch \
+  # 将 bank.json 放入 data/imports/（或 QUESTION_IMPORT_DIR）后运行
+curl -X POST http://localhost:8000/api/questions/import-batch \
     -H "Content-Type: application/json" \
-    -d '{"path":"/绝对路径/你的题库.json"}'
+    -d '{"path":"bank.json"}'
   ```
 
 - **方式 C（飞书 Markdown）**：解析飞书导出的题库 Markdown
@@ -110,11 +111,15 @@ python -m http.server 8088 --directory frontend
 | 后端 | 定位 | 切换方式 |
 | --- | --- | --- |
 | **SQLite**（默认） | 本地 / 开源贡献者 / 单人：零运维、单文件，clone 即跑 | 默认即 SQLite |
-| **PostgreSQL**（生产推荐） | 多用户 / 正式部署 / 未来语义搜题（pgvector） | `DATABASE_URL=postgresql+psycopg2://user:pass@localhost:5432/interview_memory`，并 `pip install psycopg2` |
-| **MySQL**（实验性） | 团队已熟悉 MySQL 时可选 | `DATABASE_URL=mysql+pymysql://user:pass@localhost:3306/interview_memory`，并 `pip install pymysql` |
+| **PostgreSQL**（生产推荐） | 多用户 / 正式部署 / 未来语义搜题（pgvector） | `DATABASE_URL=postgresql+psycopg2://user:pass@localhost:5432/interview_memory`，驱动随项目依赖安装 |
+| **MySQL**（实验性） | 团队已熟悉 MySQL 时可选 | `DATABASE_URL=mysql+pymysql://user:pass@localhost:3306/interview_memory`，驱动随项目依赖安装 |
 
 - 默认 SQLite 已开启 **WAL** 模式，读写可并发。
 - PostgreSQL 是生产推荐；MySQL 未纳入官方测试矩阵，欢迎 PR 补全。
+- 依赖版本固定在 `requirements.txt` / `requirements.lock`，升级时重新解析依赖并运行测试；不要只单独升级顶层框架。
+- SQLite 工具遵循 `--db` > 进程 `DATABASE_URL` > 项目 `.env`，不支持的数据库会拒绝操作。
+- 不要直接复制活跃的 SQLite 主文件作为备份；使用 `scripts/backup_data.py` 同时备份本地配图，恢复步骤见 README。
+- Docker 镜像支持 UID 10001；Compose 为兼容旧卷默认 UID 0，可在确认卷可写后设置 APP_UID/APP_GID，不自动修改卷所有权。
 
 ---
 
@@ -142,7 +147,7 @@ python -m http.server 8088 --directory frontend
 
 ## 测试
 
-核心模块有 `pytest` 单测（当前覆盖图片存储抽象层）：
+核心模块有 `pytest` 单测，覆盖 API、复习、判题、存储、迁移和题库导入：
 
 ```bash
 pytest tests/ -q

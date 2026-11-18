@@ -15,7 +15,7 @@ set -uo pipefail
 BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$BASE"
 
-PY="C:/Users/UserName/.workbuddy/binaries/python/versions/3.13.12/python.exe"
+PY="${PYTHON:-python}"
 SPACE_ID="7662025183418387409"
 GATE=150000
 CHUNKS=100000

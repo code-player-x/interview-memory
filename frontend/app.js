@@ -14,6 +14,23 @@ function splitKeywords(kw) {
   return String(kw).split(/[,，]/).map(x => x.trim()).filter(Boolean);
 }
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+async function requestJson(url, options) {
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    const detail = typeof error.detail === "string" ? error.detail : "HTTP " + response.status;
+    throw new Error(detail);
+  }
+  return response.status === 204 ? null : response.json();
+}
+function newRequestId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  // Idempotency identifiers are not credentials; also support non-secure LAN origins.
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, char => {
+    const value = Math.floor(Math.random() * 16);
+    return (char === "x" ? value : (value & 3) | 8).toString(16);
+  });
+}
 function diffMeta(d) {
   if (d <= 2) return { label: "简单", cls: "easy" };
   if (d === 3) return { label: "中等", cls: "medium" };
@@ -93,49 +110,56 @@ function curatedTagsHtml(category, platform, tags, max) {
 }
 
 // 依赖无关的轻量 Markdown 渲染：图片 / 链接 / 行内代码 / 加粗 / 换行。
-// 先整体转义，再还原受信任的 markdown 片段；URL 仅放行 http(s)/data:image，防 XSS。
+// 先分词再转义；URL 仅放行 http(s)、图片 data URL 与站内绝对路径。
 function _safeUrl(u) {
-  return /^(https?:|data:image\/)/i.test(u.trim()) ? u.trim() : "#";
+  const url = String(u).trim();
+  return /^(https?:|data:image\/)/i.test(url) || /^\/(?![\/\\])/.test(url) ? url : "#";
 }
-function _safeUrlAttr(u) {
-  // 此时 Markdown 文本已整体 escapeHtml；再转义会把查询参数中的 &amp; 变成 &amp;amp;。
-  return _safeUrl(u);
-}
-const _MD_IMG = /!\[([^\]]*)\]\(([^)\s]+)\)/g;
-const _MD_LINK = /\[([^\]]+)\]\(([^)\s]+)\)/g;
 // 残缺链接：URL 部分为空或缺失（飞书导入时大量 [text]( 被截断），但意图是链接。
 // 两种形态：[text]() / [text]( ) —— 空 URL + 闭合括号
 //          [text]($ / [text](\n —— 没有 URL 也没有闭合括号，到行/字符串末尾
-const _MD_LINK_BROKEN_CLOSED = /\[([^\]\n]{2,200})\]\(\s*\)/g;
-const _MD_LINK_BROKEN_OPEN   = /\[([^\]\n]{2,200})\]\(\s*$/gm;
-const _MD_CODE = /`([^`]+)`/g;
-const _MD_BOLD = /\*\*([^*]+)\*\*/g;
-
 function renderInlineMarkdown(text) {
-  let s = escapeHtml(text == null ? "" : String(text));
-  s = s.replace(_MD_IMG, (m, alt, url) =>
-    "<img class='md-img' src='" + _safeUrlAttr(url) + "' alt='" + alt + "' loading='lazy'>");
-  s = s.replace(_MD_CODE, "<code class='md-code'>$1</code>");
-  s = s.replace(_MD_BOLD, "<strong>$1</strong>");
-  s = s.replace(_MD_LINK, (m, label, url) =>
-    "<a class='md-link' href='" + _safeUrlAttr(url) + "' target='_blank' rel='noopener'>" + label + "</a>");
-  return s.replace(/\r?\n+/g, " ");
+  return renderSafeInline(String(text ?? "").replace(/\r?\n+/g, " "));
 }
 
-function _paragraphizeMarkdownHtml(html, blockToken) {
-  return html.split(blockToken).map(part => {
-    if (!part) return "";
-    if (blockToken.test(part)) return part;
-    return part.split(/\n{2,}/).map(paragraph => {
-      if (!paragraph.trim()) return "";
-      return "<p class='md-p'>" + paragraph.replace(/\n/g, "<br>") + "</p>";
-    }).join("");
-  }).join("");
+function renderSafeInline(text, keywords, lineBreaks = false) {
+  const raw = String(text ?? "");
+  const words = [...new Set((keywords || []).map(word => String(word).trim()).filter(Boolean))]
+    .sort((a, b) => b.length - a.length);
+  const keywordPattern = words.length ? new RegExp(words.map(escapeRegExp).join("|"), "g") : null;
+  const highlighted = value => {
+    if (!keywordPattern) return escapeHtml(value);
+    let result = "", last = 0;
+    for (const match of value.matchAll(keywordPattern)) {
+      result += escapeHtml(value.slice(last, match.index)) + "<mark class='kw'>" + escapeHtml(match[0]) + "</mark>";
+      last = match.index + match[0].length;
+    }
+    return result + escapeHtml(value.slice(last));
+  };
+  const plain = value => lineBreaks ? highlighted(value).replace(/\r?\n/g, "<br>") : highlighted(value);
+  const pattern = /`([^`]+)`|!\[([^\]\n]*)\]\(([^)\s]+)\)|\[([^\]\n]+)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*|\[([^\]\n]{2,200})\]\([ \t]*(?:\)|$)/gm;
+  let result = "", last = 0;
+  for (const match of raw.matchAll(pattern)) {
+    result += plain(raw.slice(last, match.index));
+    if (match[1] !== undefined) result += "<code class='md-code'>" + escapeHtml(match[1]) + "</code>";
+    else if (match[2] !== undefined) result += "<img class='md-img' src='" + escapeHtml(_safeUrl(match[3])) + "' alt='" + escapeHtml(match[2]) + "' loading='lazy'>";
+    else if (match[4] !== undefined) result += "<a class='md-link' href='" + escapeHtml(_safeUrl(match[5])) + "' target='_blank' rel='noopener noreferrer'>" + renderSafeInline(match[4], keywords, lineBreaks) + "</a>";
+    else if (match[6] !== undefined) result += "<strong>" + renderSafeInline(match[6], keywords, lineBreaks) + "</strong>";
+    else {
+      const label = escapeHtml(match[7]);
+      result += "<a class='md-link md-link-broken' href='#' data-q='" + label +
+        "' title='链接 URL 缺失，点击用百度搜索：&#10;" + label + "'>" + plain(match[7]) + "</a>";
+    }
+    last = match.index + match[0].length;
+  }
+  return result + plain(raw.slice(last));
 }
+
 // 启发式：把「连续 2+ 行、每行以 ≥4 空格/Tab 缩进、且含代码特征、无中文标点」的段落
 // 包成 ``` 围栏，便于统一渲染为高亮代码块（飞书导入的纯文本代码题也能识别）。
 function _wrapIndentedCode(text) {
-  return text.replace(/((?:^[ \t]{4,}.*(?:\r?\n|$)){2,})/gm, (block) => {
+  return text.replace(/```[\s\S]*?(?:```|(?![\s\S]))|((?:^[ \t]{4,}.*(?:\r?\n|$)){2,})/gm, (block, indented) => {
+    if (!indented) return block;
     const looksLikeCode = /(func\s|package\s|import\s|class\s|def\s|return\s|=>|var\s|let\s|const\s|if\s|for\s|while\s|#include|public\s|private\s|protected\s|<\?php|print\(|console\.|system\.|SELECT\s|INSERT\s|UPDATE\s|DELETE\s|CREATE\s|FROM\s|echo\s)/i.test(block)
       && !/[，。；：！？、（）《》「」]/u.test(block);
     if (!looksLikeCode) return block;
@@ -208,12 +232,12 @@ function _wrapUnindentedCode(text) {
   let codeCount = 0; // 强信号行计数（决定是否真包成围栏）
   let inFence = false; // 是否在已有 ``` 围栏内
   const flush = () => {
-    // 去掉首尾空行
-    while (buf.length && !buf[0].trim()) buf.shift();
-    let end = buf.length;
-    while (end > 0 && !buf[end - 1].trim()) end--;
     if (codeCount >= 2) {
-      const block = buf.slice(0, end).join("\n");
+      const start = buf.findIndex(line => line.trim());
+      let end = buf.length;
+      while (end > start && !buf[end - 1].trim()) end--;
+      for (let i = 0; i < start; i++) out.push(buf[i]);
+      const block = buf.slice(start, end).join("\n");
       out.push("```" + detectLang(block) + "\n" + block + "\n```");
       for (let i = end; i < buf.length; i++) out.push(buf[i]);
     } else if (buf.length) {
@@ -263,9 +287,9 @@ const _FENCE = /```([^\n]*)\r?\n([\s\S]*?)```/g;
 //   - 分隔符：上一项结尾必须是 ；;。!！?？ 或行首；禁止逗号（太容易误伤）
 //   - 跳过 ``` 围栏区和行内代码
 // 私有区占位符字符（和原 _FENCE 占位符保持一致）
-const _P0 = "", _P1 = "";
+const _P1 = "";
 
-function _beautifyAnswer(text) {
+function _beautifyAnswer(text, _P0) {
   // 抽离围栏 + 行内代码（占位符隔离，避免被正则误识）
   const fences = [];
   text = text.replace(/```[\s\S]*?```/g, (m) => { fences.push(m); return _P0 + "K" + (fences.length - 1) + _P1; });
@@ -364,120 +388,35 @@ function renderMarkdown(text, keywords) {
   // 1) 启发式把缩进代码 + 零缩进纯文本代码都包成围栏（顺序：先零缩进，避免它和缩进判断冲突）
   let raw = _wrapUnindentedCode(text);
   raw = _wrapIndentedCode(raw);
-  // 1.5) 把「1) xxx；2) xxx；...」连续编号段拆成美观的 <ol> 块
-  //      占位符用 _P0/_P1 私有区字符保护（不含 HTML 标签，不受 escapeHtml 影响）
-  //      列表 content 待 escapeHtml + 关键词高亮之后再生成最终 HTML
-  const beautify = _beautifyAnswer(raw);
-  const prettyItems = beautify.valid; // [{items:[{num,content}]}] —— content 仍是原文
-  raw = beautify.out; // beautify.out 已用 _P0 L<num> _P1 占位符替换
-  // 2) 抽离围栏代码块，用私有区占位符替换，避免被转义/换行破坏
-  const blocks = [];
-  raw = raw.replace(_FENCE, (m, lang, code) => {
-    const idx = blocks.length;
-    blocks.push({ lang: (lang || "").toLowerCase(), code: code.replace(/\n$/, "") });
-    return "K" + idx + "";
-  });
-  // 2.5) 抽离残缺链接 [text]() / [text]($ —— URL 缺失但意图明显是链接
-  //      （飞书/外部源导入时常出现这种截断，全题库有上千条）。
-  //      渲染时给个可点击的 a.md-link-broken，点击触发百度搜索兜底。
-  const brokenLinks = [];
-  const _markBroken = (t) => {
-    brokenLinks.push(t);
-    return "\x00BL" + (brokenLinks.length - 1) + "\x00";
-  };
-  raw = raw.replace(_MD_LINK_BROKEN_CLOSED, (m, t) => _markBroken(t));
-  raw = raw.replace(_MD_LINK_BROKEN_OPEN,   (m, t) => _markBroken(t));
-  // 3) 转义 + 关键词高亮（仅非代码区）
-  let s = escapeHtml(raw);
-  if (keywords && keywords.length) {
-    keywords.forEach(kw => {
-      kw = String(kw).trim();
-      if (!kw) return;
-      try {
-        const re = new RegExp(escapeRegExp(kw), "g");
-        s = s.replace(re, "<mark class='kw'>" + escapeHtml(kw) + "</mark>");
-      } catch (e) {}
-    });
+  // Keep list markers out of the inline renderer and generated HTML attributes.
+  let prefix = "";
+  while (raw.includes(prefix)) prefix += prefix;
+  const pretty = _beautifyAnswer(raw, prefix);
+  const listToken = new RegExp(prefix + "L(\\d+)" + _P1, "g");
+  const renderText = value => value.split(/\r?\n(?:[ \t]*\r?\n)+/)
+    .filter(p => p.trim()).map(p => "<p class='md-p'>" + renderSafeInline(p, keywords, true) + "</p>").join("");
+
+  function renderBlocks(value) {
+    let html = "", last = 0;
+    for (const match of value.matchAll(_FENCE)) {
+      const lang = match[1].trim().toLowerCase(), code = match[2].replace(/\r?\n$/, "");
+      html += renderText(value.slice(last, match.index));
+      html += "<div class='md-pre-wrap'>" + (lang ? "<span class='code-lang'>" + escapeHtml(lang) + "</span>" : "") +
+        "<button class='code-copy' type='button' onclick='copyCode(this)' data-c='" + escapeHtml(code) + "'>复制</button>" +
+        "<pre class='md-pre'><code class='md-code-block'>" + _highlightCode(code, lang) + "</code></pre></div>";
+      last = match.index + match[0].length;
+    }
+    return html + renderText(value.slice(last));
   }
-  // 4) 图片 / 行内代码 / 加粗 / 链接
-  s = s.replace(_MD_IMG, (m, alt, url) =>
-    "<img class='md-img' src='" + _safeUrlAttr(url) + "' alt='" + alt + "' loading='lazy'>");
-  s = s.replace(_MD_CODE, "<code class='md-code'>$1</code>");
-  s = s.replace(_MD_BOLD, "<strong>$1</strong>");
-  s = s.replace(_MD_LINK, (m, t, url) =>
-    "<a class='md-link' href='" + _safeUrlAttr(url) + "' target='_blank' rel='noopener'>" + t + "</a>");
-  // 5) 文本段落与代码/列表块作为同级节点，避免把 block 元素塞进 <p>。
-  s = _paragraphizeMarkdownHtml(s, new RegExp("(" + _P0 + "[KL]\\d+" + _P1 + ")"));
-  // 6) 还原代码块为高亮 <pre>
-  s = s.replace(/K(\d+)/g, (m, i) => {
-    const b = blocks[+i];
-    if (!b) return m;
-    const hl = _highlightCode(b.code, b.lang);
-    const label = b.lang ? "<span class='code-lang'>" + escapeHtml(b.lang) + "</span>" : "";
-    return "<div class='md-pre-wrap'>" + label +
-      "<button class='code-copy' type='button' onclick='copyCode(this)' data-c='" + escapeHtml(b.code) + "'>复制</button>" +
-      "<pre class='md-pre'><code class='md-code-block'>" + hl + "</code></pre></div>";
-  });
-  // 6.5) 还原美化的 <ol class="md-pretty"> 块
-  //      content 是 raw 文本（未 escapeHtml/未跑过 markdown 渲染），
-  //      必须在还原时单独走一遍 escapeHtml + 关键词高亮 + 行内 markdown，
-  //      否则 **bold** / `code` / [link] / ![img] 都会原样漏出。
-  //      还要处理 ```围栏``` —— 这些是 _wrapUnindentedCode 在 _beautifyAnswer
-  //      之前就已经包好的，外层 _FENCE 抽离不到，需要在列表项内单独抽离 + 还原。
-  s = s.replace(new RegExp(_P0 + "L(\\d+)" + _P1, "g"), (m, i) => {
-    const r = prettyItems[+i];
-    if (!r) return m;
-    const li = r.items.map(it => {
-      let c = it.content;
-      // 抽离列表项内的围栏代码块（复用外层 _FENCE 正则；占位符用更罕见的串避免冲突）
-      const itemFences = [];
-      c = c.replace(_FENCE, (mm, lang, code) => {
-        itemFences.push({ lang: (lang || "").toLowerCase(), code: code.replace(/\n$/, "") });
-        return "\x00F" + (itemFences.length - 1) + "\x00";
-      });
-      c = escapeHtml(c);
-      if (keywords && keywords.length) {
-        keywords.forEach(kw => {
-          kw = String(kw).trim();
-          if (!kw) return;
-          try {
-            const re = new RegExp(escapeRegExp(kw), "g");
-            c = c.replace(re, "<mark class='kw'>" + escapeHtml(kw) + "</mark>");
-          } catch (e) {}
-        });
-      }
-      // 行内 markdown（顺序与外层 step 4 一致：img > code > bold > link）
-      c = c.replace(_MD_IMG, (mm, alt, url) =>
-        "<img class='md-img' src='" + _safeUrlAttr(url) + "' alt='" + alt + "' loading='lazy'>");
-      c = c.replace(_MD_CODE, "<code class='md-code'>$1</code>");
-      c = c.replace(_MD_BOLD, "<strong>$1</strong>");
-      c = c.replace(_MD_LINK, (mm, t, url) =>
-        "<a class='md-link' href='" + _safeUrlAttr(url) + "' target='_blank' rel='noopener'>" + t + "</a>");
-      // 段落/换行：围栏代码占位符必须保持为段落同级节点。
-      c = _paragraphizeMarkdownHtml(c, /(\x00F\d+\x00)/);
-      // 还原围栏代码块为高亮 <pre>
-      c = c.replace(/\x00F(\d+)\x00/g, (mm, idx) => {
-        const b = itemFences[+idx];
-        if (!b) return mm;
-        const hl = _highlightCode(b.code, b.lang);
-        const label = b.lang ? "<span class='code-lang'>" + escapeHtml(b.lang) + "</span>" : "";
-        return "<div class='md-pre-wrap'>" + label +
-          "<button class='code-copy' type='button' onclick='copyCode(this)' data-c='" + escapeHtml(b.code) + "'>复制</button>" +
-          "<pre class='md-pre'><code class='md-code-block'>" + hl + "</code></pre></div>";
-      });
-      return "<li>" + c + "</li>";
-    }).join("");
-    return "<ol class='md-pretty'>" + li + "</ol>";
-  });
-  // 7) 还原残缺链接占位符为可点击的 a.md-link-broken（点击触发百度搜索兜底）
-  s = s.replace(/\x00BL(\d+)\x00/g, (m, i) => {
-    const t = brokenLinks[+i];
-    if (t == null) return m;
-    const et = escapeHtml(t);
-    return "<a class='md-link md-link-broken' href='#' data-q='" + et +
-      "' title='链接 URL 缺失，点击用百度搜索：&#10;" + et + "'>" + et + "</a>";
-  });
-  return "<div class='md'>" + s + "</div>";
+
+  let html = "", last = 0;
+  for (const match of pretty.out.matchAll(listToken)) {
+    html += renderBlocks(pretty.out.slice(last, match.index));
+    const items = pretty.valid[Number(match[1])].items;
+    html += "<ol class='md-pretty'>" + items.map(it => "<li>" + renderBlocks(it.content) + "</li>").join("") + "</ol>";
+    last = match.index + match[0].length;
+  }
+  return "<div class='md'>" + html + renderBlocks(pretty.out.slice(last)) + "</div>";
 }
 
 const TITLES = {
@@ -497,9 +436,15 @@ const TITLES = {
 
 // ---------------- 视图切换 ----------------
 function switchView(name) {
+  detailVersion++;
   if (name === "admin") { window.location.href = "/admin/"; return; }
   const navName = name === "practiceSession" ? "practice" : name;
-  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.view === navName));
+  document.querySelectorAll("nav button[data-view]").forEach(b => {
+    const active = b.dataset.view === navName;
+    b.classList.toggle("active", active);
+    if (active) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  });
+  document.querySelectorAll("details.mobile-menu").forEach(menu => { menu.open = false; });
   document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === name));
   const t = TITLES[navName];
   document.getElementById("viewTitle").textContent = t[0];
@@ -532,11 +477,11 @@ const bank = { keyword: "", category: "", tags: "", level: 0, offset: 0, limit: 
 async function loadCategoryGrid() {
   let cats = [];
   let detailOk = false;
-  try { cats = await (await fetch("/api/categories/detail")).json(); detailOk = true; }
+  try { cats = await requestJson("/api/categories/detail"); detailOk = true; }
   catch (e) {
     // 兼容旧后端：降级到 /api/categories
     try {
-      const names = await (await fetch("/api/categories")).json();
+      const names = await requestJson("/api/categories");
       cats = (names || []).map(n => ({ name: n, count: null, icon: "📄", description: n + " 面试题" }));
     } catch (e2) { cats = []; }
   }
@@ -545,6 +490,14 @@ async function loadCategoryGrid() {
   const list = document.getElementById("bankList");
   const pager = document.getElementById("bankPager");
   const total = detailOk ? cats.reduce((sum, c) => sum + (c.count || 0), 0) : null;
+  const totalLabel = document.getElementById("bankTotal");
+  const categoryLabel = document.getElementById("bankCategories");
+  if (totalLabel) totalLabel.textContent = total == null ? "—" : total.toLocaleString("zh-CN");
+  if (categoryLabel) categoryLabel.textContent = detailOk || cats.length ? cats.length : "—";
+  ["bankOverview", "bankSectionHeading"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.hidden = bank.inList;
+  });
 
   // 列表模式：隐藏分类网格，显示头部 + 题目列表
   if (bank.inList) {
@@ -581,7 +534,7 @@ async function loadCategoryGrid() {
     el.type = "button";
     el.className = "cat-card";
     el.innerHTML =
-      "<div class='cat-icon'>" + icon + "</div>" +
+      "<div class='cat-icon'>" + escapeHtml(icon) + "</div>" +
       "<div class='cat-name'>" + escapeHtml(label) + "</div>" +
       "<div class='cat-desc'>" + escapeHtml(desc || label + " 面试题") + "</div>" +
       "<div class='cat-count'>" + (count == null ? "-" : count) + " 题</div>";
@@ -617,7 +570,9 @@ async function loadCategoryGrid() {
   };
 }
 
+let bankRequestId = 0;
 async function loadBank() {
+  const requestId = ++bankRequestId;
   const qs = [];
   if (bank.keyword) qs.push("keyword=" + encodeURIComponent(bank.keyword));
   if (bank.category) qs.push("category=" + encodeURIComponent(bank.category));
@@ -626,8 +581,14 @@ async function loadBank() {
   qs.push("limit=" + bank.limit + "&offset=" + bank.offset);
   let data = { total: 0, items: [] };
   try {
-    data = await (await fetch("/api/questions?" + qs.join("&"))).json();
-  } catch (e) { data = { total: 0, items: [] }; }
+    data = await requestJson("/api/questions?" + qs.join("&"));
+  } catch (e) {
+    if (requestId !== bankRequestId) return;
+    document.getElementById("bankList").innerHTML = "<div class='empty' role='alert'>题库加载失败：" + escapeHtml(e.message) + "。请重新搜索或刷新页面。</div>";
+    document.getElementById("bankPager").innerHTML = "";
+    return;
+  }
+  if (requestId !== bankRequestId) return;
   bank.total = data.total;
 
   const list = document.getElementById("bankList");
@@ -864,7 +825,7 @@ function setupMemCategoryPicker() {
 
 async function loadMemorize() {
   let cats = [];
-  try { cats = await (await fetch("/api/categories/detail")).json(); } catch (e) { cats = []; }
+  try { cats = await requestJson("/api/categories/detail"); } catch (e) { cats = []; }
   const sel = document.getElementById("memCat");
   const cur = sel.value;
   sel.innerHTML = "<option value=''>全部分类</option>";
@@ -882,34 +843,68 @@ async function loadMemorize() {
   memStart();
 }
 
-async function memLoadPage() {
+let memRequestId = 0;
+async function memLoadPage(requestId = memRequestId) {
   const qs = [];
   if (mem.category) qs.push("category=" + encodeURIComponent(mem.category));
   if (mem.level) qs.push("level=" + mem.level);
   qs.push("limit=" + mem.limit + "&offset=" + mem.offset + "&order=asc");
-  const data = await (await fetch("/api/questions?" + qs.join("&"))).json();
+  const data = await requestJson("/api/questions?" + qs.join("&"));
+  if (requestId !== memRequestId) return;
   mem.total = data.total || 0;
   mem.items = mem.items.concat(data.items || []);
   mem.offset += (data.items || []).length;
+  // A concurrently edited bank may be smaller than its earlier total.
+  if (!data.items.length) {
+    mem.total = mem.items.length;
+    mem.idx = Math.min(mem.idx, Math.max(0, mem.total - 1));
+  }
 }
 
 async function memStart() {
+  const requestId = ++memRequestId;
   mem.category = document.getElementById("memCat").value;
   mem.level = parseInt(document.getElementById("memDiff").value, 10) || 0;
   mem.pageSize = parseInt(document.getElementById("memSize").value, 10) || 5;
   mem.limit = mem.pageSize;
-  mem.items = []; mem.offset = 0; mem.idx = 0; mem.total = 0; mem.loading = false;
-  await memLoadPage();
-  memRender();
+  mem.items = []; mem.offset = 0; mem.idx = 0; mem.total = 0; mem.loading = true;
+  document.getElementById("memCard").innerHTML = "<div class='empty'>正在加载题目…</div>";
+  document.getElementById("memPrev").disabled = true;
+  document.getElementById("memNext").disabled = true;
+  try {
+    await memLoadPage(requestId);
+    if (requestId !== memRequestId) return;
+    mem.loading = false;
+    await memRender();
+  } catch (e) {
+    if (requestId !== memRequestId) return;
+    mem.loading = false;
+    document.getElementById("memCard").innerHTML = "<div class='empty' role='alert'>题目加载失败：" + escapeHtml(e.message) + "。请重新选择分类或刷新页面。</div>";
+  }
 }
 
 async function memRender() {
+  const requestId = memRequestId;
   // 单题文章式：mem.idx 是题索引（不再是页索引），mem.pageSize 仅用于后端一次拉多少
   const endIdx = mem.idx + 1;
   while (endIdx > mem.items.length && mem.items.length < mem.total && !mem.loading) {
     mem.loading = true;
-    await memLoadPage();
-    mem.loading = false;
+    document.getElementById("memNext").disabled = true;
+    try {
+      await memLoadPage(requestId);
+    } catch (e) {
+      if (requestId === memRequestId) {
+        mem.idx = Math.max(0, mem.idx - 1);
+        alert("题目加载失败：" + e.message + "。请重试下一题。");
+      }
+      return;
+    } finally {
+      if (requestId === memRequestId) {
+        mem.loading = false;
+        document.getElementById("memNext").disabled = mem.idx + 1 >= mem.total;
+      }
+    }
+    if (requestId !== memRequestId) return;
   }
   const box = document.getElementById("memCard");
   const q = mem.items[mem.idx];
@@ -973,6 +968,7 @@ async function memRender() {
 }
 
 function memPrev() {
+  if (mem.loading) return;
   if (mem.idx > 0) {
     mem.idx -= 1;
     memRender();
@@ -980,6 +976,7 @@ function memPrev() {
   }
 }
 function memNext() {
+  if (mem.loading) return;
   if (mem.idx + 1 < mem.total) {
     mem.idx += 1;
     memRender();
@@ -1015,22 +1012,25 @@ async function memNoteLoad(qid) {
       "<div class='mem-note' data-nid='" + n.id + "'>" +
         "<div class='mem-note-meta'>" +
           "<span class='mem-note-dot'></span>" +
-          "<span>" + formatNoteTimestamp(n.created_at) + "</span>" +
+          "<span>" + escapeHtml(formatNoteTimestamp(n.created_at)) + "</span>" +
           "<button class='mem-note-del' type='button' onclick='memNoteDelete(" + qid + "," + n.id + ")'>删除</button>" +
         "</div>" +
         "<div class='mem-note-text'>" + escapeHtml(n.content).replace(/\n/g, "<br>") + "</div>" +
       "</div>"
     ).join("");
   } catch (e) {
-    list.innerHTML = "<div class='muted' style='font-size:12px;color:#d33'>加载失败：" + e.message + "</div>";
+    list.innerHTML = "<div class='muted' style='font-size:12px;color:#d33'>加载失败：" + escapeHtml(e.message) + "</div>";
   }
 }
 async function memNoteSave(qid) {
   const inp = document.getElementById("memNoteInput");
   const tip = document.getElementById("memNoteTip");
+  const save = document.getElementById("memNoteSave");
+  if (save.disabled) return;
   const v = inp.value.trim();
   if (!v) { tip.textContent = "请先写点内容"; setTimeout(()=>tip.textContent="", 1500); return; }
   tip.textContent = "保存中…";
+  save.disabled = true;
   try {
     const r = await fetch("/api/questions/" + qid + "/notes", {
       method: "POST",
@@ -1038,13 +1038,13 @@ async function memNoteSave(qid) {
       body: JSON.stringify({ content: v }),
     });
     if (!r.ok) throw new Error("HTTP " + r.status);
-    inp.value = "";
+    if (inp.value.trim() === v) inp.value = "";
     tip.textContent = "已保存";
     setTimeout(()=>tip.textContent="", 1200);
-    memNoteLoad(qid);
+    if (mem.items[mem.idx]?.id === qid) memNoteLoad(qid);
   } catch (e) {
     tip.textContent = "保存失败：" + e.message;
-  }
+  } finally { save.disabled = false; }
 }
 async function copyShareLink(el) {
   const qid = el.getAttribute('data-qid');
@@ -1067,19 +1067,36 @@ async function memNoteDelete(qid, nid) {
   try {
     const r = await fetch("/api/questions/" + qid + "/notes/" + nid, { method: "DELETE" });
     if (!r.ok) throw new Error("HTTP " + r.status);
-    memNoteLoad(qid);
+    if (mem.items[mem.idx]?.id === qid) memNoteLoad(qid);
   } catch (e) {
     alert("删除失败：" + e.message);
   }
 }
 
 // ---------------- 手动添加题目 ----------------
+let overlayOpener = null;
+let overlayScroll = "";
+function focusOverlay(target) {
+  if (!document.querySelector(".app").inert) {
+    overlayOpener = document.activeElement;
+    overlayScroll = document.body.style.overflow;
+  }
+  document.querySelector(".app").inert = true;
+  document.body.style.overflow = "hidden";
+  target.focus();
+}
+function releaseOverlay() {
+  document.querySelector(".app").inert = false;
+  document.body.style.overflow = overlayScroll;
+  if (overlayOpener?.isConnected) overlayOpener.focus();
+  overlayOpener = null;
+}
 async function openAddModal() {
-  let cats = [];
-  try { cats = await (await fetch("/api/categories/detail")).json(); } catch (e) { cats = []; }
+  detailVersion++;
+  const version = ++addVersion;
   const dl = document.getElementById("catList");
   dl.innerHTML = "";
-  cats.forEach(c => { const o = document.createElement("option"); o.value = c.name; dl.appendChild(o); });
+  document.getElementById("addSave").disabled = false;
   document.getElementById("addCat").value = bank.inList ? bank.category : "";
   document.getElementById("addDiff").value = "3";
   document.getElementById("addPlatform").value = "";
@@ -1089,15 +1106,25 @@ async function openAddModal() {
   document.getElementById("addErr").textContent = "";
   document.getElementById("addMask").classList.add("show");
   document.getElementById("addModal").style.display = "flex";
-  document.getElementById("addQuestion").focus();
+  focusOverlay(document.getElementById("addQuestion"));
+  let cats;
+  try { cats = await requestJson("/api/categories/detail"); } catch { return; }
+  if (version !== addVersion) return;
+  cats.forEach(c => { const o = document.createElement("option"); o.value = c.name; dl.appendChild(o); });
 }
 
+let addVersion = 0;
 function closeAddModal() {
+  addVersion++;
   document.getElementById("addMask").classList.remove("show");
   document.getElementById("addModal").style.display = "none";
+  releaseOverlay();
 }
 
 async function addSave() {
+  const save = document.getElementById("addSave");
+  if (save.disabled) return;
+  const version = addVersion;
   const question_text = document.getElementById("addQuestion").value.trim();
   const reference_answer = document.getElementById("addAnswer").value.trim();
   const category = document.getElementById("addCat").value.trim();
@@ -1114,6 +1141,7 @@ async function addSave() {
     difficulty: parseInt(document.getElementById("addDiff").value, 10) || 1,
   };
   err.textContent = "保存中…";
+  save.disabled = true;
   try {
     const r = await fetch("/api/questions/import", {
       method: "POST",
@@ -1122,31 +1150,39 @@ async function addSave() {
     });
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
-      err.textContent = "保存失败：" + (e.detail || ("HTTP " + r.status));
+      if (version === addVersion) err.textContent = "保存失败：" + (e.detail || ("HTTP " + r.status));
       return;
     }
-    closeAddModal();
+    if (version === addVersion) closeAddModal();
     loadCategoryGrid();
     if (bank.inList) loadBank();
   } catch (e) {
-    err.textContent = "保存失败，请检查后端服务";
-  }
+    if (version === addVersion) err.textContent = "保存失败，请检查后端服务";
+  } finally { if (version === addVersion) save.disabled = false; }
 }
 
 // ---------------- 题目详情抽屉 ----------------
 let currentDetailId = null;
 let currentDetail = null;   // 原始题目对象（含 reference_answer 原始 markdown）
+let detailVersion = 0;
+let detailEditVersion = 0;
+let detailSaving = false;
+let detailUploading = false;
 async function openDetail(id) {
-  currentDetailId = id;
+  const version = ++detailVersion;
+  currentDetailId = null;
+  currentDetail = null;
   let q;
   try {
     const response = await fetch("/api/question/" + id);
     if (!response.ok) throw new Error("HTTP " + response.status);
     q = await response.json();
   } catch (e) {
-    alert("题目不存在或暂时无法加载");
+    if (version === detailVersion) alert("题目不存在或暂时无法加载");
     return;
   }
+  if (version !== detailVersion) return;
+  currentDetailId = q.id;
   currentDetail = q;
   const dm = diffMeta(q.difficulty);
   const badge = document.getElementById("dqBadge");
@@ -1164,10 +1200,16 @@ async function openDetail(id) {
   exitEditMode();
   document.getElementById("drawerMask").classList.add("show");
   document.getElementById("detailDrawer").classList.add("show");
+  focusOverlay(document.getElementById("drawerClose"));
 }
 function closeDetail() {
+  detailVersion++;
+  detailEditVersion++;
+  currentDetailId = null;
+  currentDetail = null;
   document.getElementById("drawerMask").classList.remove("show");
   document.getElementById("detailDrawer").classList.remove("show");
+  releaseOverlay();
 }
 function revealAnswer() {
   document.getElementById("dqAnswer").style.display = "block";
@@ -1175,6 +1217,12 @@ function revealAnswer() {
 }
 function enterEditMode() {
   if (!currentDetail) return;
+  detailEditVersion++;
+  detailSaving = false;
+  detailUploading = false;
+  document.getElementById("dqSave").disabled = false;
+  document.getElementById("dqImgBtn").disabled = false;
+  document.getElementById("dqAnswerEdit").disabled = false;
   const edit = document.getElementById("dqEdit");
   const ans = document.getElementById("dqAnswer");
   ans.style.display = "none";
@@ -1187,6 +1235,7 @@ function enterEditMode() {
   document.getElementById("dqCancel").style.display = "";
 }
 function exitEditMode() {
+  detailEditVersion++;
   const edit = document.getElementById("dqEdit");
   if (!edit) return;
   edit.style.display = "none";
@@ -1200,33 +1249,51 @@ function exitEditMode() {
   if (tip) tip.textContent = "";
 }
 async function saveAnswerEdit() {
-  if (!currentDetailId) return;
+  if (!currentDetailId || detailSaving || detailUploading) return;
+  const version = detailVersion, editVersion = detailEditVersion, id = currentDetailId;
+  detailSaving = true;
+  document.getElementById("dqSave").disabled = true;
+  document.getElementById("dqAnswerEdit").disabled = true;
   const text = document.getElementById("dqAnswerEdit").value;
   const tip = document.getElementById("dqImgTip");
   tip.textContent = "保存中…";
   try {
-    const r = await fetch("/api/questions/" + currentDetailId, {
+    const r = await fetch("/api/questions/" + id, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reference_answer: text })
     });
     if (!r.ok) throw new Error("保存失败");
     const data = await r.json();
+    if (version !== detailVersion || editVersion !== detailEditVersion) return;
     currentDetail.reference_answer = data.reference_answer;
     currentDetail.images = data.images;
     document.getElementById("dqAnswerBody").innerHTML = renderMarkdown(data.reference_answer || "（暂无参考答案）");
     document.getElementById("dqAnswer").style.display = "block";
     if (document.getElementById("dqReveal")) document.getElementById("dqReveal").textContent = "已显示答案";
+    detailSaving = false;
+    document.getElementById("dqSave").disabled = false;
+    document.getElementById("dqAnswerEdit").disabled = false;
     exitEditMode();
     tip.textContent = "已保存";
-    setTimeout(() => { if (tip) tip.textContent = ""; }, 1500);
+    setTimeout(() => { if (version === detailVersion && currentDetailId === id) tip.textContent = ""; }, 1500);
   } catch (e) {
-    tip.textContent = "保存失败：" + e;
+    if (version === detailVersion && editVersion === detailEditVersion) tip.textContent = "保存失败：" + e.message;
+  } finally {
+    if (version === detailVersion && editVersion === detailEditVersion) {
+      detailSaving = false;
+      document.getElementById("dqSave").disabled = false;
+      document.getElementById("dqAnswerEdit").disabled = false;
+    }
   }
 }
 async function uploadAnswerImage() {
   const fileInput = document.getElementById("dqImgFile");
-  if (!fileInput.files || !fileInput.files.length) return;
+  if (!fileInput.files || !fileInput.files.length || !currentDetailId || detailUploading || detailSaving) return;
+  const version = detailVersion, editVersion = detailEditVersion;
+  detailUploading = true;
+  document.getElementById("dqImgBtn").disabled = true;
+  document.getElementById("dqSave").disabled = true;
   const tip = document.getElementById("dqImgTip");
   tip.textContent = "上传中…";
   const fd = new FormData();
@@ -1238,21 +1305,30 @@ async function uploadAnswerImage() {
       throw new Error(err.detail || "上传失败");
     }
     const data = await r.json();
+    if (version !== detailVersion || editVersion !== detailEditVersion) return;
     const ta = document.getElementById("dqAnswerEdit");
     const token = "\n![图片](" + data.url + ")\n";
     const start = ta.selectionStart, end = ta.selectionEnd;
     ta.value = ta.value.slice(0, start) + token + ta.value.slice(end);
     ta.focus();
     tip.textContent = "已插入图片";
-    setTimeout(() => { if (tip) tip.textContent = ""; }, 1500);
+    setTimeout(() => { if (version === detailVersion && editVersion === detailEditVersion) tip.textContent = ""; }, 1500);
   } catch (e) {
-    tip.textContent = "上传失败：" + e;
+    if (version === detailVersion && editVersion === detailEditVersion) tip.textContent = "上传失败：" + e.message;
+  } finally {
+    if (version === detailVersion && editVersion === detailEditVersion) {
+      detailUploading = false;
+      document.getElementById("dqImgBtn").disabled = false;
+      document.getElementById("dqSave").disabled = false;
+      fileInput.value = "";
+    }
   }
-  fileInput.value = "";
 }
 
 // ---------------- 练习 / 刷题模式 ----------------
 const practice = {
+  sessionId: 0,
+  loading: false,
   mode: "random",          // random | sequential
   scope: "single",         // single | multi
   singleCat: "",
@@ -1265,7 +1341,6 @@ const practice = {
   total: 0,
   history: [],             // 已加载题目队列（含当前题）
   historyIdx: -1,          // 当前题在 history 中的索引
-  answered: {},            // id -> {user_answer, result}
   isSingleQuestion: false, // 从题库"练习"按钮进入的指定单题模式
 };
 
@@ -1278,6 +1353,8 @@ function enterPracticeSession() {
 
 // 返回刷题配置页
 function exitPracticeSession() {
+  practice.sessionId++;
+  practice.loading = false;
   switchView("practice");
   document.getElementById("pmConfig").style.display = "";
   document.getElementById("pmAction").style.display = "";
@@ -1294,7 +1371,9 @@ function renderSessionQuestion() {
   practice.current = q;
   practice.total = q.total || 1;
 
-  const cached = practice.answered[q.id];
+  // Each fetched question is a separate history entry, including repeat rounds.
+  const cached = q.answered;
+  const answer = q.attempt?.user_answer ?? cached?.user_answer ?? "";
   const answeredHtml = cached ? buildResultHtml(cached.result) : "";
 
   box.innerHTML =
@@ -1304,20 +1383,65 @@ function renderSessionQuestion() {
         "<span class='muted'>#" + q.id + "</span>" +
       "</div>" +
       "<div class='qtext'>" + renderMarkdown(q.question_text) + "</div>" +
-      "<textarea id='ua' rows='5' placeholder='在此输入你的答案…'>" + escapeHtml(cached ? cached.user_answer : "") + "</textarea>" +
+      "<textarea id='ua' rows='5' " + (q.submitting ? "disabled " : "") + "placeholder='在此输入你的答案…'>" + escapeHtml(answer) + "</textarea>" +
       "<div class='result" + (cached ? " show" : "") + "' id='res'>" + answeredHtml + "</div>" +
     "</div>";
 
   updateSessionMeta();
   updateSessionNav();
+  bindPracticeRefresh(q);
+}
+
+function canRefreshJudgment(out) {
+  return out.is_correct == null && (out.source || out.judge_by) === "pending" && Number.isSafeInteger(out.submission_id) && out.submission_id > 0;
+}
+
+async function refreshJudgment(out, button, isCurrent, render) {
+  if (button.disabled || !canRefreshJudgment(out)) return;
+  button.disabled = true;
+  try {
+    const latest = await requestJson("/api/submissions/" + out.submission_id + "/judgment");
+    if (!isCurrent() || !canRefreshJudgment(out)) return;
+    if (latest.submission_id !== out.submission_id) throw new Error("返回的作答记录不匹配");
+    out.is_correct = latest.is_correct;
+    out.source = latest.source;
+    out.explanation = latest.explanation;
+    if (latest.source !== "pending") out.error_reason = "";
+    if (latest.source === "pending") button.textContent = "仍待判 · 再次刷新";
+    else render();
+  } catch (e) {
+    if (isCurrent()) alert("刷新判题结果失败：" + e.message);
+  } finally { button.disabled = false; }
+}
+
+function judgmentButton(out) {
+  return canRefreshJudgment(out) ? "<button type='button' class='btn ghost sm' data-judgment='" + out.submission_id + "'>刷新判题结果</button>" : "";
+}
+
+function bindPracticeRefresh(q) {
+  const cached = q.answered;
+  if (!cached || !canRefreshJudgment(cached.result)) return;
+  const button = document.querySelector("#res [data-judgment]");
+  if (!button) return;
+  const sessionId = practice.sessionId;
+  button.onclick = () => refreshJudgment(cached.result, button,
+    () => practice.sessionId === sessionId && q.answered === cached,
+    () => {
+      if (practice.current !== q) return;
+      document.getElementById("res").innerHTML = buildResultHtml(cached.result);
+      bindPracticeRefresh(q);
+    });
 }
 
 function buildResultHtml(out) {
   let cls = out.is_correct === true ? "ok" : out.is_correct === false ? "bad" : "";
-  let txt = out.is_correct === true ? "✅ 答对了" : out.is_correct === false ? "❌ 答错了" : "⏳ 判题待重试（已记录）";
+  let txt = out.is_correct === true ? "✅ 答对了" : out.is_correct === false ? "❌ 答错了" :
+    out.source === "cancelled" ? "判题已取消" :
+    out.source === "pending" ? "⏳ 判题待重试（已记录）" : "无法自动评分";
   txt += "<br>" + escapeHtml(out.explanation || "");
   if (out.error_reason) txt += "<br><span class='muted'>错误原因：" + escapeHtml(out.error_reason) + "</span>";
   txt += "<br><span class='src'>判题来源：" + escapeHtml(out.source || "") + "</span>";
+  txt += judgmentButton(out);
   if (out.reference_answer) {
     txt += "<div class='ref-answer'>" +
       "<div class='ref-title'>参考答案</div>" +
@@ -1328,43 +1452,71 @@ function buildResultHtml(out) {
 
 async function pmSubmit() {
   const q = practice.current;
-  if (!q) return;
+  if (!q || practice.loading || q.submitting) return;
   const uaEl = document.getElementById("ua");
   if (!uaEl) return;
   const ua = uaEl.value;
   if (!ua.trim()) { alert("请先输入答案"); return; }
+  const cached = q.answered;
+  if (cached && cached.user_answer === ua) return;
+  const sessionId = practice.sessionId;
+  let attempt = q.attempt;
+  if (!attempt || attempt.user_answer !== ua) {
+    attempt = { user_answer: ua, request_id: newRequestId() };
+    q.attempt = attempt;
+  }
+  q.submitting = true;
+  uaEl.disabled = true;
+  updateSessionNav();
   let out;
   try {
     const r = await fetch("/api/answer", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question_id: q.id, user_answer: ua })
+      body: JSON.stringify({ question_id: q.id, user_answer: ua, request_id: attempt.request_id })
     });
     const payload = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(payload.detail || ("HTTP " + r.status));
     out = payload;
   } catch (e) {
+    if (sessionId !== practice.sessionId || practice.current !== q) return;
     const resEl = document.getElementById("res");
+    if (!resEl) return;
     resEl.className = "result show bad";
-    resEl.innerHTML = "<div class='bad'>提交失败：" + escapeHtml(e.message || "请检查后端服务") + "。答案未记录，可修改后重试。</div>";
+    resEl.innerHTML = "<div class='bad'>未能确认判题结果：" + escapeHtml(e.message || "请检查后端服务") + "。可用原答案重试，不会重复记录同次提交。</div>";
     return;
+  } finally {
+    q.submitting = false;
+    if (sessionId === practice.sessionId) {
+      if (practice.current === q) {
+        const input = document.getElementById("ua");
+        if (input) input.disabled = false;
+      }
+      updateSessionNav();
+    }
   }
-  practice.answered[q.id] = { user_answer: ua, result: out };
-
+  if (sessionId !== practice.sessionId) return;
+  q.answered = { user_answer: ua, result: out };
+  if (practice.current !== q) return;
   const resEl = document.getElementById("res");
+  if (!resEl) return;
   resEl.className = "result show " + (out.is_correct === true ? "ok" : out.is_correct === false ? "bad" : "");
   resEl.innerHTML = buildResultHtml(out);
+  bindPracticeRefresh(q);
 }
 
 async function startPractice(id) {
+  if (!id) return;
+  const sessionId = ++practice.sessionId;
+  practice.loading = true;
   // 从题库“练习”按钮进入：指定单题，但仍使用刷题页
   practice.isSingleQuestion = true;
   practice.history = [];
   practice.historyIdx = -1;
   practice.current = null;
-  practice.answered = {};
   practice.seenIds = [];
   practice.seqOffset = 0;
   enterPracticeSession();
+  updateSessionNav();
   const box = document.getElementById("sessionBox");
   box.innerHTML = "<p class='muted'>加载中…</p>";
   let q;
@@ -1374,9 +1526,13 @@ async function startPractice(id) {
     if (!response.ok) throw new Error(payload.detail || ("HTTP " + response.status));
     q = payload;
   } catch (e) {
+    if (sessionId !== practice.sessionId) return;
     box.innerHTML = "<p class='muted'>加载失败：" + escapeHtml(e.message || "请检查后端服务") + "</p>";
     return;
+  } finally {
+    if (sessionId === practice.sessionId) { practice.loading = false; updateSessionNav(); }
   }
+  if (sessionId !== practice.sessionId) return;
   q.total = 1;
   practice.history = [q];
   practice.historyIdx = 0;
@@ -1388,12 +1544,12 @@ async function loadPracticeCats() {
   let cats = [];
   let detailOk = false;
   try {
-    cats = await (await fetch("/api/categories/detail")).json();
+    cats = await requestJson("/api/categories/detail");
     detailOk = true;
   } catch (e) {
     // 兼容旧后端：降级到 /api/categories（只有名字，没有题数）
     try {
-      const names = await (await fetch("/api/categories")).json();
+      const names = await requestJson("/api/categories");
       cats = (names || []).map(n => ({ name: n, count: null }));
     } catch (e2) { cats = []; }
   }
@@ -1421,7 +1577,8 @@ async function loadPracticeCats() {
   }
 
   // 全部选项（仅单分类模式）
-  const all = document.createElement("div");
+  const all = document.createElement("button");
+  all.type = "button";
   all.className = "cat-chip" + (practice.scope === "single" && practice.singleCat === "" ? " active" : " disabled");
   const totalCount = cats.reduce((s, c) => s + (c.count || 0), 0);
   all.textContent = "全部" + (detailOk ? "（" + totalCount + "）" : "");
@@ -1430,7 +1587,8 @@ async function loadPracticeCats() {
   wrap.appendChild(all);
 
   cats.forEach(c => {
-    const el = document.createElement("div");
+    const el = document.createElement("button");
+    el.type = "button";
     el.className = "cat-chip";
     el.textContent = c.name + (detailOk ? "（" + c.count + "）" : "");
     el.dataset.cat = c.name;
@@ -1472,6 +1630,8 @@ function syncPracticeSelection() {
     const isActive = single ? (practice.singleCat === cat) : practice.multiCats.has(cat);
     el.classList.toggle("active", isActive);
     el.classList.toggle("disabled", !single && cat === ""); // 全部只在单分类下可用
+    el.disabled = !single && cat === "";
+    el.setAttribute("aria-pressed", String(isActive));
   });
 
   document.getElementById("pmSelLabel").textContent = allCategories ? "" : "已选";
@@ -1482,11 +1642,17 @@ function syncPracticeSelection() {
 
 function setPracticeMode(mode) {
   practice.mode = mode;
-  document.querySelectorAll(".opt-card[data-mode]").forEach(c => c.classList.toggle("active", c.dataset.mode === mode));
+  document.querySelectorAll(".opt-card[data-mode]").forEach(c => {
+    c.classList.toggle("active", c.dataset.mode === mode);
+    c.setAttribute("aria-pressed", String(c.dataset.mode === mode));
+  });
 }
 function setPracticeScope(scope) {
   practice.scope = scope;
-  document.querySelectorAll(".opt-pill[data-scope]").forEach(p => p.classList.toggle("active", p.dataset.scope === scope));
+  document.querySelectorAll(".opt-pill[data-scope]").forEach(p => {
+    p.classList.toggle("active", p.dataset.scope === scope);
+    p.setAttribute("aria-pressed", String(p.dataset.scope === scope));
+  });
   if (scope === "single") {
     if (!practice.singleCat) practice.singleCat = practice.cats[0]?.name || "";
   }
@@ -1508,6 +1674,8 @@ function practiceScopeParam() {
 async function pmStart() {
   const sp = practiceScopeParam();
   if (sp === null) { alert("请先勾选至少一个分类"); return; }
+  practice.sessionId++;
+  practice.loading = false;
   practice.isSingleQuestion = false;
   practice.seenIds = [];
   practice.seqOffset = 0;
@@ -1515,7 +1683,6 @@ async function pmStart() {
   practice.historyIdx = -1;
   practice.current = null;
   practice.total = 0;
-  practice.answered = {};
   document.getElementById("pmRoundTip").textContent = "";
   enterPracticeSession();
   await pmLoadNext();
@@ -1523,39 +1690,45 @@ async function pmStart() {
 
 // 加载下一道新题（从后端取）
 async function pmLoadNext() {
+  if (practice.loading) return;
   const sp = practiceScopeParam();
   if (sp === null) { alert("请先勾选至少一个分类"); return; }
-  if (practice.current) {
-    if (practice.mode === "random") practice.seenIds.push(practice.current.id);
-    else practice.seqOffset += 1;
-  }
-
+  const sessionId = practice.sessionId;
+  const mode = practice.mode;
+  const nextSeenIds = practice.current && mode === "random"
+    ? [...new Set([...practice.seenIds, practice.current.id])] : [...practice.seenIds];
+  const nextOffset = practice.seqOffset + (practice.current && mode === "sequential" ? 1 : 0);
+  practice.loading = true;
+  updateSessionNav();
   const box = document.getElementById("sessionBox");
-  box.innerHTML = "<p class='muted'>加载中…</p>";
-  let url = "/api/practice/next?" + sp + "&mode=" + practice.mode;
-  if (practice.mode === "random") {
-    url += "&seen_ids=" + encodeURIComponent(practice.seenIds.join(","));
+  if (!practice.current) box.innerHTML = "<p class='muted'>加载中…</p>";
+  document.getElementById("pmRoundTip").textContent = "正在加载题目…";
+  let url = "/api/practice/next?" + sp + "&mode=" + mode;
+  let options;
+  if (mode === "random") {
+    if (nextSeenIds.length > 150) {
+      options = { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ seen_ids: nextSeenIds }) };
+    } else {
+      url += "&seen_ids=" + encodeURIComponent(nextSeenIds.join(","));
+    }
   } else {
-    url += "&offset=" + practice.seqOffset;
+    url += "&offset=" + nextOffset;
   }
   let q;
   try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      const detail = err.detail || ("HTTP " + res.status);
-      const restartTip = res.status === 404
-        ? "<br><small>后端接口未找到（HTTP 404）。请确认后端服务已用最新代码启动并正常监听。</small>"
-        : "";
-      box.innerHTML = "<p class='muted'>" + escapeHtml(detail) + restartTip + "</p>";
-      return;
+    q = await requestJson(url, options);
+  } catch (e) {
+    if (sessionId === practice.sessionId) {
+      document.getElementById("pmRoundTip").textContent = "加载失败：" + e.message + "。请重试下一题。";
+      if (!practice.current) box.innerHTML = "<p class='muted'>题目未加载，请重试下一题。</p>";
     }
-    q = await res.json();
-  } catch (e) { box.innerHTML = "<p class='muted'>加载失败，请检查后端服务。</p>"; return; }
-
-  if (practice.mode === "random" && q.round_complete) {
-    practice.seenIds = [q.id];
+    return;
+  } finally {
+    if (sessionId === practice.sessionId) { practice.loading = false; updateSessionNav(); }
   }
+  if (sessionId !== practice.sessionId) return;
+  practice.seqOffset = nextOffset;
+  practice.seenIds = mode === "random" && q.round_complete ? [q.id] : nextSeenIds;
   document.getElementById("pmRoundTip").textContent =
     q.round_complete ? "（本轮已刷完，已开启新一轮）" : "";
 
@@ -1566,6 +1739,7 @@ async function pmLoadNext() {
 
 // 下一题：优先走历史前进，否则加载新题
 async function pmNext() {
+  if (practice.loading) return;
   if (practice.isSingleQuestion) {
     alert("当前是指定单题练习，返回配置后可选择分类刷题");
     return;
@@ -1580,6 +1754,7 @@ async function pmNext() {
 
 // 上一题：从历史记录回退
 function pmPrev() {
+  if (practice.loading) return;
   if (practice.historyIdx > 0) {
     practice.historyIdx--;
     renderSessionQuestion();
@@ -1592,10 +1767,8 @@ function updateSessionMeta() {
   let shown;
   if (practice.isSingleQuestion) {
     shown = 1;
-  } else if (practice.mode === "random") {
-    shown = q.total - q.remaining;
   } else {
-    shown = (practice.seqOffset % q.total) + 1;
+    shown = q.total - q.remaining;
   }
   const scopeText = practice.isSingleQuestion
     ? "指定题目练习"
@@ -1606,11 +1779,17 @@ function updateSessionMeta() {
 }
 
 function updateSessionNav() {
-  document.getElementById("pmPrev").disabled = practice.historyIdx <= 0;
+  document.getElementById("pmPrev").disabled = practice.loading || practice.historyIdx <= 0;
+  document.getElementById("pmNext2").disabled = practice.loading;
+  const submitting = practice.current?.submitting;
+  document.getElementById("pmSubmit").disabled = practice.loading || !practice.current || Boolean(submitting);
+  document.getElementById("pmSubmit").textContent = submitting ? "判题中…" : "提交答案";
 }
 
 // ---------------- 错题本 ----------------
+let wrongBookRequest = 0;
 async function loadWrongBook() {
+  const request = ++wrongBookRequest;
   const cat = document.getElementById("wbCategory").value.trim();
   const only = document.getElementById("wbOnlyReviewing").checked;
   const group = document.getElementById("wbGroupReason").checked;
@@ -1619,10 +1798,16 @@ async function loadWrongBook() {
   if (only) url += "only_reviewing=true&";
   if (group) url += "group_by_reason=true";
   let data = [];
-  try { data = await (await fetch(url)).json(); } catch (e) { data = []; }
-
   const body = document.getElementById("wbBody");
   const groups = document.getElementById("wbGroups");
+  try { data = await requestJson(url); } catch (e) {
+    if (request !== wrongBookRequest) return;
+    body.innerHTML = "";
+    body.parentElement.style.display = "none";
+    groups.innerHTML = "<div class='empty' role='alert'>错题本加载失败：" + escapeHtml(e.message) + "。请点击刷新重试。</div>";
+    return;
+  }
+  if (request !== wrongBookRequest) return;
   body.innerHTML = "";
   groups.innerHTML = "";
   const badge = { mastered: "badge easy", learning: "badge medium", reviewing: "badge hard" };
@@ -1660,8 +1845,13 @@ async function loadWrongBook() {
   });
   body.querySelectorAll("button[data-id]").forEach(b => {
     b.onclick = async () => {
-      await fetch("/api/wrong-book/" + b.dataset.id + "/master", { method: "POST" });
-      loadWrongBook();
+      if (b.disabled) return;
+      b.disabled = true;
+      try {
+        await requestJson("/api/wrong-book/" + b.dataset.id + "/master", { method: "POST" });
+        await loadWrongBook();
+      } catch (e) { alert("标记失败：" + e.message); }
+      finally { b.disabled = false; }
     };
   });
 }
@@ -1709,8 +1899,11 @@ async function exportWrongBookMD() {
 // ---------------- 复习 ----------------
 async function loadReview() {
   let items = [];
-  try { items = await (await fetch("/api/review/due")).json(); } catch (e) { items = []; }
   const list = document.getElementById("reviewList");
+  try { items = await requestJson("/api/review/due"); } catch (e) {
+    list.innerHTML = "<div class='empty' role='alert'>复习计划加载失败：" + escapeHtml(e.message) + "。请重新进入本页重试。</div>";
+    return;
+  }
   list.innerHTML = "";
   if (!items.length) { list.innerHTML = "<div class='empty'>🎉 当前没有待复习的题目。</div>"; return; }
   items.forEach(it => {
@@ -1723,24 +1916,33 @@ async function loadReview() {
       "<div class='acts'><button class='btn sm' data-r='1'>记住了</button>" +
       "<button class='btn ghost sm' data-r='0'>还没记住</button></div>";
     list.appendChild(el);
-    el.querySelector("[data-r='1']").onclick = () => review(it.question_id, true);
-    el.querySelector("[data-r='0']").onclick = () => review(it.question_id, false);
+    el.querySelector("[data-r='1']").onclick = () => review(it.question_id, true, el, it);
+    el.querySelector("[data-r='0']").onclick = () => review(it.question_id, false, el, it);
   });
 }
-async function review(id, remembered) {
+const reviewPending = new Set();
+async function review(id, remembered, card, expected = {}) {
+  if (reviewPending.has(id)) return;
+  reviewPending.add(id);
+  const buttons = card ? card.querySelectorAll("button") : [];
+  buttons.forEach(button => { button.disabled = true; });
   try {
-    await fetch("/api/review/" + id, {
+    await requestJson("/api/review/" + id, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ remembered })
+      body: JSON.stringify({ remembered, expected_stage: expected.stage, expected_review_count: expected.review_count })
     });
-  } catch (e) {}
-  loadReview();
+    await loadReview();
+  } catch (e) { alert("复习结果保存失败：" + e.message + "。请重试。"); }
+  finally {
+    reviewPending.delete(id);
+    buttons.forEach(button => { button.disabled = false; });
+  }
 }
 
 // ---------------- 热力图（GitHub 风格 + 多年历史） ----------------
 async function loadHeatmap() {
   let data = [];
-  try { data = await (await fetch("/api/activity")).json(); } catch (e) { data = []; }
+  try { data = await requestJson("/api/activity"); } catch (e) { data = []; }
   const map = {};
   data.forEach(d => { map[d.day] = d; });
 
@@ -1858,11 +2060,18 @@ function formatDate(d) {
 // ---------------- 设置 ----------------
 async function loadSettings() {
   let s = {};
-  try { s = await (await fetch("/api/settings")).json(); } catch (e) { s = {}; }
+  const save = document.getElementById("saveSettings");
+  save.disabled = true;
+  try { s = await requestJson("/api/settings"); } catch (e) {
+    document.getElementById("setMsg").textContent = "设置加载失败：" + e.message + "。请重新进入本页重试。";
+    return;
+  }
   document.getElementById("setEmail").value = s.email || "";
   document.getElementById("setPush").value = s.push_time || "09:00";
   document.getElementById("setSteps").value = s.ebbinghaus_steps || "1,2,4,7,15,30,60";
   document.getElementById("setBase").value = s.app_base_url || "";
+  document.getElementById("setMsg").textContent = "";
+  save.disabled = false;
 }
 async function saveSettings() {
   const payload = {
@@ -1887,11 +2096,11 @@ async function saveSettings() {
 
 // ---------------- 智能组卷 / 模拟面试 ----------------
 // 一次性渲染全部题 -> 底部一次性提交 -> 整卷复盘。
-const quiz = { items: [], mode: "practice", results: [], box: null };
+const quiz = { items: [], mode: "practice", results: [], box: null, generation: 0, submitting: false, attempt: null, reportMode: "practice" };
 
 async function loadQuizCats() {
   let cats = [];
-  try { cats = await (await fetch("/api/categories")).json(); } catch (e) { cats = []; }
+  try { cats = await requestJson("/api/categories"); } catch (e) { cats = []; }
   const sel = document.getElementById("qCat");
   if (!sel) return;
   const cur = sel.value;
@@ -1910,6 +2119,11 @@ function setQuizMode(m) {
 }
 
 async function qStart() {
+  if (quiz.submitting) return;
+  const generation = ++quiz.generation;
+  quiz.attempt = null;
+  quiz.items = [];
+  quiz.results = [];
   const count = parseInt(document.getElementById("qCount").value, 10) || 10;
   const category = document.getElementById("qCat").value;
   const company = document.getElementById("qCompany").value.trim();
@@ -1927,20 +2141,23 @@ async function qStart() {
       "&company=" + encodeURIComponent(company) +
       "&mode=" + encodeURIComponent(strategy);
     const res = await fetch(url, { signal: ctrl.signal });
-    clearTimeout(timer);
+    if (generation !== quiz.generation) return;
     if (!res.ok) {
       box.innerHTML = "<p class='muted'>组卷失败：后端返回 HTTP " + res.status + "，请确认后端服务正常运行。</p>";
       return;
     }
     items = await res.json();
   } catch (e) {
-    clearTimeout(timer);
+    if (generation !== quiz.generation) return;
     const msg = (e && e.name === "AbortError")
       ? "组卷超时（8 秒无响应），请检查后端服务是否已启动。"
       : ("组卷失败：" + (e.message || e));
-    box.innerHTML = "<p class='muted'>" + msg + "</p>";
+    box.innerHTML = "<p class='muted'>" + escapeHtml(msg) + "</p>";
     return;
+  } finally {
+    clearTimeout(timer);
   }
+  if (generation !== quiz.generation) return;
   if (!items.length) { box.innerHTML = "<p class='muted'>该范围内没有题目，换个条件试试。</p>"; return; }
   quiz.items = items;
   quiz.results = [];
@@ -2003,14 +2220,19 @@ function qRenderAll() {
 }
 
 function qReset() {
+  if (quiz.submitting) return;
   if (!confirm("确定放弃当前卷面，重新出卷？")) return;
+  quiz.generation++;
+  quiz.attempt = null;
   quiz.items = []; quiz.results = [];
   if (quiz.box) quiz.box.innerHTML = "";
   document.getElementById("qProgress").textContent = "";
 }
 
 async function qSubmitAll() {
+  if (quiz.submitting) return;
   const box = quiz.box;
+  if (!box) return;
   const inputs = box.querySelectorAll(".qa-input");
   const payload = {
     items: Array.from(inputs).map(inp => ({
@@ -2023,6 +2245,16 @@ async function qSubmitAll() {
   if (answered < payload.items.length) {
     if (!confirm("还有 " + (payload.items.length - answered) + " 题未作答，仍要提交吗？")) return;
   }
+  const generation = quiz.generation;
+  const submittedItems = quiz.items.map(item => ({ ...item }));
+  const submittedMode = quiz.mode;
+  const fingerprint = JSON.stringify(payload.items);
+  if (!quiz.attempt || quiz.attempt.fingerprint !== fingerprint) {
+    quiz.attempt = { fingerprint, request_id: newRequestId() };
+  }
+  payload.request_id = quiz.attempt.request_id;
+  quiz.submitting = true;
+  document.getElementById("qStart").disabled = true;
 
   const submitBtn = document.getElementById("qSubmitAll");
   const cancelBtn = document.getElementById("qCancel");
@@ -2042,42 +2274,70 @@ async function qSubmitAll() {
       throw new Error("HTTP " + r.status + " " + t.slice(0, 200));
     }
     data = await r.json();
+    const byId = new Map((data.results || []).map(result => [result.question_id, result]));
+    if (submittedItems.some(item => !byId.has(item.id))) throw new Error("判题结果不完整，请用原卷面重试");
+    if (generation !== quiz.generation) return;
+    quiz.results = submittedItems.map(q => ({ q, out: byId.get(q.id) }));
+    quiz.reportMode = submittedMode;
   } catch (e) {
+    if (generation !== quiz.generation) return;
     alert("提交失败：" + e.message);
     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "提交整卷"; }
     if (cancelBtn) cancelBtn.disabled = false;
     inputs.forEach(inp => inp.disabled = false);
     return;
+  } finally {
+    if (generation === quiz.generation) {
+      quiz.submitting = false;
+      document.getElementById("qStart").disabled = false;
+    }
   }
-  quiz.results = (data.results || []).map((res, i) => ({ q: quiz.items[i], out: res }));
+  if (generation !== quiz.generation) return;
   qShowReport();
 }
 
 // 整卷复盘：每题展示【题面 / 我的答案 / 参考答案 / 判题结果】
+function quizResultStatus(out) {
+  if (out.is_correct === true) return "correct";
+  if (out.is_correct === false) return "wrong";
+  const source = out.source || out.judge_by;
+  if (source === "pending") return "pending";
+  if (source === "cancelled" || out.error_reason === "question_missing") return "unavailable";
+  return (out.user_answer || "").trim() ? "unavailable" : "skipped";
+}
+
 function qShowReport() {
   const box = quiz.box;
   const results = quiz.results;
   const total = results.length;
   const correct = results.filter(r => r.out.is_correct === true).length;
   const wrong = results.filter(r => r.out.is_correct === false).length;
-  const skipped = total - correct - wrong;
-  const acc = total ? Math.round(correct / total * 100) : 0;
-  const grade = quiz.mode === "interview"
+  const pending = results.filter(r => quizResultStatus(r.out) === "pending").length;
+  const unavailable = results.filter(r => quizResultStatus(r.out) === "unavailable").length;
+  const skipped = total - correct - wrong - pending - unavailable;
+  const graded = correct + wrong;
+  const scoreTotal = pending ? graded : total - unavailable;
+  const acc = scoreTotal ? Math.round(correct / scoreTotal * 100) : 0;
+  const grade = quiz.reportMode === "interview" && !pending && scoreTotal
     ? (acc >= 80 ? "优秀" : acc >= 60 ? "良好" : "需加强")
     : null;
 
   // 统计
   let html = "<div class='report'>";
-  if (quiz.mode === "interview") {
+  if (quiz.reportMode === "interview") {
     html += "<h3>🎤 模拟面试报告</h3>";
-    html += "<div class='rp-score'>得分 <b>" + acc + "</b> 分 · 评级 <b>" + grade +
-      "</b> · 答对 " + correct + " / " + total + "</div>";
+    html += pending
+      ? "<div class='rp-score'>评分未完成：" + pending + " 题待判，暂不评级</div>"
+      : scoreTotal ? "<div class='rp-score'>得分 <b>" + acc + "</b> 分 · 评级 <b>" + grade + "</b> · 答对 " + correct + " / " + scoreTotal + "</div>"
+      : "<div class='rp-score'>无可计分题目</div>";
   } else {
     html += "<h3>🎯 智能组卷复盘</h3>";
     html += "<div class='rp-score'>答对 <b>" + correct + "</b> / " + total +
-      " · 答错 " + wrong + " · 未作答 " + skipped +
-      " · 正确率 <b>" + acc + "%</b></div>";
+      " · 答错 " + wrong + " · 未作答 " + skipped + " · 待判 " + pending +
+      (scoreTotal ? " · " + (pending ? "已判正确率" : "正确率") + " <b>" + acc + "%</b>" : "") + "</div>";
   }
+  if (pending) html += "<p class='muted' role='status'>判题服务恢复后会在后台重试。</p>";
+  if (unavailable) html += "<p class='muted'>无法评分 " + unavailable + " 题，已从计分题数中扣除。</p>";
 
   // 薄弱点统计
   const weakCats = {};
@@ -2107,12 +2367,13 @@ function qShowReport() {
     const o = r.out;
     const tag = o.is_correct === true ? "✅ 答对"
               : o.is_correct === false ? "❌ 答错"
-              : "⚠️ 未作答";
+              : quizResultStatus(o) === "unavailable" ? "无法评分" : quizResultStatus(o) === "pending" ? "⏳ 待判题" : "⚠️ 未作答";
     const tagCls = o.is_correct === true ? "ok" : o.is_correct === false ? "bad" : "skip";
     html += "<div class='rp-wrong' id='qr-" + r.q.id + "'>"
       + "<div class='rt'>"
       +   "<span class='pill'>第 " + (i + 1) + " 题</span>"
       +   "<span class='badge " + tagCls + "'>" + tag + "</span>"
+      +   judgmentButton(o)
       +   (r.q.category ? "<span class='pill'>" + escapeHtml(r.q.category) + "</span>" : "")
       + "</div>"
       + "<div class='qtext' style='margin-top:6px'>" + renderMarkdown(r.q.question_text || "") + "</div>"
@@ -2149,7 +2410,13 @@ function qShowReport() {
   box.innerHTML = html;
   document.getElementById("qProgress").textContent = "本轮已结束";
   document.getElementById("qAgain").onclick = qStart;
-  document.getElementById("qBackCfg").onclick = () => { box.innerHTML = ""; document.getElementById("qProgress").textContent = ""; };
+  document.getElementById("qBackCfg").onclick = () => { quiz.generation++; box.innerHTML = ""; document.getElementById("qProgress").textContent = ""; };
+
+  const generation = quiz.generation;
+  box.querySelectorAll("[data-judgment]").forEach(button => {
+    const item = results.find(r => r.out.submission_id === Number(button.dataset.judgment));
+    button.onclick = () => refreshJudgment(item.out, button, () => quiz.generation === generation, qShowReport);
+  });
 
   // 复盘 chip 平滑滚动
   box.querySelectorAll(".qnav-chip").forEach(chip => {
@@ -2170,7 +2437,7 @@ async function loadExperiences() {
   let url = "/api/experiences";
   if (company) url += "?company=" + encodeURIComponent(company);
   let data = [];
-  try { data = await (await fetch(url)).json(); } catch (e) { data = []; }
+  try { data = await requestJson(url); } catch (e) { data = []; }
   const list = document.getElementById("expList");
   if (!list) return;
   list.innerHTML = "";
@@ -2223,14 +2490,24 @@ document.getElementById("addCancel").onclick = closeAddModal;
 document.getElementById("addMask").onclick = closeAddModal;
 document.getElementById("addSave").onclick = addSave;
 document.addEventListener("keydown", (e) => {
+  const add = document.getElementById("addModal");
+  const drawer = document.getElementById("detailDrawer");
+  const modal = add.style.display === "flex" ? add : drawer.classList.contains("show") ? drawer : null;
+  if (!modal) return;
   if (e.key === "Escape") {
-    const m = document.getElementById("addModal");
-    if (m && m.style.display === "flex") closeAddModal();
+    e.preventDefault();
+    modal === add ? closeAddModal() : closeDetail();
+  } else if (e.key === "Tab") {
+    const controls = [...modal.querySelectorAll("button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]")]
+      .filter(el => el.getClientRects().length);
+    const first = controls[0], last = controls[controls.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   }
 });
 
 // ---------------- 初始化 ----------------
-document.querySelectorAll("nav button").forEach(b => b.onclick = () => switchView(b.dataset.view));
+document.querySelectorAll("button[data-view]").forEach(b => b.onclick = () => switchView(b.dataset.view));
 // 刷题模式
 document.getElementById("pmModeRandom").onclick = () => setPracticeMode("random");
 document.getElementById("pmModeSeq").onclick = () => setPracticeMode("sequential");
@@ -2333,6 +2610,7 @@ const pom = {
   total: 25 * 60,
   running: false,
   timerId: null,
+  deadline: null,
   todoId: null,
   filterCat: "",
   _bound: false,
@@ -2415,7 +2693,7 @@ function pomBindOnce() {
 
 async function pomLoadCats() {
   let cats = [];
-  try { cats = await (await fetch("/api/todo/categories")).json(); } catch (e) { cats = []; }
+  try { cats = await requestJson("/api/todo/categories"); } catch (e) { cats = []; }
   const wrap = document.getElementById("pomCats");
   const sel = document.getElementById("pomCat");
   const chips = [{ name: "", count: 0 }].concat(cats);
@@ -2437,12 +2715,19 @@ async function pomLoadCats() {
   if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
 }
 
+let todoListRequest = 0;
 async function pomLoadTodos() {
+  const request = ++todoListRequest;
   let list = [];
   try {
     const q = pom.filterCat ? `?category=${encodeURIComponent(pom.filterCat)}` : "";
-    list = await (await fetch("/api/todos" + q)).json();
-  } catch (e) { list = []; }
+    list = await requestJson("/api/todos" + q);
+  } catch (e) {
+    if (request !== todoListRequest) return;
+    document.getElementById("pomList").innerHTML = "<li class='pomo-empty' role='alert'>待办加载失败：" + escapeHtml(e.message) + "。请重新进入本页重试。</li>";
+    return;
+  }
+  if (request !== todoListRequest) return;
   const ul = document.getElementById("pomList");
   if (!list.length) {
     ul.innerHTML = `<li class="pomo-empty">还没有待办，添加第一个吧 🍅</li>`;
@@ -2458,7 +2743,7 @@ async function pomLoadTodos() {
       }
       const noteHtml = t.note ? `<div class="pomo-note">${escapeHtml(t.note)}</div>` : "";
       return `<li class="pomo-item${t.done ? " done" : ""}" data-id="${t.id}">
-        <input type="checkbox" class="pomo-check" ${t.done ? "checked" : ""}>
+        <input type="checkbox" class="pomo-check" aria-label="${escapeHtml('完成待办：' + t.title)}" ${t.done ? "checked" : ""}>
         <div class="pomo-main">
           <div class="pomo-title">${escapeHtml(t.title)}</div>
           ${noteHtml}
@@ -2473,7 +2758,7 @@ async function pomLoadTodos() {
     }).join("");
     ul.querySelectorAll(".pomo-item").forEach(li => {
       const id = parseInt(li.dataset.id, 10);
-      li.querySelector(".pomo-check").onchange = (e) => pomToggle(id, e.target.checked);
+      li.querySelector(".pomo-check").onchange = (e) => pomToggleTodo(id, e.target.checked, e.target);
       li.querySelector(".pomo-del").onclick = () => pomDelete(id);
     });
   }
@@ -2497,7 +2782,7 @@ async function pomAdd() {
     due_date: document.getElementById("pomDue").value || "",
   };
   try {
-    await fetch("/api/todos", {
+    await requestJson("/api/todos", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
@@ -2508,19 +2793,23 @@ async function pomAdd() {
   } catch (e) { pomToast("添加失败"); }
 }
 
-async function pomToggle(id, done) {
+async function pomToggleTodo(id, done, checkbox) {
+  if (checkbox) checkbox.disabled = true;
   try {
-    await fetch(`/api/todos/${id}`, {
+    await requestJson(`/api/todos/${id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ done }),
     });
     await pomLoadTodos();
-  } catch (e) { pomToast("更新失败"); }
+  } catch (e) {
+    if (checkbox) checkbox.checked = !done;
+    pomToast("更新失败：" + e.message);
+  } finally { if (checkbox) checkbox.disabled = false; }
 }
 
 async function pomDelete(id) {
   try {
-    await fetch(`/api/todos/${id}`, { method: "DELETE" });
+    await requestJson(`/api/todos/${id}`, { method: "DELETE" });
     await Promise.all([pomLoadCats(), pomLoadTodos()]);
   } catch (e) { pomToast("删除失败"); }
 }
@@ -2539,13 +2828,14 @@ function pomApplyModeTheme() {
 }
 function pomSetMode(mode, notify) {
   pom.mode = mode;
-  pom.phase = "focus";
+  pom.phase = mode === "focus" ? "focus" : "break";
   const mins = pomModeMinutes(mode);
   pom.total = mins * 60;
   pom.remaining = pom.total;
   pom.running = false;
   clearInterval(pom.timerId);
   pom.timerId = null;
+  pom.deadline = null;
   pomApplyModeTheme();
   document.querySelectorAll("#pomModes .pomo-mode").forEach(b => {
     b.classList.toggle("active", b.dataset.mode === mode);
@@ -2577,15 +2867,20 @@ function pomToggle() {
 function pomStart() {
   if (pom.running) return;
   pom.running = true;
+  pom.deadline = Date.now() + pom.remaining * 1000;
   pom.timerId = setInterval(pomTick, 1000);
   pomRenderTimer();
   pomToast(pom.phase === "focus"
     ? (pom.mode === "focus" ? "开始专注 🍅" : "开始休息 ☕") : "继续 ⏱");
 }
 function pomPause() {
+  if (pom.running && pom.deadline != null) {
+    pom.remaining = Math.max(0, Math.ceil((pom.deadline - Date.now()) / 1000));
+  }
   pom.running = false;
   clearInterval(pom.timerId);
   pom.timerId = null;
+  pom.deadline = null;
   pomRenderTimer();
 }
 function pomReset(notify) {
@@ -2593,7 +2888,8 @@ function pomReset(notify) {
   if (notify) pomToast("已重置");
 }
 function pomTick() {
-  pom.remaining--;
+  if (!pom.running || pom.deadline == null) return;
+  pom.remaining = Math.max(0, Math.ceil((pom.deadline - Date.now()) / 1000));
   if (pom.remaining <= 0) {
     pom.remaining = 0;
     pomRenderTimer();
@@ -2604,8 +2900,10 @@ function pomTick() {
 }
 async function pomPhaseDone() {
   pomPause();
+  const kind = pom.phase;
+  const minutes = pom.total / 60;
+  const todoId = pom.todoId;
   if (pom.phase === "focus") {
-    await pomRecord("focus", pomModeMinutes(pom.mode), true);
     pom.focusDone++;
     // 达到长休间隔 → 长休，否则短休
     const nextMode = (pom.focusDone % pom.longInterval === 0) ? "long" : "short";
@@ -2619,19 +2917,20 @@ async function pomPhaseDone() {
     pomBeep();
     pomToast(nextMode === "long" ? "🍅 专注达成，来个长休 💤" : "🍅 专注完成，短休一下 ☕");
   } else {
-    await pomRecord("break", pomModeMinutes(pom.mode), true);
     pomSetMode("focus", false);
     pomToast("休息结束，继续加油 💪");
   }
+  // Advance the clock immediately; a slow save must not overwrite a newer user action.
+  await pomRecord(kind, minutes, true, todoId);
   await pomLoadStats();
 }
-async function pomRecord(kind, minutes, completed) {
+async function pomRecord(kind, minutes, completed, todoId = pom.todoId) {
   try {
-    await fetch("/api/pomodoro/complete", {
+    await requestJson("/api/pomodoro/complete", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ todo_id: pom.todoId || null, kind, minutes, completed }),
+      body: JSON.stringify({ todo_id: todoId || null, kind, minutes, completed }),
     });
-  } catch (e) { /* 静默：计时器不依赖网络 */ }
+  } catch (e) { pomToast("计时已完成，但记录保存失败：" + e.message); }
 }
 function pomBeep() {
   try {
@@ -2652,7 +2951,7 @@ function pomBeep() {
 // ----------------- 专注统计 -----------------
 async function pomLoadStats() {
   let s = null;
-  try { s = await (await fetch("/api/pomodoro/stats")).json(); } catch (e) { s = null; }
+  try { s = await requestJson("/api/pomodoro/stats"); } catch (e) { s = null; }
   if (!s) return;
   document.getElementById("stTodayMin").textContent = s.today.minutes;
   document.getElementById("stWeekMin").textContent = s.week.minutes;
@@ -2684,7 +2983,7 @@ const gr = { _bound: false };
 async function loadGrowth() {
   grBindOnce();
   let data = null;
-  try { data = await (await fetch("/api/growth/summary")).json(); } catch (e) { data = null; }
+  try { data = await requestJson("/api/growth/summary"); } catch (e) { data = null; }
   if (!data) { document.getElementById("grBadgeGrid").innerHTML = `<div class="muted">加载失败</div>`; return; }
 
   // Hero：连胜
@@ -2708,10 +3007,10 @@ async function loadGrowth() {
   // 学习报告
   const w = data.report.week, m = data.report.month;
   document.getElementById("grWeekAns").textContent = w.answered;
-  document.getElementById("grWeekAcc").textContent = w.accuracy + "%";
+  document.getElementById("grWeekAcc").textContent = w.correct + w.wrong ? w.accuracy + "%" : "—";
   document.getElementById("grWeekFocus").textContent = w.focus_minutes;
   document.getElementById("grMonthAns").textContent = m.answered;
-  document.getElementById("grMonthAcc").textContent = m.accuracy + "%";
+  document.getElementById("grMonthAcc").textContent = m.correct + m.wrong ? m.accuracy + "%" : "—";
   document.getElementById("grMonthFocus").textContent = m.focus_minutes;
 
   // 成就徽章
@@ -2737,15 +3036,20 @@ function grBindOnce() {
     if (box.style.display === "block") document.getElementById("grGoalInput").focus();
   };
   document.getElementById("grGoalSave").onclick = async () => {
-    const target = parseInt(document.getElementById("grGoalInput").value, 10) || 100;
+    const button = document.getElementById("grGoalSave");
+    if (button.disabled) return;
+    const target = Number(document.getElementById("grGoalInput").value);
+    if (!Number.isInteger(target) || target < 1) { alert("请输入大于 0 的整数目标"); return; }
+    button.disabled = true;
     try {
-      await fetch("/api/growth/goal", {
+      await requestJson("/api/growth/goal", {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ target }),
       });
       document.getElementById("grGoalEditBox").style.display = "none";
-      loadGrowth();
-    } catch (e) { alert("保存失败"); }
+      await loadGrowth();
+    } catch (e) { alert("保存失败：" + e.message); }
+    finally { button.disabled = false; }
   };
 }
 
@@ -2774,7 +3078,8 @@ const _ART_OVERRIDE_CSS = `
 function _applyArticleOverride() {
   const f = document.querySelector(".art-frame");
   if (!f) return false;
-  const doc = f.contentDocument;
+  let doc;
+  try { doc = f.contentDocument; } catch (_) { return false; }
   if (!doc || !doc.head || !doc.body) return false;
   // 1) 注入 <style>（双保险，覆盖非 inline CSS）
   if (!doc.getElementById("im-art-override")) {

@@ -17,14 +17,19 @@ import re
 import sys
 import json
 import argparse
-import sqlite3
-import urllib.request
+from io import BytesIO
+from pathlib import Path
+from urllib.parse import urlsplit
+
+import httpx
+from PIL import Image, UnidentifiedImageError
+from fastapi import HTTPException
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 让本脚本能复用后端的存储抽象层（backend/storage.py）
-sys.path.insert(0, os.path.join(BASE_DIR, "backend"))
-from storage import get_storage
-DB_PATH = os.path.join(BASE_DIR, "data", "interview_memory.db")
+sys.path.insert(0, BASE_DIR)
+from backend.storage import get_storage
+from backend.web_boundary import MAX_IMAGE_BYTES, validate_image
 DEFAULT_MD = os.path.join(BASE_DIR, "data", "feishu_cs_qa.md")
 
 PLATFORM = "feishu-wiki"
@@ -81,7 +86,8 @@ def _strip_xml(text: str) -> str:
     # 引用 / 容器：保留内部文字或整体移除
     text = re.sub(r"<cite[^>]*>.*?</cite>", "", text, flags=re.S)
     text = re.sub(r"<callout[^>]*>.*?</callout>", "", text, flags=re.S)
-    # 注意：不再删除 <img>。图片交由 _resolve_images 下载到存储层后转成 markdown
+    # 先转为 Markdown，避免下面的残留标签清理误删图片。
+    text = _IMG_TAG.sub(lambda match: "![图片](" + match.group(1) + ")", text)
     text = re.sub(r"<sheet[^>]*>.*?</sheet>", "", text, flags=re.S)
     text = re.sub(r"<bitable[^>]*>.*?</bitable>", "", text, flags=re.S)
     text = re.sub(r"<readonly-block[^>]*>.*?</readonly-block>", "", text, flags=re.S)
@@ -99,13 +105,26 @@ _IMG_MD = re.compile(r'!\[[^\]]*\]\([^)]*\)')  # 含残缺 ![]( 也能匹配
 def _download(url: str):
     """下载图片字节；失败（403/网络/超时）返回 None。可选 FEISHU_IMG_COOKIE 用于飞书鉴权。"""
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        parsed = urlsplit(url)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            return None
+        headers = {"User-Agent": "Mozilla/5.0"}
         cookie = os.environ.get("FEISHU_IMG_COOKIE")
-        if cookie:
-            req.add_header("Cookie", cookie)
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return resp.read()
-    except Exception:
+        if cookie and parsed.scheme == "https" and any(
+            parsed.hostname == domain or parsed.hostname.endswith("." + domain)
+            for domain in ("feishu.cn", "larksuite.com")
+        ):
+            headers["Cookie"] = cookie
+        # httpx 根据目标域重新计算重定向的 Cookie，不转发原始请求头。
+        with httpx.stream("GET", url, headers=headers, timeout=10, follow_redirects=True) as response:
+            response.raise_for_status()
+            data = bytearray()
+            for chunk in response.iter_bytes(65536):
+                if len(data) + len(chunk) > MAX_IMAGE_BYTES:
+                    return None
+                data.extend(chunk)
+            return bytes(data)
+    except (ValueError, httpx.InvalidURL, httpx.HTTPError):
         return None
 
 
@@ -114,25 +133,38 @@ def _resolve_images(text: str):
     下载失败则保留原 URL（信息不丢，前端可能 403）。返回 (新文本, url 列表)。"""
     storage = get_storage()
     urls = []
+    saved = {}
 
     def _save(url):
         url = url.strip()
         if not url:
             return url
+        if url in saved:
+            return saved[url]
         data = _download(url)
-        new_url = storage.save(data, url.split("?")[0].rsplit("/", 1)[-1] or "img", None) if data else url
+        new_url = url
+        if data:
+            try:
+                with Image.open(BytesIO(data), formats=["PNG", "JPEG", "GIF", "WEBP", "BMP"]) as picture:
+                    suffix = ".jpg" if picture.format == "JPEG" else "." + picture.format.lower()
+                stem = Path(urlsplit(url).path).stem or "img"
+                filename = stem + suffix
+                mime = validate_image(data, filename)
+            except (HTTPException, OSError, ValueError, UnidentifiedImageError, Image.DecompressionBombError):
+                pass
+            else:
+                new_url = storage.save(data, filename, mime)
+        saved[url] = new_url
         if new_url not in urls:
             urls.append(new_url)
         return new_url
 
-    def _rep_tag(m):
-        return "![图片](" + _save(m.group(1)) + ")"
-
     def _rep_md(m):
         return "![%s](%s)" % (m.group(1), _save(m.group(2)))
 
-    text = _IMG_TAG.sub(_rep_tag, text)
-    text = _IMG_MD.sub(_rep_md, text)
+    text = _IMG_TAG.sub(lambda match: "![图片](" + match.group(1) + ")", text)
+    # 用带捕获组的模式读取 alt/URL；_IMG_MD 用于全文占位，没有捕获组。
+    text = re.sub(r"!\[([^\]]*)\]\(([^)\s]+)\)", _rep_md, text)
     return text, urls
 
 
@@ -252,6 +284,46 @@ def parse(md_path: str):
     return items
 
 
+def import_items(items, download_images=False, update=False):
+    """使用应用的 DATABASE_URL 导入，整个批次在一个事务中提交。"""
+    from backend.db import SessionLocal, init_db
+    from backend.models import Question
+    from sqlalchemy.orm import load_only
+
+    init_db()
+    ins = skip = upd = 0
+    with SessionLocal.begin() as db:
+        existing = {
+            row.question_text.strip(): row
+            for row in db.query(Question).options(load_only(Question.id, Question.question_text)).all()
+        }
+        for category, question, answer, tag in items:
+            key = question.strip()
+            if key in existing and not update:
+                skip += 1
+                continue
+            if download_images:
+                answer, images = _resolve_images(answer)
+            else:
+                images = _extract_img_urls(answer)
+            if key in existing:
+                if update and images:
+                    existing[key].images = json.dumps(images, ensure_ascii=False)
+                    upd += 1
+                else:
+                    skip += 1
+                continue
+            row = Question(
+                platform=PLATFORM, category=category, tags=tag, difficulty=None,
+                question_text=key, reference_answer=answer,
+                images=json.dumps(images, ensure_ascii=False), keywords="",
+            )
+            db.add(row)
+            existing[key] = row
+            ins += 1
+    return ins, skip, upd
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--md", default=DEFAULT_MD, help="飞书导出的 Markdown 路径")
@@ -277,32 +349,7 @@ def main():
             print(f"[{c}] (tag:{t}) {q}\n答案前 120 字：{a[:120]}\n")
         return
 
-    db = sqlite3.connect(DB_PATH)
-    existing = {r[0]: r[1] for r in db.execute("SELECT TRIM(question_text), id FROM questions")}
-    ins = skip = upd = 0
-    for c, q, a, t in items:
-        key = q.strip()
-        # 解析图片：下载模式替换为存储 URL；否则仅从正文提取原 URL 列表
-        if args.download_images:
-            a, imgs = _resolve_images(a)
-        else:
-            imgs = _extract_img_urls(a)
-        if key in existing:
-            if args.update and imgs:
-                db.execute("UPDATE questions SET images=? WHERE id=?",
-                           (json.dumps(imgs, ensure_ascii=False), existing[key]))
-                upd += 1
-            else:
-                skip += 1
-            continue
-        db.execute(
-            "INSERT INTO questions (platform, category, tags, difficulty, question_text, reference_answer, created_at, images, keywords) "
-            "VALUES (?,?,?,?,?,?, datetime('now'), ?, ?)",
-            (PLATFORM, c, t, None, q, a, json.dumps(imgs, ensure_ascii=False), ""),
-        )
-        existing[key] = None
-        ins += 1
-    db.commit()
+    ins, skip, upd = import_items(items, args.download_images, args.update)
     print(f"\n入库完成：新增 {ins} 题，更新 {upd} 题图片，跳过重复 {skip} 题（platform={PLATFORM}）")
 
 

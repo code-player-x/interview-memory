@@ -25,7 +25,8 @@ except Exception:
 import httpx
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, "data", "interview_memory.db")
+from pathlib import Path
+from sqlite_target import sqlite_target
 
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "")
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
@@ -158,8 +159,13 @@ def main():
         print("缺少 LLM 配置（LLM_BASE_URL/LLM_API_KEY/LLM_MODEL），无法提取。可加 --dry-run 预览，或 --reclean 仅清理。")
         sys.exit(1)
 
-    db = sqlite3.connect(DB_PATH)
-    migrate(db)
+    target = Path(sqlite_target())
+    db = sqlite3.connect(target.as_uri() + ("?mode=ro" if args.dry_run else "?mode=rw"), uri=True)
+    columns = {row[1] for row in db.execute("PRAGMA table_info(questions)")}
+    if args.dry_run and "keywords" not in columns:
+        raise SystemExit("旧库缺少 keywords 列；预演不会迁移，请先启动应用完成迁移。")
+    if not args.dry_run:
+        migrate(db)
 
     if args.reclean:
         cleaned = 0

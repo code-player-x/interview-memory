@@ -4,3 +4,4 @@
 crawler/questions_v2/authored/** whitespace=cr-at-eol
 crawler/questions_v2/full_v2/** whitespace=cr-at-eol
 crawler/questions_v2/review_archive/** whitespace=cr-at-eol
+crawler/scripts/convert_to_interview_memory.py whitespace=cr-at-eol

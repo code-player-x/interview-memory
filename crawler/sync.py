@@ -17,6 +17,7 @@ sync 跑「爬完之后」的本地流水线：去重补答案(可选) -> 字段
 import argparse
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent          # crawler/
@@ -24,9 +25,10 @@ SCRIPTS = HERE / "scripts"
 PROJ_DATA = HERE / "data"
 BANK = PROJ_DATA / "questions-bank.json"
 OUT = PROJ_DATA / "tmp" / "interview_memory_import.json"
-TARGET_DB = HERE.parent / "data" / "interview_memory.db"   # 仓库根/data（与 crawler 同级）
-# 托管 Python（与 harvest/merge 等脚本一致）
-VENV = Path(r"C:/Users/UserName/.workbuddy/binaries/python/envs/default/Scripts/python.exe")
+sys.path.insert(0, str(HERE.parent))
+from scripts.sqlite_target import sqlite_target
+# 子进程复用启动本脚本的 Python，兼容项目虚拟环境。
+VENV = Path(sys.executable)
 
 
 def run(py: Path, *args):
@@ -44,19 +46,38 @@ def main():
     ap.add_argument("--with-fill", action="store_true", help="同步前先补答案(需 DEEPSEEK_API_KEY)")
     ap.add_argument("--category", default="", help="仅同步分类含该子串的题")
     ap.add_argument("--no-cross", action="store_true", help="不做与练习库的交叉去重(仅源内去重)")
+    ap.add_argument("--db", help="覆盖 DATABASE_URL 的 SQLite 文件路径")
     args = ap.parse_args()
+    try:
+        target_db = Path(sqlite_target(args.db))
+    except ValueError as exc:
+        ap.error(str(exc))
 
     if not BANK.exists():
         sys.exit(f"[X] 母库不存在: {BANK}\n   先跑 harvest + merge_5src_clean + add_refined_to_bank 生成它。")
-    if not TARGET_DB.exists():
-        sys.exit(f"[X] 练习库不存在: {TARGET_DB}\n   先启动 interview-memory（会自动建库）。")
+    if not target_db.exists():
+        sys.exit(f"[X] 练习库不存在: {target_db}\n   先启动 interview-memory（会自动建库）。")
 
     # 1) 可选：补答案
-    if args.with_fill:
+    if args.with_fill and not args.dry_run:
         run(SCRIPTS / "fill_answers_deepseek.py", "--workers", "8")
 
     # 2) 转换（读母库 + 与练习库交叉去重，产出 import JSON；对 DB 只读）
-    conv = ["--bank", str(BANK), "--out", str(OUT)]
+    if args.dry_run and args.with_fill:
+        print("[dry-run] 跳过补答案：不调用远端模型、不修改母库。")
+    # 每次同步导入自己的转换结果，即使并发同步不同分类或不同数据库。
+    output_parent = None if args.dry_run else OUT.parent
+    if output_parent is not None:
+        output_parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="im_sync_", dir=output_parent) as temporary:
+        output = Path(temporary) / "import.json"
+        synchronize(args, target_db, output)
+        if not args.dry_run:
+            output.replace(OUT)
+
+
+def synchronize(args, target_db, output):
+    conv = ["--bank", str(BANK), "--out", str(output), "--target-db", str(target_db)]
     if args.category:
         conv += ["--category", args.category]
     if args.no_cross:
@@ -64,7 +85,7 @@ def main():
     run(SCRIPTS / "convert_to_interview_memory.py", *conv)
 
     # 3) 导入（写练习库；--dry-run 时只统计）
-    imp = ["--json", str(OUT), "--db", str(TARGET_DB)]
+    imp = ["--json", str(output), "--db", str(target_db)]
     if args.dry_run:
         imp.append("--dry-run")
     run(SCRIPTS / "import_to_interview_memory.py", *imp)

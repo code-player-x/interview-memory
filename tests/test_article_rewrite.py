@@ -19,10 +19,6 @@ def client():
     Base.metadata.create_all(bind=engine)
     with TestClient(appmod.app) as c:
         yield c
-    try:
-        appmod.scheduler.shutdown(wait=False)
-    except Exception:
-        pass
     engine.dispose()
 
 
@@ -54,6 +50,23 @@ def test_root_redirects_to_articles(client):
     r = client.get("/articles", follow_redirects=False)
     assert r.status_code in (307, 308)
     assert r.headers.get("location", "").endswith("/articles/")
+
+
+def test_archive_navigation_works_with_scripts_blocked(client):
+    from pathlib import Path
+    page = Path(os.environ["ARTICLES_BOOK_DIR"]) / "nav.html"
+    page.write_text('''<html><body><div class="book-container"><div class="book-sidebar">
+        <a class="menu-item" id="first.md" href="/专栏/first.md">first</a>
+        <a class="menu-item" id="second.md" href="/专栏/second.md">second</a>
+        <a class="menu-item" id="last.md" href="/专栏/last.md">last</a>
+        </div><h1 id="title" data-id="second">second</h1>
+        <div id="prePage"></div><div id="nextPage"></div></div></body></html>''',
+                    encoding="utf-8")
+    result = client.get("/articles/nav.html")
+    assert "script-src 'none'" in result.headers["content-security-policy"]
+    assert '<label for="archive-menu-switch">' in result.text
+    assert '<a href="/articles/专栏/first.md">上一页</a>' in result.text
+    assert '<a href="/articles/专栏/last.md">下一页</a>' in result.text
 
 
 def test_html_passthrough_still_rewritten(client):

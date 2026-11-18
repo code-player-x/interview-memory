@@ -1,0 +1,17 @@
+# Only include the files consumed by Dockerfile.
+**
+!Dockerfile
+!requirements.txt
+!requirements.lock
+!backend/
+!backend/**
+!frontend/
+!frontend/**
+!scripts/
+!scripts/import_questions_v2.py
+!crawler/
+!crawler/questions_v2/
+!crawler/questions_v2/authored/
+!crawler/questions_v2/authored/**
+**/__pycache__/
+**/*.pyc

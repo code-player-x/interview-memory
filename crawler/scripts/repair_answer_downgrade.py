@@ -14,29 +14,37 @@
 用法：
     python scripts/repair_answer_downgrade.py --backup <备份db> [--apply]
 """
+from pathlib import Path
 import argparse
 import os
-import shutil
 import sqlite3
 import sys
 import time
 
-DB = "G:/interview-memory/data/interview_memory.db"
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from scripts.sqlite_target import backup_sqlite, sqlite_target
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--backup", required=True, help="同步前的备份 db（还原来源）")
-    ap.add_argument("--db", default=DB)
+    ap.add_argument("--db", help="显式覆盖 DATABASE_URL 的 SQLite 文件路径")
     ap.add_argument("--apply", action="store_true")
     args = ap.parse_args()
+    try:
+        args.db = sqlite_target(args.db)
+    except ValueError as error:
+        ap.error(str(error))
 
     if not os.path.exists(args.backup):
         print(f"[error] 备份不存在: {args.backup}")
         sys.exit(1)
 
-    con = sqlite3.connect(args.db)
-    bak = sqlite3.connect(args.backup)
+    mode = "rw" if args.apply else "ro"
+    con = sqlite3.connect(Path(args.db).as_uri() + "?mode=" + mode, uri=True)
+    bak = sqlite3.connect(Path(args.backup).resolve().as_uri() + "?mode=ro", uri=True)
+    if args.apply:
+        con.execute("BEGIN IMMEDIATE")
 
     old = {r[0]: (r[1] or "") for r in bak.execute(
         "SELECT id, reference_answer FROM questions")}
@@ -61,7 +69,7 @@ def main():
         return
 
     bak2 = args.db + ".bak_repair_" + time.strftime("%Y%m%d_%H%M%S")
-    shutil.copy2(args.db, bak2)
+    backup_sqlite(args.db, bak2)
     print(f"[backup] {bak2}")
 
     cur = con.cursor()

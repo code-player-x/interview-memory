@@ -95,8 +95,18 @@ def import_questions(
     为保护学习进度，任何关联的作答、错题、复习或笔记记录都会使替换失败。
     """
     questions = list(load_questions(source))
+    total = len(questions)
+    if replace and total == 0:
+        raise ValueError("拒绝替换 questions_v2：源文件没有题目")
     if dry_run:
-        return len(questions), 0, 0
+        return total, 0, 0
+
+    # 同一批次也可能在多个分类文件中包含同题；按文件/行顺序保留首条。
+    # 保留原始总数，使返回的跳过数包含批次内重复题。
+    unique = {}
+    for item in questions:
+        unique.setdefault(item["question_text"], item)
+    questions = list(unique.values())
 
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))
@@ -127,15 +137,12 @@ def import_questions(
                 db.query(Question).filter(Question.platform == "questions_v2").delete(
                     synchronize_session=False
                 )
-            db.add_all(Question(**item) for item in questions)
-            db.commit()
-            return len(questions), len(questions), 0
-
+        # 替换批次后，其他来源已有的同题仍须复用，避免重复导入。
         existing = {text for (text,) in db.query(Question.question_text).all()}
         new_rows = [item for item in questions if item["question_text"] not in existing]
         db.add_all(Question(**item) for item in new_rows)
         db.commit()
-        return len(questions), len(new_rows), len(questions) - len(new_rows)
+        return total, len(new_rows), total - len(new_rows)
     except Exception:
         db.rollback()
         raise

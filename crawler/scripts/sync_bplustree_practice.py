@@ -13,20 +13,27 @@
 """
 import argparse
 import json
-import shutil
 import sqlite3
 import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from scripts.sqlite_target import backup_sqlite, sqlite_target
+
 PROJ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJ / "scripts"))
 
 BANK = PROJ / "data" / "questions-bank.json"
-DB = Path("G:/interview-memory/data/interview_memory.db")
 ANCHOR = "q0490"
 PRAC_ANCHOR = 609          # 保留并改写的练习库行
 PRAC_DELETE = [610, 611, 614, 618, 619]
+# 合并前的六道题面，来自历史分类导出。ID 只在当时的练习库中有效。
+OLD_TITLES = {
+    "B+树的特性是什么", "B+ 和 B 树有什么区别", "MySQL 为什么使用 B+ 树",
+    "为什么索引用 B+ 树？而不用红黑树", "insert 操作对 B+ 树结构的改变是怎么样的",
+    "假如一张表有两千万的数据，B+树的高度是多少？怎么算的",
+}
 
 try:
     from convert_to_interview_memory import build_reference, star_to_int
@@ -50,7 +57,12 @@ except Exception:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--db", help="显式覆盖 DATABASE_URL 的 SQLite 文件路径")
     args = ap.parse_args()
+    try:
+        database = Path(sqlite_target(args.db))
+    except ValueError as error:
+        ap.error(str(error))
 
     with open(BANK, encoding="utf-8") as f:
         data = json.load(f)
@@ -73,24 +85,33 @@ def main():
     difficulty = star_to_int(it.get("difficulty", ""))
     platform = (it.get("source", "") or "WorkBuddy爬取")[:48]
 
-    con = sqlite3.connect(DB)
+    mode = "rw" if args.apply else "ro"
+    con = sqlite3.connect(database.as_uri() + "?mode=" + mode, uri=True)
+    con.execute("PRAGMA foreign_keys=ON")
+    if args.apply:
+        con.execute("BEGIN IMMEDIATE")
     cur = con.cursor()
     old_len = {}
+    anchor_titles = OLD_TITLES | {question_text, question_text.split("【分点设问】")[0].strip()}
     for pid in [PRAC_ANCHOR] + PRAC_DELETE:
         r = cur.execute("SELECT question_text,LENGTH(reference_answer) FROM questions WHERE id=?", (pid,)).fetchone()
         if r:
-            old_len[pid] = r[1]
+            allowed = anchor_titles if pid == PRAC_ANCHOR else OLD_TITLES
+            if r[0].strip() not in allowed:
+                con.close()
+                ap.error(f"题目 {pid} 与历史合并题面不符，已停止")
+            old_len[pid] = r[1] or 0
+    if PRAC_ANCHOR not in old_len:
+        con.close()
+        ap.error(f"缺少保留题目 {PRAC_ANCHOR}，已停止")
     sum_old = sum(old_len.values())
 
     # 目标行是否挂在进度表上
     attached = 0
     for t in ("review_schedule", "submissions", "wrong_book", "question_notes"):
-        try:
-            attached += cur.execute(
-                f"SELECT COUNT(*) FROM {t} WHERE question_id IN ({','.join('?' * len(PRAC_DELETE))})",
-                PRAC_DELETE).fetchone()[0]
-        except sqlite3.OperationalError:
-            pass
+        attached += cur.execute(
+            f"SELECT COUNT(*) FROM {t} WHERE question_id IN ({','.join('?' * len(PRAC_DELETE))})",
+            PRAC_DELETE).fetchone()[0]
 
     print(f"[plan] 保留练习库 id={PRAC_ANCHOR} 改写为综合大题")
     print(f"[plan] 删除练习库 {PRAC_DELETE}")
@@ -100,15 +121,15 @@ def main():
     if attached:
         print("[warn] 存在进度记录，按不丢进度原则需先重定向；已停止，请确认后再跑。")
         con.close()
-        return
+        ap.error("请先重定向学习记录")
 
     if not args.apply:
         print("[info] dry-run，未改动。确认后加 --apply")
         con.close()
         return
 
-    bak = str(DB) + ".bak_" + time.strftime("%Y%m%d_%H%M%S")
-    shutil.copy2(DB, bak)
+    bak = str(database) + ".bak_" + str(time.time_ns())
+    backup_sqlite(database, bak)
     print(f"[backup] {bak}")
 
     cur.execute(

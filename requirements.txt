@@ -1,9 +1,13 @@
-fastapi
-uvicorn[standard]
-sqlalchemy
-apscheduler
-python-dotenv
-httpx
-fpdf2
-python-multipart
-boto3
+-c requirements.lock
+fastapi==0.139.2
+uvicorn==0.51.0
+sqlalchemy==2.0.51
+apscheduler==3.11.3
+python-dotenv==1.2.2
+httpx==0.28.1
+fpdf2==2.8.7
+python-multipart==0.0.32
+Pillow==12.3.0
+boto3==1.44.5
+psycopg2-binary==2.9.13
+pymysql==1.2.4

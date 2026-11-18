@@ -1,21 +1,33 @@
-version: "3.8"
-
 services:
   app:
     build: .
+    # 兼容现有 root 所有的 bind mount；已有卷可写时可设置宿主机 UID/GID。
+    user: "${APP_UID:-0}:${APP_GID:-0}"
     ports:
       # 默认仅发布到本机；公网部署请经带 TLS/鉴权的反向代理。
       - "127.0.0.1:8000:8000"
     environment:
-      - DATABASE_URL=sqlite:////app/data/interview_memory.db
+      - TZ=${TZ:-Asia/Shanghai}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/interview_memory.db}
+      - APP_AUTH_USER=${APP_AUTH_USER:-}
+      - APP_AUTH_PASSWORD=${APP_AUTH_PASSWORD:-}
+      - QUESTION_IMPORT_DIR=${QUESTION_IMPORT_DIR:-/app/data/imports}
+      - SCHEDULER_ENABLED=${SCHEDULER_ENABLED:-1}
+      - STORAGE_BACKEND=${STORAGE_BACKEND:-local}
+      - S3_ENDPOINT=${S3_ENDPOINT:-}
+      - S3_REGION=${S3_REGION:-auto}
+      - S3_BUCKET=${S3_BUCKET:-}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:-}
+      - S3_PUBLIC_URL=${S3_PUBLIC_URL:-}
       - AGENT_JUDGE_URL=${AGENT_JUDGE_URL:-}
       - AGENT_JUDGE_TOKEN=${AGENT_JUDGE_TOKEN:-}
       - LLM_BASE_URL=${LLM_BASE_URL:-}
       - LLM_API_KEY=${LLM_API_KEY:-}
       - LLM_MODEL=${LLM_MODEL:-}
       - SMTP_HOST=${SMTP_HOST:-}
-      - SMTP_PORT=${SMTP_PORT:-}
-      - SMTP_USE_SSL=${SMTP_USE_SSL:-}
+      - SMTP_PORT=${SMTP_PORT:-465}
+      - SMTP_USE_SSL=${SMTP_USE_SSL:-1}
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}
       - APP_BASE_URL=${APP_BASE_URL:-http://localhost:8000}

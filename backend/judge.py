@@ -10,9 +10,21 @@
 """
 import os
 import re
+import json
 from typing import Optional, Tuple
 
 _STOPWORDS = set("的 了 是 在 和 与 及 或 一个 一种 可以 我们 你 我 他 它 这 那 有 没有 不 也 都 就 而 对 为 等 以 于 到 把 被 让 使".split())
+
+
+def has_remote_judge() -> bool:
+    """重试任务只在远端判题配置完整时运行，不能误用启发式消耗 pending。"""
+    if os.getenv("AGENT_JUDGE_URL", "").strip():
+        return True
+    return all((
+        os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY"),
+        os.getenv("LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL"),
+        os.getenv("LLM_MODEL") or os.getenv("OPENAI_MODEL"),
+    ))
 
 
 def _parse_is_correct(value) -> bool:
@@ -30,6 +42,20 @@ def _parse_is_correct(value) -> bool:
         if normalized == "false":
             return False
     raise ValueError("is_correct must be a boolean")
+
+
+def _parse_judgment(data, source: str):
+    """验证远端响应；非法文本字段必须降级 pending，不能在写库时触发 500。"""
+    if not isinstance(data, dict):
+        raise ValueError("judgment must be an object")
+    is_correct = _parse_is_correct(data.get("is_correct"))
+    explanation = data.get("explanation", "")
+    error_reason = data.get("error_reason", "")
+    explanation = "" if explanation is None else explanation
+    error_reason = "" if error_reason is None else error_reason
+    if not isinstance(explanation, str) or not isinstance(error_reason, str):
+        raise ValueError("judgment text must be strings")
+    return is_correct, explanation, error_reason, source
 
 
 def _extract_keywords(text: str) -> set:
@@ -91,10 +117,11 @@ async def _llm_judge(question_text: str, reference_answer: str, user_answer: str
             )
             resp.raise_for_status()
             content = resp.json()["choices"][0]["message"]["content"]
-        import json
-        data = json.loads(content.strip().strip("`").replace("json", "", 1).strip("`"))
-        is_correct = _parse_is_correct(data.get("is_correct"))
-        return (is_correct, data.get("explanation", ""), data.get("error_reason", ""), "llm")
+        # 仅剥离整段 Markdown 围栏；不能替换正文中的 json（会篡改解释文本）。
+        content = content.strip()
+        fenced = re.fullmatch(r"```(?:json)?\s*([\s\S]*?)\s*```", content, re.IGNORECASE)
+        data = json.loads(fenced.group(1) if fenced else content)
+        return _parse_judgment(data, "llm")
     except Exception:
         return None, "判题服务暂不可用", "judge_error", "pending"
 
@@ -126,8 +153,7 @@ async def _agent_judge(question_text: str, reference_answer: str, user_answer: s
             )
             response.raise_for_status()
             data = response.json()
-        value = _parse_is_correct(data.get("is_correct"))
-        return value, data.get("explanation", ""), data.get("error_reason", ""), "agent"
+        return _parse_judgment(data, "agent")
     except Exception:
         return None, "判题服务暂不可用", "judge_error", "pending"
 

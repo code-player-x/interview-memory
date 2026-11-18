@@ -4,20 +4,13 @@
 """
 import os
 import sys
-import tempfile
 import asyncio
 from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 
-# 使用临时数据库
-TMP_DB = os.path.join(tempfile.gettempdir(), "im_test.db")
-if os.path.exists(TMP_DB):
-    os.remove(TMP_DB)
-os.environ["DATABASE_URL"] = "sqlite:///" + TMP_DB
-os.environ["AGENT_JUDGE_URL"] = ""
-os.environ["LLM_BASE_URL"] = ""
+# conftest.py 在任何 backend import 前设置本轮独立的临时数据库和离线环境。
 
 PROJECT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT not in sys.path:
@@ -33,13 +26,7 @@ def client():
     Base.metadata.create_all(bind=engine)
     with TestClient(appmod.app) as c:
         yield c
-    try:
-        appmod.scheduler.shutdown(wait=False)
-    except Exception:
-        pass
     engine.dispose()
-    if os.path.exists(TMP_DB):
-        os.remove(TMP_DB)
 
 
 def test_import_and_list(client):
@@ -83,6 +70,22 @@ def test_random_question_not_stuck(client):
     assert len(got) >= 2
 
 
+def test_practice_round_starts_after_the_last_seen_question(client):
+    ids = [client.post("/api/questions/import", json={
+        "category": "round-test", "question_text": f"round test {i}",
+    }).json()["id"] for i in range(2)]
+    url = "/api/practice/next?category=round-test"
+    history = list(reversed(ids))
+    for result in [client.get(url, params={"category": "round-test", "seen_ids": ",".join(map(str, history))}),
+                   client.post(url, json={"seen_ids": history})]:
+        assert result.status_code == 200
+        item = result.json()
+        assert (item["id"], item["remaining"], item["round_complete"]) == (ids[1], 1, True)
+    for offset, expected in [(2, True), (3, False)]:
+        result = client.get(url, params={"category": "round-test", "mode": "sequential", "offset": offset})
+        assert result.json()["round_complete"] is expected
+
+
 def test_answer_and_wrong_book(client):
     r = client.post("/api/questions/import", json={
         "category": "测试", "question_text": "测试题？",
@@ -120,10 +123,12 @@ def test_settings(client):
     assert r["app_base_url"] == "http://localhost:8000"
 
 
-def test_pdf_export(client):
+def test_pdf_export(client, tmp_path, monkeypatch):
+    # PDF 输出也隔离，不能覆盖用户上次导出的错题本。
+    monkeypatch.setattr(appmod, "BASE_DIR", str(tmp_path))
     r = client.post("/api/questions/import", json={
         "category": "导出", "question_text": "PDF 导出测试",
-        "reference_answer": "答案", "difficulty": 2,
+        "reference_answer": "一段需要分页展示的参考答案。\n" * 160, "difficulty": 2,
     })
     qid = r.json()["id"]
     client.post("/api/answer", json={"question_id": qid, "user_answer": "错"})
@@ -132,6 +137,10 @@ def test_pdf_export(client):
     data = r.json()
     assert data["count"] >= 1
     assert "/data/wrong_book_export.pdf" in data["download_url"]
+    import re
+    pdf = client.get(data["download_url"]).content
+    assert pdf.startswith(b"%PDF") and pdf.rstrip().endswith(b"%%EOF")
+    assert len(re.findall(rb"/Type\s*/Page\b", pdf)) >= 3
 
 
 def test_review_feedback_handles_legacy_null_review_count(client):
@@ -351,3 +360,123 @@ def test_articles_status_reports_available_test_resource(client):
     status = client.get("/api/articles/status")
     assert status.status_code == 200
     assert status.json() == {"available": True, "message": ""}
+
+
+def test_quiz_blank_answer_is_unanswered_and_keeps_reference(client):
+    q = client.post("/api/questions/import", json={
+        "question_text": "空白作答回归", "reference_answer": "参考答案",
+    }).json()
+    response = client.post("/api/quiz/submit", json={"items": [
+        {"question_id": q["id"], "user_answer": "  \n"},
+        {"question_id": 999999, "user_answer": ""},
+    ]})
+    assert response.status_code == 200
+    unanswered, missing = response.json()["results"]
+    assert unanswered["explanation"] == "未作答"
+    assert unanswered["reference_answer"] == "参考答案"
+    assert unanswered["error_reason"] == ""
+    assert missing["error_reason"] == "question_missing"
+    with SessionLocal() as db:
+        assert db.query(models.Submission).filter_by(question_id=q["id"]).count() == 0
+
+
+def test_wrong_answer_reopens_mastered_schedule_and_uses_configured_interval(client):
+    original = client.get("/api/settings").json()
+    try:
+        assert client.post("/api/settings", json={
+            **original, "ebbinghaus_steps": "3,7,14",
+        }).status_code == 200
+        qid = client.post("/api/questions/import", json={
+            "question_text": "复习重新开始", "reference_answer": "unique keyword",
+        }).json()["id"]
+        before = datetime.utcnow()
+        assert client.post("/api/answer", json={
+            "question_id": qid, "user_answer": "wrong",
+        }).json()["is_correct"] is False
+        with SessionLocal() as db:
+            schedule = db.query(models.ReviewSchedule).filter_by(question_id=qid).one()
+            assert schedule.next_review_at >= before + timedelta(days=3)
+            schedule.review_count = 5
+            db.commit()
+        assert client.post(f"/api/wrong-book/{qid}/master").status_code == 200
+        assert client.post("/api/answer", json={
+            "question_id": qid, "user_answer": "wrong again",
+        }).json()["is_correct"] is False
+        with SessionLocal() as db:
+            schedule = db.query(models.ReviewSchedule).filter_by(question_id=qid).one()
+            wrong = db.query(models.WrongBook).filter_by(question_id=qid).one()
+            assert schedule.status == "pending"
+            assert schedule.stage == 1
+            assert schedule.review_count == 5
+            assert schedule.next_review_at >= before + timedelta(days=3)
+            assert wrong.mastery == "reviewing"
+            assert wrong.wrong_count == 2
+    finally:
+        client.post("/api/settings", json=original)
+
+
+def test_forgotten_mastered_question_returns_to_reviewing(client):
+    qid = client.post("/api/questions/import", json={
+        "question_text": "掌握后忘记", "reference_answer": "unique keyword",
+    }).json()["id"]
+    client.post("/api/answer", json={"question_id": qid, "user_answer": "wrong"})
+    client.post(f"/api/wrong-book/{qid}/master")
+    response = client.post(f"/api/review/{qid}", json={"remembered": False})
+    assert response.status_code == 200
+    assert response.json()["status"] == "pending"
+    assert response.json()["stage"] == 1
+    with SessionLocal() as db:
+        assert db.query(models.WrongBook).filter_by(question_id=qid).one().mastery == "reviewing"
+
+
+def test_due_reviews_are_ordered_and_loaded_in_one_query(client):
+    from sqlalchemy import event
+
+    ids = []
+    for index in range(3):
+        qid = client.post("/api/questions/import", json={
+            "question_text": f"到期排序 {index}", "reference_answer": "unique keyword",
+        }).json()["id"]
+        client.post("/api/answer", json={"question_id": qid, "user_answer": "wrong"})
+        ids.append(qid)
+    with SessionLocal() as db:
+        for index, qid in enumerate(ids):
+            schedule = db.query(models.ReviewSchedule).filter_by(question_id=qid).one()
+            schedule.next_review_at = datetime.utcnow() - timedelta(days=index + 1)
+        db.commit()
+
+    selects = []
+    def collect(_conn, _cursor, statement, _parameters, _context, _executemany):
+        if statement.lstrip().upper().startswith("SELECT"):
+            selects.append(statement)
+
+    event.listen(engine, "before_cursor_execute", collect)
+    try:
+        response = client.get("/api/review/due")
+    finally:
+        event.remove(engine, "before_cursor_execute", collect)
+    assert response.status_code == 200
+    found = [row["question_id"] for row in response.json() if row["question_id"] in ids]
+    assert found == list(reversed(ids))
+    assert len(selects) == 1
+
+
+def test_quiz_generation_respects_submission_limit_and_weak_priority(client, monkeypatch):
+    ids = []
+    for index in range(3):
+        qid = client.post("/api/questions/import", json={
+            "category": "薄弱排序回归", "question_text": f"薄弱题 {index}",
+            "reference_answer": "unique keyword",
+        }).json()["id"]
+        ids.append(qid)
+    with SessionLocal() as db:
+        for qid, count, mastery in zip(ids, [1, 5, 10], ["learning", "reviewing", "mastered"]):
+            db.add(models.WrongBook(question_id=qid, wrong_count=count, mastery=mastery))
+        db.commit()
+
+    monkeypatch.setattr(appmod, "MAX_QUIZ_ITEMS", 2)
+    response = client.get("/api/quiz/generate", params={
+        "count": 100, "category": "薄弱排序回归", "mode": "weak",
+    })
+    assert response.status_code == 200
+    assert [q["id"] for q in response.json()] == [ids[1], ids[0]]

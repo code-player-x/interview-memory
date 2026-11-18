@@ -16,17 +16,10 @@ import os
 import re
 import sys
 import argparse
-import sqlite3
 import unicodedata
 
-try:
-    import pdfplumber
-except Exception as e:
-    print("缺少 pdfplumber：请先 .venv/Scripts/pip install pdfplumber")
-    sys.exit(1)
-
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, "data", "interview_memory.db")
+sys.path.insert(0, BASE_DIR)
 PDF_PATH = r"D:/download_music/AI大模型原理和应用面试题速记通关版 _ 面试刷题 mianshiya.com.pdf"
 
 # PDF 字体把常用汉字错误映射成「康熙部首/部首补充/笔画」码位：
@@ -53,6 +46,10 @@ def clean_text(s: str) -> str:
 
 
 def extract_pages(path: str):
+    try:
+        import pdfplumber
+    except ImportError:
+        raise SystemExit("缺少 pdfplumber：请先安装 pdfplumber")
     pages = []
     with pdfplumber.open(path) as pdf:
         for pg in pdf.pages:
@@ -159,6 +156,32 @@ def classify(q: str, a: str) -> str:
     return "大模型综合"
 
 
+def import_pairs(pairs):
+    """复用应用数据库配置和模型，避免静默写入默认 SQLite 文件。"""
+    from backend.db import SessionLocal, init_db
+    from backend.models import Question
+
+    init_db()
+    inserted = skipped = 0
+    categories = set()
+    with SessionLocal.begin() as db:
+        existing = db.query(Question).count()
+        seen = {text for (text,) in db.query(Question.question_text).all()}
+        for question, answer in pairs:
+            if question in seen:
+                skipped += 1
+                continue
+            seen.add(question)
+            category = classify(question, answer)
+            categories.add(category)
+            db.add(Question(
+                platform="mianshiya.com", category=category, tags="", difficulty=None,
+                question_text=question, reference_answer=answer, images="", keywords="",
+            ))
+            inserted += 1
+    return inserted, skipped, existing, categories
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pdf", default=PDF_PATH)
@@ -184,39 +207,10 @@ def main():
             print(f"[{i:2d}] 【{classify(q,a)}】{q}{flag}")
         return
 
-    # 入库
-    db = sqlite3.connect(DB_PATH)
-    db.execute("PRAGMA journal_mode=WAL")
-    cur = db.cursor()
-    # 确保 keywords 列存在
-    try:
-        cur.execute("ALTER TABLE questions ADD COLUMN keywords TEXT DEFAULT ''")
-        db.commit()
-    except Exception:
-        db.rollback()
-    existing = cur.execute("SELECT COUNT(*) FROM questions").fetchone()[0]
-    seen = set(r[0] for r in cur.execute("SELECT question_text FROM questions"))
-    inserted = 0
-    skipped = 0
-    cats_seen = set()
-    for q, a in pairs:
-        if q in seen:
-            skipped += 1
-            continue
-        seen.add(q)
-        cat = classify(q, a)
-        cats_seen.add(cat)
-        cur.execute(
-            "INSERT INTO questions (platform, category, tags, difficulty, question_text, reference_answer, created_at, images, keywords) "
-            "VALUES (?,?,?,?,?,?, datetime('now'), '', ?)",
-            ("mianshiya.com", cat, "", None, q, a, ""),
-        )
-        inserted += 1
-    db.commit()
-    total = cur.execute("SELECT COUNT(*) FROM questions").fetchone()[0]
+    inserted, skipped, existing, cats_seen = import_pairs(pairs)
+    total = existing + inserted
     print(f"\n已插入 {inserted} 条（跳过重复 {skipped} 条；库原 {existing} -> 现 {total}）")
     print("涉及分类：", sorted(cats_seen))
-    db.close()
 
 
 if __name__ == "__main__":

@@ -70,11 +70,11 @@ def send_review_email(
 
     try:
         if use_ssl:
-            with smtplib.SMTP_SSL(host, port) as client:
+            with smtplib.SMTP_SSL(host, port, timeout=30) as client:
                 client.login(user, password)
                 client.sendmail(user, [to_email], message.as_string())
         else:
-            with smtplib.SMTP(host, port) as client:
+            with smtplib.SMTP(host, port, timeout=30) as client:
                 client.starttls()
                 client.login(user, password)
                 client.sendmail(user, [to_email], message.as_string())

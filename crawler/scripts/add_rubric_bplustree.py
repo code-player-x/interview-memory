@@ -9,6 +9,7 @@
 
 用法：python scripts/add_rubric_bplustree.py [--apply]
 """
+import sys
 import argparse
 import json
 import re
@@ -17,10 +18,12 @@ import sqlite3
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from scripts.sqlite_target import backup_sqlite, sqlite_target
+
 PROJ = Path(__file__).resolve().parent.parent
 BANK = PROJ / "data" / "questions-bank.json"
 CONVERT = PROJ / "scripts" / "convert_to_interview_memory.py"
-DB = Path("G:/interview-memory/data/interview_memory.db")
 ANCHOR = "q0490"
 PRAC_ANCHOR = 609
 
@@ -91,7 +94,12 @@ def star_to_int(d: str) -> int:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--db", help="显式覆盖 DATABASE_URL 的 SQLite 文件路径")
     args = ap.parse_args()
+    try:
+        database = Path(sqlite_target(args.db))
+    except ValueError as error:
+        ap.error(str(error))
 
     with open(BANK, encoding="utf-8") as f:
         data = json.load(f)
@@ -116,6 +124,15 @@ def main():
         print("[info] dry-run，未改动。确认后加 --apply")
         return
 
+    con = sqlite3.connect(database.as_uri() + "?mode=rw", uri=True)
+    con.execute("BEGIN IMMEDIATE")
+    anchor = con.execute("SELECT question_text FROM questions WHERE id=?", (PRAC_ANCHOR,)).fetchone()
+    if not anchor or anchor[0].strip() != it["content"].strip():
+        con.close()
+        ap.error(f"题目 {PRAC_ANCHOR} 与母库综合题面不符，已停止")
+    bak2 = str(database) + ".bak_" + str(time.time_ns())
+    backup_sqlite(database, bak2)
+
     bak1 = str(BANK) + ".bak_" + time.strftime("%Y%m%d_%H%M%S")
     shutil.copy2(BANK, bak1)
     ans["评分要点"] = SCORE
@@ -132,9 +149,6 @@ def main():
     else:
         print("[warn] 未匹配到目标元组，请人工确认 convert_to_interview_memory.py")
 
-    bak2 = str(DB) + ".bak_" + time.strftime("%Y%m%d_%H%M%S")
-    shutil.copy2(DB, bak2)
-    con = sqlite3.connect(DB)
     con.execute("UPDATE questions SET reference_answer=? WHERE id=?", (reference, PRAC_ANCHOR))
     con.commit()
     n = con.execute("SELECT LENGTH(reference_answer) FROM questions WHERE id=?", (PRAC_ANCHOR,)).fetchone()[0]

@@ -9,16 +9,22 @@ from datetime import datetime, timedelta
 from typing import List
 
 _DEFAULT_STEPS = [1, 2, 4, 7, 15, 30, 60]
+MAX_REVIEW_DAYS = 36500
+MAX_REVIEW_STAGES = 100
 
 
 def get_steps(s: str) -> List[int]:
     """解析 '1,2,4,7,15,30,60' 为间隔天数列表；空或非法时回退默认。"""
     if not s or not s.strip():
         return list(_DEFAULT_STEPS)
-    parts = [p.strip() for p in s.split(",") if p.strip()]
     try:
-        return [int(p) for p in parts if p]
-    except ValueError:
+        steps = [int(p.strip()) for p in s.split(",")]
+        if (not steps or len(steps) > MAX_REVIEW_STAGES
+                or any(day < 1 or day > MAX_REVIEW_DAYS for day in steps)
+                or any(a >= b for a, b in zip(steps, steps[1:]))):
+            return list(_DEFAULT_STEPS)
+        return steps
+    except (ValueError, TypeError, AttributeError):
         return list(_DEFAULT_STEPS)
 
 

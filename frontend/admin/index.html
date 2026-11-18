@@ -12,7 +12,7 @@
     <a class="home-link" href="/">← 返回主站</a>
   </header>
 
-  <nav class="tabs">
+  <nav class="tabs" aria-label="管理功能">
     <button class="tab active" data-tab="questions">📚 题目管理</button>
     <button class="tab" data-tab="categories">🗂️ 分类管理</button>
     <button class="tab" data-tab="overview">📊 面经 &amp; 概览</button>
@@ -22,9 +22,9 @@
     <!-- ============ A. 题目管理 ============ -->
     <section id="tab-questions" class="tab-pane active">
       <div class="toolbar">
-        <input id="qKeyword" class="inp" placeholder="搜索题面 / 答案…" />
-        <select id="qCategory" class="inp"></select>
-        <select id="qLevel" class="inp">
+        <input id="qKeyword" class="inp" aria-label="搜索题面或答案" placeholder="搜索题面 / 答案…" />
+        <select id="qCategory" class="inp" aria-label="题目分类"></select>
+        <select id="qLevel" class="inp" aria-label="题目难度">
           <option value="0">全部难度</option>
           <option value="1">简单</option>
           <option value="2">中等</option>
@@ -38,7 +38,7 @@
         <input id="qImportFile" type="file" accept=".json,application/json" hidden />
         <button id="qAdd" class="btn primary">＋ 新增题目</button>
       </div>
-      <div id="qMsg" class="msg"></div>
+      <div id="qMsg" class="msg" role="status"></div>
       <table class="tbl">
         <thead>
           <tr><th>#</th><th>分类</th><th>难度</th><th>标签</th><th>题目</th><th>操作</th></tr>
@@ -54,7 +54,7 @@
 
     <!-- ============ B. 分类管理 ============ -->
     <section id="tab-categories" class="tab-pane">
-      <div id="cMsg" class="msg"></div>
+      <div id="cMsg" class="msg" role="status"></div>
       <table class="tbl">
         <thead>
           <tr><th>图标</th><th>名称</th><th>题数</th><th>描述</th><th>操作</th></tr>
@@ -65,7 +65,7 @@
 
     <!-- ============ C. 面经 & 概览 ============ -->
     <section id="tab-overview" class="tab-pane">
-      <div id="ovMsg" class="msg"></div>
+      <div id="ovMsg" class="msg" role="status"></div>
       <div id="statCards" class="stat-cards"></div>
 
       <div class="panel">
@@ -92,9 +92,10 @@
 
   <!-- 通用弹窗 -->
   <div id="modalMask" class="modal-mask hidden">
-    <div class="modal">
-      <div class="modal-head"><span id="modalTitle"></span><span id="modalClose" class="modal-x">×</span></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-head"><span id="modalTitle"></span><button type="button" id="modalClose" class="modal-x" aria-label="关闭弹窗">×</button></div>
       <div class="modal-body" id="modalBody"></div>
+      <div id="modalError" class="msg err modal-error" role="alert"></div>
       <div class="modal-foot" id="modalFoot"></div>
     </div>
   </div>

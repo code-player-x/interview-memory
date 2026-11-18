@@ -12,37 +12,47 @@
     python harvest.py --source maimai        # 需先在 Chrome 登录脉脉
     python harvest.py --source nowcoder
     python harvest.py --source zhihu         # 需先在 Chrome 登录知乎
+    python harvest.py --source github        # AI Infra 仓库 Markdown 采集 + 抽题
+    python harvest.py --source onepoint3acres # 海外面经版公开标题索引
     # 只跑后处理（抽取+去重，产出 shortlist/refined 供挑题）
     python harvest.py --source juejin --stage process
 
 说明：
-- 采集（CDP 源）统一用 venv python（含 websocket-client）；后处理用 managed python（仅 stdlib）。
+- 采集和后处理复用当前 Python；需安装 crawler/requirements.txt。
 - 所有 CDP 源串行复用同一 Chrome 标签，请勿并行启动多个采集。
 - 登录墙源（小红书/脉脉/知乎）撞滑块验证会原地等待，最长 300s，期间在浏览器滑掉即可续抓。
 - 知乎为强登录墙 + 强反爬，必须先在 Chrome 登录 zhihu.com 再跑，否则详情页正文残缺被跳过。
 """
 import subprocess
 import argparse
+import sys
 from pathlib import Path
+from browser_startup import ensure_browser
 
-VENV = Path("C:/Users/UserName/.workbuddy/binaries/python/envs/default/Scripts/python.exe")
-MANAGED = Path("C:/Users/UserName/.workbuddy/binaries/python/versions/3.13.12/python.exe")
+VENV = Path(sys.executable)
+MANAGED = Path(sys.executable)
 HERE = Path(__file__).resolve().parent
-SOURCES = ["xiaohongshu", "juejin", "v2ex", "maimai", "nowcoder", "zhihu"]
+BROWSER_SOURCES = ["xiaohongshu", "juejin", "v2ex", "maimai", "nowcoder", "zhihu"]
+SOURCES = [*BROWSER_SOURCES, "github", "onepoint3acres"]
 
 
 def collect(source):
+    if source in BROWSER_SOURCES:
+        ensure_browser()
     script = HERE / f"{source}_harvest.py"
     if not script.exists():
         print(f"[collect] 无采集脚本: {script}")
         return
     print(f"\n===== COLLECT {source} =====")
-    subprocess.run([str(VENV), str(script)], check=False)
+    subprocess.run([str(VENV), str(script)], check=True)
 
 
 def process(source):
+    if source == "onepoint3acres":
+        print("[onepoint3acres] 仅索引标题和链接，结果见 data/tmp/onepoint3acres/index.jsonl")
+        return
     print(f"\n===== PROCESS {source} =====")
-    subprocess.run([str(MANAGED), str(HERE / "process_source.py"), "--source", source], check=False)
+    subprocess.run([str(MANAGED), str(HERE / "process_source.py"), "--source", source], check=True)
 
 
 def main():

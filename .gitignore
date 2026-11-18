@@ -6,6 +6,8 @@
 # ---- 数据与运行时产物 ----
 # SQLite 库、上传的图片、导出的 PDF 等均自动生成，不入库
 data/
+/backups/
+/restored-data/
 # 技术文章摘抄 book 目录的本地目录联接（第三方资源，体积大，不入库）
 articles_book/
 

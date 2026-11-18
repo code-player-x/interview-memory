@@ -5,9 +5,9 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-COPY requirements.txt .
+COPY requirements.txt requirements.lock ./
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends fontconfig fonts-wqy-zenhei \
+    && apt-get install -y --no-install-recommends fontconfig fonts-wqy-zenhei tzdata \
     && rm -rf /var/lib/apt/lists/* \
     && pip install --no-cache-dir -r requirements.txt
 
@@ -16,7 +16,12 @@ COPY frontend/ ./frontend/
 # 容器内也保留已审核题库和导入命令，避免部署后必须手工拷贝宿主机文件。
 COPY scripts/import_questions_v2.py ./scripts/import_questions_v2.py
 COPY crawler/questions_v2/authored/ ./crawler/questions_v2/authored/
-RUN mkdir -p /app/data/images
+RUN groupadd --gid 10001 app \
+    && useradd --uid 10001 --gid app --no-create-home app \
+    && mkdir -p /app/data/images /app/data/exports /app/data/imports \
+    && chown -R app:app /app/data
+
+USER app
 
 EXPOSE 8000
 

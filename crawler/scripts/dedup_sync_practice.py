@@ -21,18 +21,16 @@ import os
 import re
 import sys
 import time
-import shutil
 import sqlite3
 import urllib.request
 import argparse
-import numpy as np
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROJ = os.path.dirname(HERE)
 BANK = os.path.join(PROJ, "data", "questions-bank.json")
-DB = os.path.join(PROJ, "parent", "data", "interview_memory.db") if False else os.path.join(
-    os.path.dirname(PROJ), "data", "interview_memory.db"
-)
+sys.path.insert(0, str(Path(PROJ).parent))
+from scripts.sqlite_target import backup_sqlite, sqlite_target
 CACHE = os.path.join(PROJ, "data", "tmp", ".semantic_embed_cache_bge-m3.pkl")
 THRESH = 0.88
 MODEL = "bge-m3"
@@ -74,6 +72,7 @@ def save_cache(c):
 
 
 def embed_texts(texts, cache):
+    import numpy as np
     out = []
     need, need_idx = [], []
     for i, t in enumerate(texts):
@@ -123,11 +122,51 @@ def progress_count(con, pid):
     return n
 
 
+def validate_reassignment(con, reassign):
+    """展开重定向链；状态合并规则不明确时拒绝操作，不丢弃任何学习记录。"""
+    resolved = {}
+    for source, target in reassign.items():
+        visited = {source}
+        while target in reassign:
+            if target in visited:
+                raise ValueError("拒绝同步：题目重定向存在循环。")
+            visited.add(target)
+            target = reassign[target]
+        if target == source:
+            raise ValueError("拒绝同步：题目不能重定向到自身。")
+        resolved[source] = target
+    question_ids = {row[0] for row in con.execute("SELECT id FROM questions")}
+    if not set(resolved).issubset(question_ids) or not set(resolved.values()).issubset(question_ids):
+        raise ValueError("拒绝同步：待合并题目已发生变化，请重新生成同步计划。")
+    for table in ("wrong_book", "review_schedule"):
+        seen = set()
+        affected = set(resolved.values())
+        for (question_id,) in con.execute(f'SELECT question_id FROM "{table}"'):
+            target = resolved.get(question_id, question_id)
+            if target not in affected:
+                continue
+            if target in seen:
+                raise ValueError(
+                    f"拒绝同步：{table} 中多条学习状态将合并到题目 {target}；"
+                    "请先明确并迁移学习状态，再运行同步。"
+                )
+            seen.add(target)
+    return resolved
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--thresh", type=float, default=THRESH)
+    ap.add_argument("--db", help="显式覆盖 DATABASE_URL 的 SQLite 文件路径")
     args = ap.parse_args()
+    try:
+        db_path = sqlite_target(args.db)
+    except ValueError as exc:
+        ap.error(str(exc))
+    if not os.path.isfile(db_path):
+        ap.error("数据库文件不存在，请先启动应用初始化数据库。")
+    import numpy as np
     thr = args.thresh
     t0 = time.time()
 
@@ -139,11 +178,12 @@ def main():
     print(f"[load] 母库 {B} 题")
 
     # 连接练习库
-    con = sqlite3.connect(DB)
-    con.execute("PRAGMA foreign_keys=0")
-    qs = con.execute(
-        "SELECT id, platform, category, tags, difficulty, question_text, reference_answer, created_at, images, keywords FROM questions"
-    ).fetchall()
+    mode = "rw" if args.apply else "ro"
+    con = sqlite3.connect(Path(db_path).as_uri() + "?mode=" + mode, uri=True)
+    con.execute("PRAGMA foreign_keys=ON")
+    question_query = ("SELECT id, platform, category, tags, difficulty, question_text, reference_answer, "
+                      "created_at, images, keywords FROM questions ORDER BY id")
+    qs = con.execute(question_query).fetchall()
     P = len(qs)
     print(f"[load] 练习库 {P} 题")
 
@@ -267,92 +307,103 @@ def main():
         return
 
     # ---- 写回 ----
-    bak = DB + ".bak_" + time.strftime("%Y%m%d_%H%M%S")
-    shutil.copy2(DB, bak)
-    print(f"[backup] {bak}")
+    try:
+        reassign = validate_reassignment(con, reassign)
+    except ValueError as exc:
+        con.close()
+        raise SystemExit(str(exc))
+    bak = db_path + ".bak_" + str(time.time_ns())
+    # SQLite 在线备份会读取 WAL 中已提交的数据，单独复制主文件会漏数据。
+    with con:
+        con.execute("BEGIN IMMEDIATE")
+        if con.execute(question_query).fetchall() != qs:
+            raise ValueError("拒绝同步：生成计划期间练习题发生变化，请重新运行。")
+        reassign = validate_reassignment(con, reassign)
+        backup_sqlite(db_path, bak)
+        print(f"[backup] {bak}")
+        cur = con.cursor()
+        # 1) 重定向进度外键
+        for frm, to in reassign.items():
+            for t in ("review_schedule", "submissions", "wrong_book", "question_notes"):
+                cur.execute(f'UPDATE "{t}" SET question_id=? WHERE question_id=?', (to, frm))
+        # 2) 删除被合并的练习题（内部删除 + 冗余删除）
+        del_ids = set()
+        for ri, ki in internal_removed:
+            del_ids.add(qs[ri][0])
+        for ri, ki in redundant:
+            del_ids.add(qs[ri][0])
+        if del_ids:
+            cur.execute(f"DELETE FROM questions WHERE id IN ({','.join('?'*len(del_ids))})", list(del_ids))
+        print(f"[write] 删除被合并练习题 {len(del_ids)}")
 
-    cur = con.cursor()
-    # 1) 重定向进度外键
-    for frm, to in reassign.items():
-        for t in ("review_schedule", "submissions", "wrong_book", "question_notes"):
-            cur.execute(f'UPDATE "{t}" SET question_id=? WHERE question_id=?', (to, frm))
-    # 2) 删除被合并的练习题（内部删除 + 冗余删除）
-    del_ids = set()
-    for ri, ki in internal_removed:
-        del_ids.add(qs[ri][0])
-    for ri, ki in redundant:
-        del_ids.add(qs[ri][0])
-    if del_ids:
-        cur.execute(f"DELETE FROM questions WHERE id IN ({','.join('?'*len(del_ids))})", list(del_ids))
-    print(f"[write] 删除被合并练习题 {len(del_ids)}")
+        # 3) 富化匹配行（复用其 id）
+        max_id = cur.execute("SELECT MAX(id) FROM questions").fetchone()[0] or 0
+        enriched = 0
 
-    # 3) 富化匹配行（复用其 id）
-    max_id = cur.execute("SELECT MAX(id) FROM questions").fetchone()[0] or 0
-    enriched = 0
+        def no_downgrade(new_ans, old_ans):
+            """富化但不降级：母库答案比练习库原有答案更简略时保留原答案。
 
-    def no_downgrade(new_ans, old_ans):
-        """富化但不降级：母库答案比练习库原有答案更简略时保留原答案。
+            背景：整体覆写曾导致 411 行答案被母库简版替换，丢失 14.4 万字。
+            """
+            return new_ans if len(new_ans) >= len(old_ans) else old_ans
 
-        背景：整体覆写曾导致 411 行答案被母库简版替换，丢失 14.4 万字。
-        """
-        return new_ans if len(new_ans) >= len(old_ans) else old_ans
+        for b, kidx in rep_map.items():
+            it = bank[b]
+            pid = qs[kidx][0]
+            cur.execute(
+                """UPDATE questions SET
+                     question_text=?, category=?, tags=?, difficulty=?, reference_answer=?, platform=?, keywords=?
+                   WHERE id=?""",
+                (
+                    it.get("content", "").strip(),
+                    it.get("category", "") or "",
+                    ",".join(str(t).strip() for t in it.get("tags", []) if str(t).strip()),
+                    star_to_int(it.get("difficulty", "")),
+                    no_downgrade(build_reference(it.get("answer")) or it.get("content", ""),
+                                 qs[kidx][6] or ""),
+                    (it.get("source", "") or "WorkBuddy爬取")[:48],
+                    ",".join(str(t).strip() for t in it.get("tags", []) if str(t).strip()),
+                    pid,
+                ),
+            )
+            enriched += 1
+        print(f"[write] 富化匹配行 {enriched}")
 
-    for b, kidx in rep_map.items():
-        it = bank[b]
-        pid = qs[kidx][0]
+        # 4) 插入母库独有题（新 id）
+        inserted = 0
+        for b in unmatched_bank:
+            it = bank[b]
+            max_id += 1
+            cur.execute(
+                """INSERT INTO questions (id, platform, category, tags, difficulty, question_text, reference_answer, created_at, images, keywords)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    max_id,
+                    (it.get("source", "") or "WorkBuddy爬取")[:48],
+                    it.get("category", "") or "",
+                    ",".join(str(t).strip() for t in it.get("tags", []) if str(t).strip()),
+                    star_to_int(it.get("difficulty", "")),
+                    it.get("content", "").strip(),
+                    build_reference(it.get("answer")) or it.get("content", ""),
+                    it.get("created_at") or time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "",
+                    ",".join(str(t).strip() for t in it.get("tags", []) if str(t).strip()),
+                ),
+            )
+            inserted += 1
+        print(f"[write] 插入母库独有题 {inserted}")
+        # 5) 练习自定义题保留（不删不改）
+
+        # 校验：进度外键均有效
         cur.execute(
-            """UPDATE questions SET
-                 question_text=?, category=?, tags=?, difficulty=?, reference_answer=?, platform=?, keywords=?
-               WHERE id=?""",
-            (
-                it.get("content", "").strip(),
-                it.get("category", "") or "",
-                ",".join(str(t).strip() for t in it.get("tags", []) if str(t).strip()),
-                star_to_int(it.get("difficulty", "")),
-                no_downgrade(build_reference(it.get("answer")) or it.get("content", ""),
-                             qs[kidx][6] or ""),
-                (it.get("source", "") or "WorkBuddy爬取")[:48],
-                ",".join(str(t).strip() for t in it.get("tags", []) if str(t).strip()),
-                pid,
-            ),
+            "SELECT COUNT(*) FROM (SELECT question_id FROM review_schedule UNION SELECT question_id FROM submissions UNION SELECT question_id FROM wrong_book UNION SELECT question_id FROM question_notes) sq "
+            "WHERE question_id NOT IN (SELECT id FROM questions)"
         )
-        enriched += 1
-    print(f"[write] 富化匹配行 {enriched}")
-
-    # 4) 插入母库独有题（新 id）
-    inserted = 0
-    for b in unmatched_bank:
-        it = bank[b]
-        max_id += 1
-        cur.execute(
-            """INSERT INTO questions (id, platform, category, tags, difficulty, question_text, reference_answer, created_at, images, keywords)
-               VALUES (?,?,?,?,?,?,?,?,?,?)""",
-            (
-                max_id,
-                (it.get("source", "") or "WorkBuddy爬取")[:48],
-                it.get("category", "") or "",
-                ",".join(str(t).strip() for t in it.get("tags", []) if str(t).strip()),
-                star_to_int(it.get("difficulty", "")),
-                it.get("content", "").strip(),
-                build_reference(it.get("answer")) or it.get("content", ""),
-                it.get("created_at") or time.strftime("%Y-%m-%d %H:%M:%S"),
-                "",
-                ",".join(str(t).strip() for t in it.get("tags", []) if str(t).strip()),
-            ),
-        )
-        inserted += 1
-    print(f"[write] 插入母库独有题 {inserted}")
-    # 5) 练习自定义题保留（不删不改）
-
-    con.commit()
-    # 校验：进度外键均有效
-    cur.execute(
-        "SELECT COUNT(*) FROM (SELECT question_id FROM review_schedule UNION SELECT question_id FROM submissions UNION SELECT question_id FROM wrong_book) sq "
-        "WHERE question_id NOT IN (SELECT id FROM questions)"
-    )
-    orphan = cur.fetchone()[0]
-    final_n = cur.execute("SELECT COUNT(*) FROM questions").fetchone()[0]
-    print(f"[verify] 最终题数 {final_n} | 进度孤儿外键 {orphan} (应=0)")
+        orphan = cur.fetchone()[0]
+        if orphan:
+            raise ValueError("拒绝提交：同步产生了学习记录孤儿引用，已回滚。")
+        final_n = cur.execute("SELECT COUNT(*) FROM questions").fetchone()[0]
+        print(f"[verify] 最终题数 {final_n} | 进度孤儿外键 {orphan} (应=0)")
     con.close()
     print(f"[apply] 完成。备份 {bak}")
 

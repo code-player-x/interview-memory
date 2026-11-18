@@ -17,7 +17,8 @@ import sqlite3
 import argparse
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, "data", "interview_memory.db")
+from pathlib import Path
+from sqlite_target import sqlite_target
 
 STOPWORDS = set(
     "的 了 和 是 在 我 有 也 就 不 都 而 及 与 或 对 等 一个 一种 可以 我们 你 他 她 它 这 那 这些 那些 "
@@ -163,7 +164,11 @@ def main():
 
     print(f"jieba: {'available' if HAVE_JIEBA else 'NOT available (n-gram fallback)'}")
 
-    db = sqlite3.connect(DB_PATH)
+    target = Path(sqlite_target())
+    db = sqlite3.connect(target.as_uri() + ("?mode=ro" if args.dry_run else "?mode=rw"), uri=True)
+    columns = {row[1] for row in db.execute("PRAGMA table_info(questions)")}
+    if args.dry_run and "keywords" not in columns:
+        raise SystemExit("旧库缺少 keywords 列；预演不会迁移，请先启动应用完成迁移。")
     if args.force:
         rows = db.execute("SELECT id, question_text, reference_answer FROM questions").fetchall()
     else:

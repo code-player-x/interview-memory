@@ -1,0 +1,32 @@
+{
+  "queries": [
+    "AI Infra 面经",
+    "大模型推理平台 面经",
+    "模型服务后端 面经",
+    "LLM Serving 面经",
+    "AI 平台研发 面经",
+    "机器学习平台 后端 面经",
+    "GPU 资源调度 面经",
+    "大模型推理引擎 面经",
+    "推理性能优化 面经",
+    "vLLM 面经",
+    "SGLang 面经",
+    "KV Cache 面试",
+    "CUDA 开发 面经",
+    "Triton 算子 面经",
+    "GPU 性能优化 面经",
+    "AI 算子研发 面经",
+    "分布式训练系统 面经",
+    "训练框架研发 面经",
+    "多卡 通信优化 面经",
+    "NCCL 面经"
+  ],
+  "pages": 8,
+  "page_size": 20,
+  "include_patterns": [
+    "AI\\s*Infra|推理|模型服务|serving|AI\\s*平台|机器学习平台|GPU|CUDA|Triton|vLLM|SGLang|KV\\s*Cache|算子|分布式训练|训练框架|多卡|NCCL",
+    "面经|面试|一面|二面|三面|八股"
+  ],
+  "date_from": "2026-09-18",
+  "date_to": "2026-11-18"
+}

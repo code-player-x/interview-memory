@@ -3,7 +3,7 @@
 """将转换后的题库 JSON 安全导入 interview_memory.db。
 
 安全特性（满足「处理失败可回滚」）：
-1. 导入前自动复制 DB 文件为 .bak_<时间戳>（硬回滚点，独立于事务）。
+1. 导入前通过 SQLite backup API 生成 .bak_<时间戳>（包含已提交的 WAL 数据）。
 2. 单事务：全部写入在一个 BEGIN/COMMIT 内；任何异常 -> ROLLBACK。
 3. 导入前按 question_text 精确去重，已存在则跳过（幂等、可安全重跑）。
 4. 写入后校验：post == pre + inserted，不符则 ROLLBACK 并报错退出。
@@ -17,7 +17,6 @@
 import argparse
 import json
 import os
-import shutil
 import sqlite3
 import sys
 import datetime
@@ -25,15 +24,20 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_JSON = HERE.parent / "data" / "tmp" / "interview_memory_import.json"
-DEFAULT_DB = HERE.parent.parent / "data" / "interview_memory.db"  # 仓库根/data（与 crawler 同级）
+sys.path.insert(0, str(HERE.parent.parent))
+from scripts.sqlite_target import backup_sqlite, sqlite_target
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", default=DEFAULT_JSON)
-    ap.add_argument("--db", default=DEFAULT_DB)
+    ap.add_argument("--db", help="显式覆盖 DATABASE_URL 的 SQLite 文件路径")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
+    try:
+        args.db = sqlite_target(args.db)
+    except ValueError as exc:
+        ap.error(str(exc))
 
     if not os.path.exists(args.json):
         sys.exit(f"[X] JSON 不存在: {args.json}")
@@ -45,30 +49,32 @@ def main():
     questions = data.get("questions", [])
     print(f"[1] 待导入题数: {len(questions)}")
 
-    # —— 步骤2：文件级硬备份（仅正式写入前做；dry-run 不备份）——
+    # —— 步骤2：一致性快照（仅正式写入前做；dry-run 不备份）——
     bak = None
-    if not args.dry_run:
-        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        bak = f"{args.db}.bak_{ts}"
-        shutil.copy2(args.db, bak)
-        print(f"[2] 已备份 DB -> {bak}")
-
-    conn = sqlite3.connect(args.db)
+    mode = "ro" if args.dry_run else "rw"
+    conn = sqlite3.connect(Path(args.db).as_uri() + "?mode=" + mode, uri=True)
     try:
         cur = conn.cursor()
+        cur.execute("BEGIN" if args.dry_run else "BEGIN IMMEDIATE")
+        if not args.dry_run:
+            ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            bak = f"{args.db}.bak_{ts}"
+            # 不能仅复制 .db：WAL 模式下最新提交可能仍在 -wal 文件中。
+            backup_sqlite(args.db, bak)
+            print(f"[2] 已备份 DB -> {bak}")
+
         pre = cur.execute("SELECT COUNT(*) FROM questions").fetchone()[0]
         print(f"[3] 导入前 questions 表行数: {pre}")
 
         if args.dry_run:
             existing = set(r[0] for r in cur.execute("SELECT question_text FROM questions").fetchall())
-            skip = sum(1 for q in questions if q.get("question", "").strip() in existing)
+            incoming = {(q.get("question") or "").strip() for q in questions}
+            skip = len(questions) - len(incoming - existing - {""})
             print(f"[DRY-RUN] 将新增: {len(questions) - skip}, 将跳过(已存在): {skip}; 不写入。")
-            conn.close()
             return
 
         inserted = 0
         skipped = 0
-        cur.execute("BEGIN")
         for q in questions:
             text = (q.get("question") or "").strip()
             if not text:
@@ -103,7 +109,7 @@ def main():
 
         conn.commit()
         print(f"[5] COMMIT 成功。新增 {inserted} 题，题库总量 {post}。")
-        print(f"    如需回滚: 用备份 {bak} 覆盖 {args.db} 即可。")
+        print(f"    如需回滚: 停止应用后，通过 SQLite backup API 将 {bak} 恢复到 {args.db}。")
     except Exception as e:
         try:
             conn.rollback()

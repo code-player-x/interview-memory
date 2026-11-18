@@ -9,8 +9,11 @@ import re
 import json
 import uuid
 import sys
+from tempfile import NamedTemporaryFile
+from contextlib import asynccontextmanager
+from pathlib import Path
 import random
-from datetime import datetime, timedelta, date
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import FastAPI, Depends, HTTPException, Query, UploadFile, File, Response
@@ -18,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError, model_validator
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -26,16 +29,25 @@ from sqlalchemy.exc import IntegrityError
 from fpdf import FPDF
 
 from .db import init_db, get_db, Base
-from . import models
+from . import article_navigation, models
 from .judge import judge
 from .scheduler import start_scheduler
 from .ebbinghaus import get_steps, next_review_for_stage, advance_stage, is_mastered
 from .todo_routes import router as todo_router
+from .learning import _update_wrong_book, _ensure_review_schedule
+from .idempotency import begin_request, finish_request, judge_with_lease, release_request
+from .focus import completed_focus, local_started_at, FOCUS_KINDS
+from .ebbinghaus import MAX_REVIEW_DAYS, MAX_REVIEW_STAGES
+from .retry import enqueue_pending
+from .retry_models import JudgmentRetry
 from .storage import get_storage
+from .web_boundary import MAX_IMAGE_BYTES, MAX_IMPORT_BYTES, WebBoundary, validate_image
+from .notes_routes import router as notes_router
+from .ops_routes import router as ops_router
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
-BANK_PATH = os.path.join(BASE_DIR, "..", "Claw", "题库", "agent_interview_bank.json")
+IMPORT_DIR = Path(os.getenv("QUESTION_IMPORT_DIR") or Path(BASE_DIR) / "data" / "imports")
 DEFAULT_APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8000")
 
 
@@ -56,7 +68,23 @@ def _bounded_env_int(name: str, default: int, minimum: int, maximum: int) -> int
 MAX_QUIZ_ITEMS = _bounded_env_int("MAX_QUIZ_ITEMS", 50, 1, 200)
 MAX_CONCURRENT_JUDGES = _bounded_env_int("MAX_CONCURRENT_JUDGES", 8, 1, 32)
 
+@asynccontextmanager
+async def lifespan(application):
+    os.makedirs(IMAGES_DIR, exist_ok=True)
+    init_db()
+    enabled = os.getenv("SCHEDULER_ENABLED", "1") != "0"
+    scheduler = start_scheduler() if enabled else None
+    application.state.scheduler = scheduler
+    try:
+        yield
+    finally:
+        if scheduler is not None:
+            scheduler.shutdown(wait=True)
+        application.state.scheduler = None
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="面试八股文长期记忆训练系统",
     version="1.1.0",
     description="GitHub 风格热力图 + 错题本 + 艾宾浩斯邮件推送 + 多标签题库筛选 + LLM 判题",
@@ -235,6 +263,8 @@ class ArticleRewriteMiddleware(BaseHTTPMiddleware):
         # 3) iframe 适配：注入 CSS 覆盖 lianglianglee 模板的 max-width:960px。
         #    命中最后一个 </head>（lianglianglee 有嵌套 <head><head> 结构，插在真正的
         #    head 闭合前才干净），兜底没 </head> 就插到 <body> 前。
+        if "text/html" in ctype:
+            text = article_navigation.restore_navigation(text)
         head_end = text.rfind("</head>")
         if head_end != -1:
             text = text[:head_end] + _ART_FULLWIDTH_CSS + text[head_end:]
@@ -259,9 +289,8 @@ class ArticleRewriteMiddleware(BaseHTTPMiddleware):
 app.add_middleware(ArticleRewriteMiddleware)
 
 
-init_db()
-
-scheduler = start_scheduler()
+app.add_middleware(WebBoundary, origins=_CORS_ALLOW_ORIGINS)
+app.include_router(ops_router)
 
 
 # ----------------------------- Pydantic 模型 -----------------------------
@@ -272,19 +301,62 @@ class QuestionImport(BaseModel):
     question_text: str
     reference_answer: str = ""
     difficulty: int = 1
+    keywords: str = ""
+    images: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def legacy_export_defaults(cls, data):
+        # 早期导出的 JSON 会保留 SQLite 可空列的 null；重新导入时按字段默认值处理。
+        if isinstance(data, dict):
+            return {k: v for k, v in data.items() if v is not None}
+        return data
 
 
 class QuestionImportBatch(BaseModel):
     path: Optional[str] = None  # 若为空，使用默认题库路径
 
 
+class BankQuestion(BaseModel):
+    question: str = ""
+    platform: str = ""
+    category: str = ""
+    key_points: list[str] = Field(default_factory=list)
+    reference_answer: str = ""
+    difficulty: int = 2
+
+
+class QuestionImportList(BaseModel):
+    items: List[QuestionImport]
+
+
+def _import_questions(items: list[QuestionImport], db: Session) -> dict:
+    seen = set()
+    imported = 0
+    for item in items:
+        text = item.question_text.strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        if db.query(models.Question.id).filter(models.Question.question_text == text).first():
+            continue
+        db.add(models.Question(**item.model_dump(exclude={"question_text"}), question_text=text,
+                               created_at=datetime.utcnow()))
+        imported += 1
+    db.commit()
+    return {"imported": imported, "skipped": len(items) - imported, "total": len(items)}
+
+
 class AnswerIn(BaseModel):
     question_id: int
     user_answer: str
+    request_id: Optional[str] = Field(default=None, min_length=1, max_length=128)
 
 
 class ReviewFeedback(BaseModel):
     remembered: bool = True
+    expected_stage: Optional[int] = None
+    expected_review_count: Optional[int] = None
 
 
 class SettingsIn(BaseModel):
@@ -327,19 +399,8 @@ class QuestionUpdate(BaseModel):
     images: Optional[str] = None  # 显式覆盖；为 None 时按 reference_answer 内 ![alt](url) 重新推导
 
 
-class NoteIn(BaseModel):
-    content: str = Field(..., min_length=1, max_length=4000)
-
-
-class NoteOut(BaseModel):
-    id: int
-    question_id: int
-    content: str
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
-
-
 class AnswerOut(BaseModel):
+    submission_id: Optional[int] = None
     is_correct: Optional[bool]
     explanation: str
     error_reason: str
@@ -354,10 +415,12 @@ class QuizSubmitItem(BaseModel):
 
 class QuizSubmitIn(BaseModel):
     items: List[QuizSubmitItem]
+    request_id: Optional[str] = Field(default=None, min_length=1, max_length=128)
 
 
 class QuizResultItem(BaseModel):
     question_id: int
+    submission_id: Optional[int] = None
     is_correct: Optional[bool] = None
     explanation: str = ""
     error_reason: str = ""
@@ -400,13 +463,15 @@ _DEFAULT_SETTINGS = {
 
 
 def get_settings(db: Session) -> models.Settings:
-    s = db.query(models.Settings).first()
+    s = db.get(models.Settings, 1)
     if not s:
-        s = models.Settings(**_DEFAULT_SETTINGS)
-        db.add(s)
-        db.commit()
-        db.refresh(s)
-        return s
+        try:
+            with db.begin_nested():
+                s = models.Settings(id=1, **_DEFAULT_SETTINGS)
+                db.add(s)
+                db.flush()
+        except IntegrityError:
+            s = db.get(models.Settings, 1)
 
     # 兼容旧库：早期 Settings 列没有数据库默认值，已有行可能留下 NULL。
     # 仅补齐 NULL，不覆盖用户已保存的任何非空配置。
@@ -416,8 +481,7 @@ def get_settings(db: Session) -> models.Settings:
             setattr(s, field, default)
             changed = True
     if changed:
-        db.commit()
-        db.refresh(s)
+        db.flush()
     return s
 
 
@@ -462,8 +526,9 @@ def _validated_schedule_settings(payload: SettingsIn) -> tuple[str, str]:
         steps = [int(part) for part in parts]
     except ValueError as exc:
         raise HTTPException(status_code=422, detail="ebbinghaus_steps 必须是逗号分隔的正整数") from exc
-    if any(step <= 0 for step in steps) or any(a >= b for a, b in zip(steps, steps[1:])):
-        raise HTTPException(status_code=422, detail="ebbinghaus_steps 必须为严格递增的正整数")
+    if (len(steps) > MAX_REVIEW_STAGES or any(step <= 0 or step > MAX_REVIEW_DAYS for step in steps)
+            or any(a >= b for a, b in zip(steps, steps[1:]))):
+        raise HTTPException(status_code=422, detail=f"复习间隔须严格递增，每个间隔为1至{MAX_REVIEW_DAYS}天，最多{MAX_REVIEW_STAGES}阶段")
     return push_time, ",".join(str(step) for step in steps)
 
 
@@ -500,63 +565,6 @@ def _increment_activity(db: Session, is_correct: Optional[bool], day: Optional[d
            .update(values, synchronize_session=False))
 
 
-def _update_wrong_book(db: Session, question_id: int, user_answer: str, error_reason: str, now: datetime):
-    """原子创建或更新错题本；唯一索引和 savepoint 覆盖首写竞争。"""
-    values = {
-        # 历史 NULL 表示至少已经记录过一次，不应在下一次答错时退回为 1。
-        "wrong_count": func.coalesce(models.WrongBook.wrong_count, 1) + 1,
-        "last_user_answer": user_answer,
-        "error_reason": error_reason or models.WrongBook.error_reason,
-        "mastery": "reviewing",
-        "updated_at": now,
-        "first_wrong_at": func.coalesce(models.WrongBook.first_wrong_at, now),
-    }
-    updated = (db.query(models.WrongBook)
-               .filter(models.WrongBook.question_id == question_id)
-               .update(values, synchronize_session=False))
-    if updated:
-        return
-
-    try:
-        with db.begin_nested():
-            db.add(models.WrongBook(
-                question_id=question_id,
-                first_wrong_at=now,
-                wrong_count=1,
-                last_user_answer=user_answer,
-                error_reason=error_reason or "",
-                mastery="learning",
-                updated_at=now,
-            ))
-            db.flush()
-    except IntegrityError:
-        # 另一个请求刚好插入同题行，保持其首错时间并给它原子加一。
-        (db.query(models.WrongBook)
-           .filter(models.WrongBook.question_id == question_id)
-           .update(values, synchronize_session=False))
-
-
-def _ensure_review_schedule(db: Session, question_id: int, now: datetime):
-    """只在首次答错时建计划；唯一约束防止并发请求生成重复计划。"""
-    if (db.query(models.ReviewSchedule.id)
-            .filter(models.ReviewSchedule.question_id == question_id)
-            .first()):
-        return
-    try:
-        with db.begin_nested():
-            db.add(models.ReviewSchedule(
-                question_id=question_id,
-                stage=1,
-                next_review_at=now + timedelta(days=1),
-                review_count=0,
-                status="pending",
-            ))
-            db.flush()
-    except IntegrityError:
-        # 竞争者已成功创建，无需覆盖已有的阶段或下次复习时间。
-        pass
-
-
 def _persist_answer_result(
     db: Session,
     question: models.Question,
@@ -565,22 +573,38 @@ def _persist_answer_result(
     explanation: str,
     error_reason: str,
     source: str,
+    *,
+    judge_input: Optional[tuple[str, Optional[str]]] = None,
 ):
     """写入一次作答及其所有本地副作用；调用方统一在最后 commit。"""
+    if not db.query(models.Question).filter_by(id=question.id).update(
+            {"id": models.Question.id}, synchronize_session=False):
+        raise HTTPException(404, "题目已删除，无法保存本次作答")
     now = datetime.utcnow()
-    db.add(models.Submission(
+    submission = models.Submission(
         question_id=question.id,
         user_answer=user_answer,
         is_correct=is_correct,
         judge_by=source,
         explanation=explanation,
         submitted_at=now,
-    ))
-    _increment_activity(db, is_correct)
+    )
+    db.add(submission)
+    activity_day = now.replace(tzinfo=timezone.utc).astimezone().date()
+    if source == "pending" and is_correct is None:
+        db.flush()
+        enqueue_pending(db, submission, activity_day=activity_day,
+                        judge_input=judge_input or (question.question_text, question.reference_answer))
+    _increment_activity(db, is_correct, activity_day)
     if is_correct is False:
         _update_wrong_book(db, question.id, user_answer, error_reason or "", now)
         _ensure_review_schedule(db, question.id, now)
+    db.flush()
+    return submission.id
 
+
+# 旧导入有 NULL、空串和「未分类」三种写法，卡片计数与后续筛选使用同一口径。
+QUESTION_CATEGORY = func.coalesce(func.nullif(models.Question.category, ""), "未分类")
 
 # 分类 -> emoji 图标映射（面试鸭风格的大分类卡片）
 _CATEGORY_ICONS = {
@@ -742,15 +766,7 @@ def _question_out(question: models.Question, include_reference_answer: bool = Fa
 # ----------------------------- 题库导入（Agent -> 软件） -----------------------------
 @app.post("/api/questions/import", response_model=QuestionOut, summary="导入单题")
 def import_question(payload: QuestionImport, db: Session = Depends(get_db)):
-    q = models.Question(
-        platform=payload.platform,
-        category=payload.category,
-        tags=payload.tags,
-        question_text=payload.question_text,
-        reference_answer=payload.reference_answer,
-        difficulty=payload.difficulty,
-        created_at=datetime.utcnow(),
-    )
+    q = models.Question(**payload.model_dump(), created_at=datetime.utcnow())
     db.add(q)
     db.commit()
     db.refresh(q)
@@ -760,49 +776,34 @@ def import_question(payload: QuestionImport, db: Session = Depends(get_db)):
 @app.post("/api/questions/import-batch", summary="批量导入题库（JSON）")
 def import_question_batch(payload: QuestionImportBatch, db: Session = Depends(get_db)):
     """从 JSON 题库批量导入。path 为空时使用默认 AI 面试题库。"""
-    import json
-
-    path = payload.path or BANK_PATH
-    if not os.path.exists(path):
-        # 尝试相对当前项目目录
-        alt_path = os.path.join(BASE_DIR, "agent_interview_bank.json")
-        path = alt_path if os.path.exists(alt_path) else path
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="题库文件不存在: " + path)
-
-    with open(path, "r", encoding="utf-8") as f:
-        bank = json.load(f)
-
-    questions = bank.get("questions", [])
-    imported = 0
-    skipped = 0
-    for item in questions:
-        text = item.get("question", "").strip()
-        if not text:
-            continue
-        # 去重：相同题面跳过
-        exists = db.query(models.Question).filter(models.Question.question_text == text).first()
-        if exists:
-            skipped += 1
-            continue
-        # 标签：category + key_points 共同作为标签
-        tag_parts = [item.get("category", "")]
-        tag_parts.extend(item.get("key_points", []))
-        tags = ",".join(sorted({t.strip() for t in tag_parts if t.strip()}))
-
-        q = models.Question(
-            platform=item.get("platform", ""),
-            category=item.get("category", ""),
-            tags=tags,
-            question_text=text,
-            reference_answer=item.get("reference_answer", ""),
-            difficulty=int(item.get("difficulty", 2)),
-            created_at=datetime.utcnow(),
-        )
-        db.add(q)
-        imported += 1
-    db.commit()
-    return {"imported": imported, "skipped": skipped, "total": len(questions), "path": path}
+    root = IMPORT_DIR.resolve()
+    path = (root / (payload.path or "agent_interview_bank.json")).resolve()
+    if not path.is_relative_to(root) or path.suffix.lower() != ".json":
+        raise HTTPException(400, "请选择导入目录中的 JSON 文件")
+    if not path.is_file():
+        raise HTTPException(404, "导入文件不存在")
+    with path.open("rb") as stream:
+        raw = stream.read(MAX_IMPORT_BYTES + 1)
+    if len(raw) > MAX_IMPORT_BYTES:
+        raise HTTPException(413, "导入文件超过 16 MiB")
+    try:
+        bank = json.loads(raw)
+    except (ValueError, UnicodeError) as exc:
+        raise HTTPException(422, "导入文件不是有效 JSON") from exc
+    questions = bank.get("questions") if isinstance(bank, dict) else None
+    if not isinstance(questions, list) or not all(isinstance(q, dict) for q in questions):
+        raise HTTPException(422, "缺少有效的 questions 数组")
+    items = []
+    for index, row in enumerate(questions, start=1):
+        try:
+            item = BankQuestion.model_validate(row)
+        except ValidationError as exc:
+            raise HTTPException(422, f"第 {index} 条题目字段格式无效") from exc
+        tags = sorted({tag.strip() for tag in [item.category, *item.key_points] if tag.strip()})
+        items.append(QuestionImport(question_text=item.question, platform=item.platform,
+                                    category=item.category, tags=",".join(tags),
+                                    reference_answer=item.reference_answer, difficulty=item.difficulty))
+    return {**_import_questions(items, db), "path": str(path.relative_to(root))}
 
 
 @app.get("/api/questions", summary="题库列表")
@@ -822,23 +823,7 @@ def list_questions(
     difficulty: 精确匹配 1~5；level: 1=简单(≤2) 2=中等(=3) 3=困难(≥4)；tags: 逗号分隔多标签。
     order: 'asc' (按 id 升序 = 按学习顺序, 默认) 或 'desc' (最新在前).
     """
-    q = db.query(models.Question)
-    if keyword:
-        q = q.filter(
-            models.Question.question_text.contains(keyword)
-            | models.Question.reference_answer.contains(keyword)
-        )
-    if category:
-        q = q.filter(models.Question.category == category)
-    if difficulty:
-        q = q.filter(models.Question.difficulty == difficulty)
-    if level == 1:
-        q = q.filter(models.Question.difficulty <= 2)
-    elif level == 2:
-        q = q.filter(models.Question.difficulty == 3)
-    elif level == 3:
-        q = q.filter(models.Question.difficulty >= 4)
-    q = _tag_filter(q, tags)
+    q = _filtered_questions(db, keyword, category, difficulty, level, tags)
     total = q.count()
     _sort = models.Question.id.asc() if order == "asc" else models.Question.id.desc()
     qs = q.order_by(_sort).offset(offset).limit(limit).all()
@@ -860,25 +845,13 @@ def get_question(qid: int, db: Session = Depends(get_db)):
 
 
 # ----------------------------- 图片上传 & 题目更新（答案配图） -----------------------------
-_ALLOWED_IMG = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"}
-
-
 @app.post("/api/images/upload", summary="上传图片（用于答案配图）")
-async def upload_image(file: UploadFile = File(...)):
-    """接收图片，保存到 data/images/，返回可访问 URL（/data/images/<文件名>）。"""
-    original = (file.filename or "image").lower()
-    ext = os.path.splitext(original)[1]
-    if ext not in _ALLOWED_IMG:
-        raise HTTPException(
-            status_code=400,
-            detail="仅支持图片格式：png / jpg / jpeg / gif / webp / svg / bmp",
-        )
-    content = await file.read()
-    if not content:
-        raise HTTPException(status_code=400, detail="空文件")
-    # 通过存储抽象层保存：本地模式落 data/images/，S3 模式传对象存储
-    storage = get_storage()
-    url = storage.save(content, file.filename or "image", getattr(file, "content_type", None))
+def upload_image(file: UploadFile = File(...)):
+    content = file.file.read(MAX_IMAGE_BYTES + 1)
+    if len(content) > MAX_IMAGE_BYTES:
+        raise HTTPException(413, "图片超过 8 MiB")
+    mime = validate_image(content, file.filename)
+    url = get_storage().save(content, file.filename, mime)
     fname = url.rsplit("/", 1)[-1]
     return {"url": url, "filename": fname}
 
@@ -919,7 +892,7 @@ def update_question(qid: int, payload: QuestionUpdate, db: Session = Depends(get
 @app.get("/api/categories", summary="分类列表")
 def list_categories(db: Session = Depends(get_db)):
     """去重分类列表，供前端筛选 chips。"""
-    rows = db.query(models.Question.category).distinct().all()
+    rows = db.query(QUESTION_CATEGORY).distinct().all()
     cats = sorted({r[0] for r in rows if r[0]})
     return cats
 
@@ -928,8 +901,8 @@ def list_categories(db: Session = Depends(get_db)):
 def list_category_details(db: Session = Depends(get_db)):
     """分类详情：名称、题目数量、图标，供前端面试鸭风格卡片网格。"""
     rows = (
-        db.query(models.Question.category, func.count(models.Question.id))
-        .group_by(models.Question.category)
+        db.query(QUESTION_CATEGORY, func.count(models.Question.id))
+        .group_by(QUESTION_CATEGORY)
         .all()
     )
     return sorted(
@@ -1004,68 +977,98 @@ def practice_next(
     seen_ids: random 模式下本轮已见题目 id（逗号分隔），用于去重。
     offset: sequential 模式下的序号（0 基），服务端自动对总数取模。
     """
+    recent_ids = [int(token) for part in seen_ids.split(",")
+                  if (token := part.strip()).isascii() and token.isdigit() and len(token) <= 19]
+    return _next_question(db, category, categories, mode, offset, recent_ids)
+
+
+class PracticeHistory(BaseModel):
+    seen_ids: list[int] = Field(default_factory=list)
+
+
+@app.post("/api/practice/next", summary="随机刷题（长历史列表）")
+def practice_next_with_history(payload: PracticeHistory, category: str = "", categories: str = "",
+                               db: Session = Depends(get_db)):
+    return _next_question(db, category, categories, "random", 0, payload.seen_ids)
+
+
+def _next_question(db, category, categories, mode, offset, recent_ids):
     q = db.query(models.Question)
     cat_list = [c.strip() for c in categories.split(",") if c.strip()] if categories else []
     if cat_list:
-        q = q.filter(models.Question.category.in_(cat_list))
+        q = q.filter(QUESTION_CATEGORY.in_(cat_list))
     elif category:
-        q = q.filter(models.Question.category == category)
-    total = q.count()
-    if total == 0:
-        raise HTTPException(status_code=404, detail="该范围内没有题目，换一个分类试试")
-
+        q = q.filter(QUESTION_CATEGORY == category)
     ordered = q.order_by(models.Question.id.asc())
-
     if mode == "sequential":
+        total = q.count()
+        if not total:
+            raise HTTPException(status_code=404, detail="该范围内没有题目，换一个分类试试")
         idx = offset % total
         question = ordered.offset(idx).first()
-        return _practice_out(question, total, total - (idx + 1), offset >= total)
+        if question is None:
+            raise HTTPException(409, "题库已更新，请重试")
+        return _practice_out(question, total, total - idx - 1, offset >= total and idx == 0)
 
-    # random 模式
-    seen = set()
-    for s in seen_ids.split(","):
-        s = s.strip()
-        if s.isdigit():
-            seen.add(int(s))
-    filter_ids = [x.id for x in ordered.with_entities(models.Question.id).all()]
-    seen_in_filter = seen & set(filter_ids)
-    unseen_ids = [i for i in filter_ids if i not in seen_in_filter]
-    if unseen_ids:
-        pick = (db.query(models.Question)
-                .filter(models.Question.id.in_(unseen_ids))
-                .order_by(func.random()).first())
-        return _practice_out(pick, total, len(unseen_ids) - 1, False)
-
-    # 全部刷完 -> 重置新一轮（范围>1 时尽量不重复刚刷到的那一道）
-    pool = set(filter_ids)
-    if len(pool) > 1 and seen_in_filter:
-        pool = pool - {max(seen_in_filter)}
-    pick = (db.query(models.Question)
-            .filter(models.Question.id.in_(list(pool)))
-            .order_by(func.random()).first())
-    return _practice_out(pick, total, 0, True)
+    available = [row.id for row in q.with_entities(models.Question.id)]
+    if not available:
+        raise HTTPException(404, "该范围内没有题目，换一个分类试试")
+    seen = set(recent_ids)
+    candidates = [qid for qid in available if qid not in seen]
+    new_round = not candidates
+    if new_round:
+        last_id = recent_ids[-1] if recent_ids else None
+        candidates = [qid for qid in available if qid != last_id] or available
+    question = db.get(models.Question, random.choice(candidates))
+    if question is None:
+        raise HTTPException(409, "题库已更新，请重试")
+    remaining = len(available) - 1 if new_round else len(candidates) - 1
+    return _practice_out(question, len(available), remaining, new_round)
 
 
 # ----------------------------- 提交作答（触发判题） -----------------------------
+@app.get("/api/submissions/{submission_id}/judgment", summary="查看本次作答的最新判题结果")
+def submission_judgment(submission_id: int, response: Response, db: Session = Depends(get_db)):
+    submission = db.get(models.Submission, submission_id)
+    if submission is None:
+        raise HTTPException(404, "作答记录不存在")
+    response.headers["Cache-Control"] = "no-store"
+    return {"submission_id": submission.id, "is_correct": submission.is_correct,
+            "source": submission.judge_by or "", "explanation": submission.explanation or ""}
+
+
 @app.post("/api/answer", response_model=AnswerOut, summary="提交作答")
 async def answer(payload: AnswerIn, db: Session = Depends(get_db)):
-    q = db.query(models.Question).filter(models.Question.id == payload.question_id).first()
-    if not q:
-        raise HTTPException(status_code=404, detail="题目不存在")
-
-    is_correct, explanation, error_reason, source = await judge(
-        q.question_text, q.reference_answer, payload.user_answer
-    )
-
-    _persist_answer_result(
-        db, q, payload.user_answer, is_correct, explanation, error_reason or "", source,
-    )
-    # 一次作答及其热力图/错题/复习副作用必须同事务落库，避免半成功状态。
-    db.commit()
-
-    return {"is_correct": is_correct, "explanation": explanation,
-            "error_reason": error_reason or "", "source": source,
-            "reference_answer": q.reference_answer or ""}
+    claim, cached = begin_request(db, "answer", payload)
+    if cached is not None:
+        return cached
+    try:
+        snapshot = db.query(models.Question.question_text, models.Question.reference_answer,
+                            models.Question.created_at).filter_by(id=payload.question_id).first()
+        if snapshot is None:
+            raise HTTPException(404, "题目不存在")
+        # 只携带值快照到远端调用，不跨 await 持有读事务或 ORM 对象。
+        question_text, reference_answer, created_at = tuple(snapshot)
+        db.rollback()
+        is_correct, explanation, error_reason, source = await judge_with_lease(
+            db, claim, judge(question_text, reference_answer, payload.user_answer))
+        exists = db.query(models.Question).filter_by(id=payload.question_id).update(
+            {"id": models.Question.id}, synchronize_session=False)
+        q = db.get(models.Question, payload.question_id) if exists else None
+        # SQLite 旧库时间有多种文本格式，锁定后按解析出的时间比较。
+        if q is None or q.created_at != created_at:
+            raise HTTPException(404, "题目已删除，无法保存本次作答")
+        sid = _persist_answer_result(db, q, payload.user_answer, is_correct, explanation,
+                                     error_reason or "", source, judge_input=(question_text, reference_answer))
+        response = {"submission_id": sid, "is_correct": is_correct, "explanation": explanation,
+                    "error_reason": error_reason or "", "source": source,
+                    "reference_answer": reference_answer or ""}
+        finish_request(db, claim, response)
+        db.commit()
+        return response
+    except BaseException:
+        release_request(db, claim)
+        raise
 
 
 # ----------------------------- 智能组卷：一次性提交 -----------------------------
@@ -1090,71 +1093,62 @@ async def quiz_submit(payload: QuizSubmitIn, db: Session = Depends(get_db)):
     qids = [it.question_id for it in items]
     if len(set(qids)) != len(qids):
         raise HTTPException(status_code=422, detail="同一份试卷不能重复提交同一道题")
-    qmap = {q.id: q for q in db.query(models.Question).filter(models.Question.id.in_(qids)).all()}
+    claim, cached = begin_request(db, "quiz", payload)
+    if cached is not None:
+        return cached
+    try:
+        snapshots = {row.id: (row.question_text, row.reference_answer, row.created_at)
+                     for row in db.query(models.Question.id, models.Question.question_text,
+                                         models.Question.reference_answer, models.Question.created_at)
+                     .filter(models.Question.id.in_(qids)).all()}
+        db.rollback()
+        judge_semaphore = _asyncio.Semaphore(MAX_CONCURRENT_JUDGES)
 
-    # 2) 有上限地并发调判题（远端 LLM/Agent 为 IO 密集型，但不能把一次请求
-    # 扩张成无限连接/限流压力）。
-    judge_semaphore = _asyncio.Semaphore(MAX_CONCURRENT_JUDGES)
+        async def _one(item):
+            snapshot = snapshots.get(item.question_id)
+            if snapshot is None or not item.user_answer.strip():
+                return None
+            async with judge_semaphore:
+                return await judge(snapshot[0], snapshot[1], item.user_answer)
 
-    async def _one(it):
-        q = qmap.get(it.question_id)
-        if not q or not (it.user_answer or "").strip():
-            return (it, None, None, None, None)
-        async with judge_semaphore:
-            is_correct, explanation, error_reason, source = await judge(
-                q.question_text, q.reference_answer, it.user_answer
-            )
-        return (it, q, is_correct, (explanation, error_reason, source), None)
-
-    judge_results = await _asyncio.gather(*[_one(it) for it in items], return_exceptions=True)
-
-    # 3) 串行写库（SQLAlchemy session 不是 async-safe，串行避免锁竞争）
-    out_results: List[QuizResultItem] = []
-    for idx, res in enumerate(judge_results):
-        # 判题阶段抛异常（一般是 judge() 内部问题） -> 标记为「待重试」，不阻断整卷
-        if isinstance(res, Exception):
-            it = items[idx]
-            out_results.append(QuizResultItem(
-                question_id=it.question_id, is_correct=None,
-                explanation=f"判题异常：{type(res).__name__}: {str(res)[:200]}",
-                error_reason="judge_exception", judge_by="pending",
-                reference_answer="", user_answer=it.user_answer,
-            ))
-            continue
-        (it, q, is_correct, judge_meta, _) = res
-        if not q:
-            # 题被删 / 不存在
-            out_results.append(QuizResultItem(
-                question_id=it.question_id, is_correct=None,
-                explanation="题目不存在", error_reason="question_missing",
-                judge_by="", reference_answer="", user_answer=it.user_answer,
-            ))
-            continue
-        if judge_meta is None:
-            # 空答案：跳过判题，但前端能看到「未作答」标记
-            out_results.append(QuizResultItem(
-                question_id=it.question_id, is_correct=None,
-                explanation="未作答", error_reason="",
-                judge_by="", reference_answer=q.reference_answer or "",
-                user_answer=it.user_answer,
-            ))
-            continue
-
-        explanation, error_reason, source = judge_meta
-
-        _persist_answer_result(
-            db, q, it.user_answer, is_correct, explanation, error_reason or "", source,
-        )
-
-        out_results.append(QuizResultItem(
-            question_id=q.id, is_correct=is_correct,
-            explanation=explanation or "", error_reason=error_reason or "",
-            judge_by=source or "", reference_answer=q.reference_answer or "",
-            user_answer=it.user_answer,
-        ))
-
-    db.commit()
-    return {"results": out_results}
+        results = await judge_with_lease(
+            db, claim, _asyncio.gather(*[_one(item) for item in items], return_exceptions=True))
+        # 稳定顺序锁定仍存在的题，避免两份重叠试卷逆序锁定造成死锁。
+        existing = []
+        for qid in sorted(snapshots):
+            if db.query(models.Question).filter_by(id=qid).update(
+                {"id": models.Question.id}, synchronize_session=False):
+                existing.append(qid)
+        qmap = {q.id: q for q in db.query(models.Question).filter(models.Question.id.in_(existing))
+                if q.created_at == snapshots[q.id][2]}
+        out_results = []
+        for item, result in zip(items, results):
+            q = qmap.get(item.question_id)
+            if q is None:
+                out_results.append(QuizResultItem(question_id=item.question_id, explanation="题目不存在",
+                                                 error_reason="question_missing", user_answer=item.user_answer))
+                continue
+            reference = snapshots[q.id][1] or ""
+            if result is None:
+                out_results.append(QuizResultItem(question_id=q.id, explanation="未作答",
+                                                 reference_answer=reference, user_answer=item.user_answer))
+                continue
+            if isinstance(result, BaseException):
+                result = (None, "判题服务暂不可用", "judge_exception", "pending")
+            is_correct, explanation, error_reason, source = result
+            sid = _persist_answer_result(db, q, item.user_answer, is_correct, explanation,
+                                         error_reason or "", source, judge_input=snapshots[q.id][:2])
+            out_results.append(QuizResultItem(question_id=q.id, submission_id=sid, is_correct=is_correct,
+                                             explanation=explanation or "", error_reason=error_reason or "",
+                                             judge_by=source or "", reference_answer=reference,
+                                             user_answer=item.user_answer))
+        response = {"results": [item.model_dump() for item in out_results]}
+        finish_request(db, claim, response)
+        db.commit()
+        return response
+    except BaseException:
+        release_request(db, claim)
+        raise
 
 
 # ----------------------------- 热力图数据 -----------------------------
@@ -1182,7 +1176,7 @@ def get_wrong_book(
         models.Question, models.WrongBook.question_id == models.Question.id
     )
     if category:
-        query = query.filter(models.Question.category == category)
+        query = query.filter(QUESTION_CATEGORY == category)
     if only_reviewing:
         query = query.filter(models.WrongBook.mastery != "mastered")
     if error_reason:
@@ -1227,10 +1221,14 @@ def get_wrong_book(
 
 @app.post("/api/wrong-book/{question_id}/master", summary="标记已掌握")
 def mark_mastered(question_id: int, db: Session = Depends(get_db)):
+    if not db.query(models.Question).filter_by(id=question_id).update(
+            {"id": models.Question.id}, synchronize_session=False):
+        raise HTTPException(404, "题目不存在")
     wb = db.query(models.WrongBook).filter(models.WrongBook.question_id == question_id).first()
     if not wb:
         raise HTTPException(status_code=404, detail="错题不存在")
     wb.mastery = "mastered"
+    wb.updated_at = datetime.utcnow()
     rs = db.query(models.ReviewSchedule).filter(models.ReviewSchedule.question_id == question_id).first()
     if rs:
         rs.status = "done"
@@ -1300,7 +1298,7 @@ def export_wrong_book_pdf(db: Session = Depends(get_db)):
     if not pdf._font_path:
         raise HTTPException(status_code=500, detail="未找到可用的中文字体，请安装 simhei/simsun 字体")
     pdf.set_margins(18, 18, 18)
-    pdf.set_auto_page_break(auto=False)  # 由我们手动控制分页，更稳
+    pdf.set_auto_page_break(auto=True, margin=18)
     pdf.add_page()
 
     w = pdf.w - pdf.l_margin - pdf.r_margin
@@ -1374,7 +1372,15 @@ def export_wrong_book_pdf(db: Session = Depends(get_db)):
 
     out_path = os.path.join(BASE_DIR, "data", "wrong_book_export.pdf")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    pdf.output(out_path)
+    # 长答案可跨页；完整生成后再替换，下载请求不会读到半个 PDF。
+    content = pdf.output()
+    with NamedTemporaryFile(dir=os.path.dirname(out_path), delete=False) as temporary:
+        temp_path = Path(temporary.name)
+    try:
+        temp_path.write_bytes(content)
+        os.replace(temp_path, out_path)
+    finally:
+        temp_path.unlink(missing_ok=True)
     return {"download_url": "/data/wrong_book_export.pdf", "count": len(rows)}
 
 
@@ -1390,7 +1396,7 @@ def export_wrong_book_md(
         models.Question, models.WrongBook.question_id == models.Question.id
     )
     if category:
-        query = query.filter(models.Question.category == category)
+        query = query.filter(QUESTION_CATEGORY == category)
     if only_reviewing:
         query = query.filter(models.WrongBook.mastery != "mastered")
 
@@ -1441,18 +1447,20 @@ def _md_item(idx: int, q, wb, zh: dict) -> list:
 # ----------------------------- 待复习 & 复习反馈 -----------------------------
 @app.get("/api/review/due", summary="待复习列表")
 def get_due(db: Session = Depends(get_db)):
-    due = db.query(models.ReviewSchedule).filter(
+    due = db.query(models.ReviewSchedule, models.Question, models.WrongBook).join(
+        models.Question, models.Question.id == models.ReviewSchedule.question_id,
+    ).outerjoin(
+        models.WrongBook, models.WrongBook.question_id == models.ReviewSchedule.question_id,
+    ).filter(
         models.ReviewSchedule.status == "pending",
         models.ReviewSchedule.next_review_at <= datetime.utcnow(),
-    ).all()
+    ).order_by(models.ReviewSchedule.next_review_at, models.ReviewSchedule.id).all()
     result = []
-    for r in due:
-        q = db.query(models.Question).filter(models.Question.id == r.question_id).first()
-        wb = db.query(models.WrongBook).filter(models.WrongBook.question_id == r.question_id).first()
-        if not q:
-            continue
+    for r, q, wb in due:
         result.append({
             "question_id": q.id,
+            "stage": r.stage or 1,
+            "review_count": r.review_count or 0,
             "category": q.category,
             "question_text": q.question_text,
             "reference_answer": q.reference_answer,
@@ -1464,26 +1472,45 @@ def get_due(db: Session = Depends(get_db)):
 
 @app.post("/api/review/{question_id}", summary="复习反馈")
 def review_feedback(question_id: int, payload: ReviewFeedback, db: Session = Depends(get_db)):
+    if not db.query(models.Question).filter_by(id=question_id).update(
+            {"id": models.Question.id}, synchronize_session=False):
+        raise HTTPException(404, "题目不存在")
     rs = db.query(models.ReviewSchedule).filter(models.ReviewSchedule.question_id == question_id).first()
     if not rs:
         raise HTTPException(status_code=404, detail="无复习计划")
     steps = get_steps(get_settings(db).ebbinghaus_steps)
 
-    rs.stage = advance_stage(rs.stage or 1, payload.remembered, steps)
-    rs.review_count = (rs.review_count or 0) + 1
-    rs.last_reviewed_at = datetime.utcnow()
+    previous_stage, previous_count = rs.stage or 1, rs.review_count or 0
+    if ((payload.expected_stage is not None and payload.expected_stage != previous_stage)
+            or (payload.expected_review_count is not None and payload.expected_review_count != previous_count)):
+        raise HTTPException(409, "复习记录已更新，请刷新后重试")
+    stage = advance_stage(previous_stage, payload.remembered, steps)
+    now = datetime.utcnow()
+    status = "done" if is_mastered(stage, steps) else "pending"
+    next_at = rs.next_review_at if status == "done" else next_review_for_stage(stage, steps, base=now)
+    changed = db.query(models.ReviewSchedule).filter(
+        models.ReviewSchedule.id == rs.id,
+        func.coalesce(models.ReviewSchedule.stage, 1) == previous_stage,
+        func.coalesce(models.ReviewSchedule.review_count, 0) == previous_count,
+    ).update({"stage": stage, "review_count": previous_count + 1, "last_reviewed_at": now,
+              "status": status, "next_review_at": next_at}, synchronize_session=False)
+    if not changed:
+        raise HTTPException(409, "复习记录已更新，请刷新后重试")
+    db.refresh(rs)
 
     if is_mastered(rs.stage, steps):
         rs.status = "done"
         wb = db.query(models.WrongBook).filter(models.WrongBook.question_id == question_id).first()
         if wb:
             wb.mastery = "mastered"
+            wb.updated_at = rs.last_reviewed_at
     else:
         rs.status = "pending"
         rs.next_review_at = next_review_for_stage(rs.stage, steps, base=datetime.utcnow())
         wb = db.query(models.WrongBook).filter(models.WrongBook.question_id == question_id).first()
-        if wb and wb.mastery != "mastered":
+        if wb:
             wb.mastery = "reviewing"
+            wb.updated_at = rs.last_reviewed_at
     db.commit()
     return {"stage": rs.stage, "status": rs.status,
             "next_review_at": rs.next_review_at.isoformat() if rs.next_review_at else ""}
@@ -1493,6 +1520,7 @@ def review_feedback(question_id: int, payload: ReviewFeedback, db: Session = Dep
 @app.get("/api/settings", summary="读取设置")
 def read_settings(db: Session = Depends(get_db)):
     s = get_settings(db)
+    db.commit()
     return {"email": s.email, "push_time": s.push_time,
             "ebbinghaus_steps": s.ebbinghaus_steps, "app_base_url": s.app_base_url}
 
@@ -1507,13 +1535,7 @@ def update_settings(payload: SettingsIn, db: Session = Depends(get_db)):
     s.ebbinghaus_steps = steps
     s.app_base_url = (payload.app_base_url or DEFAULT_APP_BASE_URL).strip()
     db.commit()
-    # 重启调度以应用新的推送时间
-    try:
-        scheduler.reschedule_job("daily_review", trigger="cron",
-                                 hour=int(push_time.split(":")[0]),
-                                 minute=int(push_time.split(":")[1]))
-    except Exception:
-        pass
+    # 调度器每分钟读取持久化时间，无需为当前 worker 改写 cron。
     return {"status": "updated"}
 
 
@@ -1534,10 +1556,10 @@ def quiz_generate(
     company 命中 platform 字段（如「字节」「美团」）。
     返回题目列表（id/category/platform/tags/question_text）。
     """
-    count = max(1, min(int(count), 100))
+    count = max(1, min(int(count), MAX_QUIZ_ITEMS))
     base = db.query(models.Question)
     if category:
-        base = base.filter(models.Question.category == category)
+        base = base.filter(QUESTION_CATEGORY == category)
     if company:
         base = base.filter(models.Question.platform.ilike("%" + company + "%"))
     all_ids = [r[0] for r in base.with_entities(models.Question.id).all()]
@@ -1548,23 +1570,24 @@ def quiz_generate(
     if mode in ("weak", "mixed"):
         wb = (
             db.query(models.WrongBook)
-            .filter(models.WrongBook.question_id.in_(all_ids))
-            .order_by(models.WrongBook.wrong_count.desc())
+            .filter(models.WrongBook.question_id.in_(all_ids),
+                    func.coalesce(models.WrongBook.mastery, "") != "mastered")
+            .order_by(models.WrongBook.wrong_count.desc(), models.WrongBook.id)
             .all()
         )
         weak_ids = [w.question_id for w in wb]
 
     if mode == "weak":
-        pool = list(weak_ids)
-        random.shuffle(pool)
-        picked = pool[:count]
-        rest = [i for i in all_ids if i not in set(picked)]
+        picked = weak_ids[:count]
+        picked_set = set(picked)
+        rest = [i for i in all_ids if i not in picked_set]
         random.shuffle(rest)
         picked += rest[: count - len(picked)]
     elif mode == "mixed":
         half = count // 2
         picked = list(weak_ids[:half])
-        rest = [i for i in all_ids if i not in set(picked)]
+        picked_set = set(picked)
+        rest = [i for i in all_ids if i not in picked_set]
         random.shuffle(rest)
         picked += rest[: count - len(picked)]
     else:  # random
@@ -1626,6 +1649,13 @@ def delete_question(qid: int, db: Session = Depends(get_db)):
     q = db.query(models.Question).filter(models.Question.id == qid).first()
     if not q:
         raise HTTPException(status_code=404, detail="题目不存在")
+    db.query(models.Question).filter_by(id=qid).update({"id": models.Question.id}, synchronize_session=False)
+    db.query(models.Submission).filter(
+        models.Submission.question_id == qid, models.Submission.judge_by == "pending",
+    ).update({"judge_by": "cancelled", "explanation": "题目已删除，已停止判题"}, synchronize_session=False)
+    db.query(JudgmentRetry).filter(JudgmentRetry.submission_id.in_(
+        db.query(models.Submission.id).filter(models.Submission.question_id == qid),
+    )).delete(synchronize_session=False)
     db.query(models.WrongBook).filter(models.WrongBook.question_id == qid).delete()
     db.query(models.ReviewSchedule).filter(models.ReviewSchedule.question_id == qid).delete()
     db.query(models.QuestionNote).filter(models.QuestionNote.question_id == qid).delete()
@@ -1637,26 +1667,15 @@ def delete_question(qid: int, db: Session = Depends(get_db)):
 @app.get("/api/questions/export", summary="导出题目（JSON）")
 def export_questions(
     keyword: str = "", category: str = "", difficulty: int = 0,
-    tags: str = "", db: Session = Depends(get_db),
+    tags: str = "", db: Session = Depends(get_db), level: int = 0,
 ):
     """导出满足条件的题目为 JSON（供批量备份/迁移）。"""
-    q = db.query(models.Question)
-    if keyword:
-        q = q.filter(
-            models.Question.question_text.contains(keyword)
-            | models.Question.reference_answer.contains(keyword)
-        )
-    if category:
-        q = q.filter(models.Question.category == category)
-    if difficulty:
-        q = q.filter(models.Question.difficulty == difficulty)
-    q = _tag_filter(q, tags)
-    rows = q.order_by(models.Question.id).all()
-    data = [{
-        "platform": r.platform, "category": r.category, "tags": r.tags,
-        "question_text": r.question_text, "reference_answer": r.reference_answer,
-        "difficulty": r.difficulty,
-    } for r in rows]
+    q = _filtered_questions(db, keyword, category, difficulty, level, tags)
+    data = []
+    for row in q.order_by(models.Question.id):
+        item = _question_out(row, include_reference_answer=True)
+        del item["id"]
+        data.append(item)
     body = json.dumps(data, ensure_ascii=False, indent=2)
     return Response(
         content=body, media_type="application/json",
@@ -1664,35 +1683,31 @@ def export_questions(
     )
 
 
-class QuestionImportList(BaseModel):
-    items: List[QuestionImport]
+def _filtered_questions(db, keyword, category, difficulty, level, tags):
+    q = db.query(models.Question)
+    if keyword:
+        q = q.filter(
+            models.Question.question_text.contains(keyword)
+            | models.Question.reference_answer.contains(keyword)
+        )
+    if category:
+        q = q.filter(QUESTION_CATEGORY == category)
+    if difficulty:
+        q = q.filter(models.Question.difficulty == difficulty)
+    if level == 1:
+        q = q.filter(models.Question.difficulty <= 2)
+    elif level == 2:
+        q = q.filter(models.Question.difficulty == 3)
+    elif level == 3:
+        q = q.filter(models.Question.difficulty >= 4)
+    return _tag_filter(q, tags)
 
 
 @app.post("/api/questions/import-json", summary="批量导入题目（JSON 数组）")
 def import_questions_json(payload: QuestionImportList, db: Session = Depends(get_db)):
     """接收 {items:[{platform,category,tags,question_text,reference_answer,difficulty}]}，
     按题面去重后批量入库。"""
-    imported = 0
-    skipped = 0
-    for item in payload.items:
-        text = (item.question_text or "").strip()
-        if not text:
-            skipped += 1
-            continue
-        exists = db.query(models.Question).filter(
-            models.Question.question_text == text).first()
-        if exists:
-            skipped += 1
-            continue
-        db.add(models.Question(
-            platform=item.platform, category=item.category, tags=item.tags,
-            question_text=text, reference_answer=item.reference_answer,
-            difficulty=item.difficulty,
-            created_at=datetime.utcnow(),
-        ))
-        imported += 1
-    db.commit()
-    return {"imported": imported, "skipped": skipped, "total": len(payload.items)}
+    return _import_questions(payload.items, db)
 
 
 # B. 分类管理：元数据 + 重命名 / 合并 / 删除
@@ -1706,8 +1721,8 @@ def _category_meta_map(db: Session) -> dict:
 def list_category_meta(db: Session = Depends(get_db)):
     """合并 questions 实际分类 与 category_meta 预置分类，返回 {name, icon, description, count}。"""
     counts = dict(
-        db.query(models.Question.category, func.count(models.Question.id))
-        .group_by(models.Question.category).all()
+        db.query(QUESTION_CATEGORY, func.count(models.Question.id))
+        .group_by(QUESTION_CATEGORY).all()
     )
     meta = _category_meta_map(db)
     names = set(counts.keys()) | set(meta.keys())
@@ -1763,7 +1778,7 @@ def rename_category(payload: dict, db: Session = Depends(get_db)):
     new = (payload.get("new_name") or "").strip()
     if not old or not new:
         raise HTTPException(status_code=422, detail="old_name 与 new_name 均必填")
-    db.query(models.Question).filter(models.Question.category == old).update(
+    db.query(models.Question).filter(QUESTION_CATEGORY == old).update(
         {models.Question.category: new})
     m = db.query(models.CategoryMeta).filter(models.CategoryMeta.name == old).first()
     if m:
@@ -1780,7 +1795,7 @@ def merge_category(payload: dict, db: Session = Depends(get_db)):
         raise HTTPException(status_code=422, detail="from_name 与 to_name 均必填")
     if frm == to:
         raise HTTPException(status_code=400, detail="源与目标不能相同")
-    db.query(models.Question).filter(models.Question.category == frm).update(
+    db.query(models.Question).filter(QUESTION_CATEGORY == frm).update(
         {models.Question.category: to})
     fm = db.query(models.CategoryMeta).filter(models.CategoryMeta.name == frm).first()
     if fm:
@@ -1799,7 +1814,7 @@ def delete_category(name: str, target: str = "", db: Session = Depends(get_db)):
     tgt = (target or "").strip()
     if tgt == name:
         raise HTTPException(status_code=400, detail="目标分类不能与待删除分类相同")
-    db.query(models.Question).filter(models.Question.category == name).update(
+    db.query(models.Question).filter(QUESTION_CATEGORY == name).update(
         {models.Question.category: tgt})
     db.query(models.CategoryMeta).filter(models.CategoryMeta.name == name).delete()
     db.commit()
@@ -1820,12 +1835,13 @@ def delete_experience(eid: int, db: Session = Depends(get_db)):
 @app.get("/api/admin/stats", summary="管理后台统计数据")
 def admin_stats(db: Session = Depends(get_db)):
     total_questions = db.query(models.Question).count()
-    total_categories = db.query(models.Question.category).distinct().count()
+    total_categories = db.query(QUESTION_CATEGORY).distinct().count()
     total_experiences = db.query(models.InterviewExp).count()
     total_submissions = db.query(models.Submission).count()
     correct = db.query(models.Submission).filter(models.Submission.is_correct == True).count()
     wrong = db.query(models.Submission).filter(models.Submission.is_correct == False).count()
-    accuracy = round(correct / total_submissions * 100, 1) if total_submissions else 0.0
+    judged = correct + wrong
+    accuracy = round(correct / judged * 100, 1) if judged else 0.0
     wrong_book_count = db.query(models.WrongBook).count()
     review_due = db.query(models.ReviewSchedule).filter(
         models.ReviewSchedule.status == "pending",
@@ -1837,8 +1853,8 @@ def admin_stats(db: Session = Depends(get_db)):
                  "correct": a.correct, "wrong": a.wrong} for a in acts]
     by_category = [
         {"name": r[0] or "未分类", "count": r[1]}
-        for r in db.query(models.Question.category, func.count(models.Question.id))
-        .group_by(models.Question.category)
+        for r in db.query(QUESTION_CATEGORY, func.count(models.Question.id))
+        .group_by(QUESTION_CATEGORY)
         .order_by(func.count(models.Question.id).desc()).all()
     ]
     return {
@@ -1905,16 +1921,12 @@ def _range_stats(db, start, end):
         "answered": a,
         "correct": c,
         "wrong": w,
-        "accuracy": round(c / a * 100, 1) if a else 0.0,
+        "accuracy": round(c / (c + w) * 100, 1) if c + w else 0.0,
     }
 
 
 def _focus_minutes(db, start_dt, end_dt):
-    v = db.query(func.sum(models.FocusSession.actual_minutes)).filter(
-        models.FocusSession.completed == True,
-        models.FocusSession.started_at >= start_dt,
-        models.FocusSession.started_at <= end_dt,
-    ).scalar()
+    v = completed_focus(db, start_dt, end_dt).with_entities(func.sum(models.FocusSession.actual_minutes)).scalar()
     return int(v or 0)
 
 
@@ -1936,9 +1948,10 @@ def growth_summary(db: Session = Depends(get_db)):
     cats_total = db.query(models.Question.category).filter(
         models.Question.category != "").distinct().count()
     reviews = int(db.query(func.sum(models.ReviewSchedule.review_count)).scalar() or 0)
-    focus_done = db.query(models.FocusSession).filter(models.FocusSession.completed == True).count()
+    focus_done = db.query(models.FocusSession).filter(models.FocusSession.completed == True,
+                                                      models.FocusSession.kind.in_(FOCUS_KINDS)).count()
     focus_min = int(db.query(func.sum(models.FocusSession.actual_minutes)).filter(
-        models.FocusSession.completed == True).scalar() or 0)
+        models.FocusSession.completed == True, models.FocusSession.kind.in_(FOCUS_KINDS)).scalar() or 0)
     exp = db.query(models.InterviewExp).count()
     wrong_book = db.query(models.WrongBook).count()
 
@@ -2061,8 +2074,8 @@ else:
 # ----------------------------- 番茄待办：分类 / 完成记录 / 专注统计 -----------------------------
 class PomodoroCompleteIn(BaseModel):
     todo_id: Optional[int] = None
-    kind: str = "focus"          # focus | break
-    minutes: int = 25
+    kind: str = Field(default="focus", pattern="^(focus|break)$")
+    minutes: int = Field(default=25, ge=1, le=1440)
     completed: bool = True
 
 
@@ -2100,17 +2113,10 @@ def pomodoro_complete(p: PomodoroCompleteIn, db: Session = Depends(get_db)):
 
 def _day_minutes_map(db, start_dt, end_dt):
     """区间内已完成专注按「本地日期」聚合为 {YYYY-MM-DD: 分钟数}（DB 无关，便于跨库）。"""
-    rows = (
-        db.query(models.FocusSession.started_at, models.FocusSession.actual_minutes)
-        .filter(
-            models.FocusSession.completed == True,
-            models.FocusSession.started_at >= start_dt,
-            models.FocusSession.started_at <= end_dt,
-        )
-        .all()
-    )
+    rows = completed_focus(db, start_dt, end_dt).all()
     m = {}
-    for st, mins in rows:
+    for row in rows:
+        st, mins = local_started_at(row), row.actual_minutes
         if not st:
             continue
         key = st.date().isoformat()
@@ -2125,16 +2131,7 @@ def pomodoro_stats(db: Session = Depends(get_db)):
 
     today_start = datetime(today.year, today.month, today.day)
     today_minutes = _focus_minutes(db, today_start, now)
-    today_count = (
-        db.query(models.FocusSession)
-        .filter(
-            models.FocusSession.completed == True,
-            models.FocusSession.kind == "focus",
-            models.FocusSession.started_at >= today_start,
-            models.FocusSession.started_at <= now,
-        )
-        .count()
-    )
+    today_count = completed_focus(db, today_start, now).count()
 
     monday = today - timedelta(days=today.weekday())
     week_start = datetime(monday.year, monday.month, monday.day)
@@ -2170,64 +2167,7 @@ def pomodoro_stats(db: Session = Depends(get_db)):
 
 app.include_router(todo_router)
 
-# ==================== 个人笔记（一题多条，单人系统） ====================
-def _note_to_out(n):
-    return NoteOut(
-        id=n.id, question_id=n.question_id, content=n.content,
-        created_at=n.created_at.isoformat() if n.created_at else None,
-        updated_at=n.updated_at.isoformat() if n.updated_at else None,
-    )
-
-
-@app.get("/api/questions/{qid}/notes", response_model=List[NoteOut], summary="列出某题所有笔记（按时间倒序）")
-def list_notes(qid: int, db: Session = Depends(get_db)):
-    if not db.query(models.Question.id).filter(models.Question.id == qid).first():
-        raise HTTPException(status_code=404, detail="题目不存在")
-    rows = (db.query(models.QuestionNote)
-              .filter(models.QuestionNote.question_id == qid)
-              .order_by(models.QuestionNote.created_at.desc(),
-                        models.QuestionNote.id.desc())
-              .all())
-    return [_note_to_out(r) for r in rows]
-
-
-@app.post("/api/questions/{qid}/notes", response_model=NoteOut, summary="新增一条笔记")
-def create_note(qid: int, payload: NoteIn, db: Session = Depends(get_db)):
-    if not db.query(models.Question).filter(models.Question.id == qid).first():
-        raise HTTPException(status_code=404, detail="题目不存在")
-    n = models.QuestionNote(question_id=qid, content=payload.content)
-    db.add(n)
-    db.commit()
-    db.refresh(n)
-    return _note_to_out(n)
-
-
-@app.put("/api/questions/{qid}/notes/{note_id}", response_model=NoteOut, summary="更新一条笔记")
-def update_note(qid: int, note_id: int, payload: NoteIn, db: Session = Depends(get_db)):
-    n = (db.query(models.QuestionNote)
-           .filter(models.QuestionNote.id == note_id,
-                   models.QuestionNote.question_id == qid)
-           .first())
-    if not n:
-        raise HTTPException(status_code=404, detail="笔记不存在")
-    n.content = payload.content
-    db.commit()
-    db.refresh(n)
-    return _note_to_out(n)
-
-
-@app.delete("/api/questions/{qid}/notes/{note_id}", summary="删除一条笔记")
-def delete_note(qid: int, note_id: int, db: Session = Depends(get_db)):
-    n = (db.query(models.QuestionNote)
-           .filter(models.QuestionNote.id == note_id,
-                   models.QuestionNote.question_id == qid)
-           .first())
-    if not n:
-        raise HTTPException(status_code=404, detail="笔记不存在")
-    db.delete(n)
-    db.commit()
-    return {"ok": True}
-
+app.include_router(notes_router)
 
 # 静态资源：按需暴露子目录，严禁把整个 data/ 挂成静态文件（否则 SQLite 库、WAL、备份可被 HTTP 下载）。
 #   - 上传图片：/data/images/<file>
@@ -2235,8 +2175,7 @@ def delete_note(qid: int, note_id: int, db: Session = Depends(get_db)):
 IMAGES_DIR = os.path.join(BASE_DIR, "data", "images")
 # 启动时保证目录和路由都存在：首次上传前访问图片 URL 不应因为 mount 缺失而被
 # SPA 根路由吞掉。只暴露这一子目录，绝不暴露整个 data/。
-os.makedirs(IMAGES_DIR, exist_ok=True)
-app.mount("/data/images", StaticFiles(directory=IMAGES_DIR), name="images")
+app.mount("/data/images", StaticFiles(directory=IMAGES_DIR, check_dir=False), name="images")
 
 @app.get("/data/wrong_book_export.pdf", include_in_schema=False)
 def wrong_book_pdf():

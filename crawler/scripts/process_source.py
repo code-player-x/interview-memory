@@ -156,6 +156,64 @@ def split_candidates(text):
     return out
 
 
+MD_MARKER = re.compile(r"^(?:#{1,6}\s+|[-*+]\s+|\d+[.)、]\s*)+")
+MD_QUESTION = re.compile(r"^(?:Q\s*\d+(?:\.\d+)*|问题\s*\d+)(?:[.:：、]\s*|\s+)|"
+                         r"^(?:Q|问题|题目)\s*[:：.、]\s*", re.I)
+MD_HEADING_ANCHOR = re.compile(r"\[[\s\u200b#¶]*\]\(#[^\n]*\)$")
+MD_ANSWER_SUFFIX = re.compile(r"([?？])[\s”’「」\"']*(?:❌|✅|(?:答案|答|解析|Answer)\s*[:：])", re.I)
+MD_PROMPT = re.compile(r"^(?:如何|为什么|什么是|怎样|怎么|讲讲|说说|介绍一下|谈谈|"
+                       r"请(?:解释|介绍|阐述|说明|实现|设计|比较)|手撕|编程题[:：])")
+MD_FRONT_MATTER_FILE = re.compile(
+    r"(?:\d+[\s._-]*)?(?:前言|序言|目录|preface|foreword|contents|toc|table[\s_-]+of[\s_-]+contents)",
+    re.I,
+)
+
+
+def markdown_questions(text):
+    """Extract prompts from Markdown, keeping link lists and fenced examples out."""
+    fence = ""
+    exercise_section = False
+    for line in text.splitlines():
+        line = re.sub(r"^ {0,3}(?:> ?)+", "", line)
+        indented = line.startswith(("    ", "\t"))
+        line = line.strip()
+        marker = re.match(r"^(`{3,}|~{3,})", line)
+        if fence:
+            if line.startswith(fence) and not line.strip(fence[0]):
+                fence = ""
+            continue
+        if marker:
+            fence = marker[1]
+            continue
+        heading = re.match(r"^#{1,6}\s+", line)
+        if heading:
+            line = MD_HEADING_ANCHOR.sub("", line).rstrip(" \t⭐★\ufe0f")
+            exercise_section = bool(re.fullmatch(r".*(?:编程题|手撕题|算法题)", line))
+        numbered = re.match(r"^\d+[.)、]\s*", line)
+        prefix = MD_MARKER.match(line)
+        if indented and not prefix:
+            continue
+        if prefix:
+            line = line[prefix.end():].strip()
+        line = line.strip("*_`").replace("**", "").replace("`", "")
+        if not line or line.startswith(("[", "![", "<", "|")):
+            continue
+        if re.match(r"^(?:A\d*|答|答案|解析|提示)\s*[:：]", line, re.I):
+            continue
+        label = MD_QUESTION.match(line)
+        if label:
+            line = line[label.end():]
+        answer = MD_ANSWER_SUFFIX.search(line)
+        if answer:
+            line = line[:answer.start() + 1].lstrip("\"'“‘「")
+        question_mark = line.endswith(("?", "？")) or (prefix and re.search(r"[?？]", line))
+        exercise = numbered and (exercise_section or line.endswith("设计思路"))
+        if not 5 <= len(line) <= 160 or NOISE.search(line):
+            continue
+        if label or exercise or question_mark or (MD_PROMPT.match(line) and not CODE.search(line)):
+            yield line
+
+
 def norm(s):
     return re.sub(r"[\s\W]+", "", s.lower())
 
@@ -168,6 +226,34 @@ def bank_text(it):
     return (it.get("content") or it.get("question") or "").strip()
 
 
+class BankMatcher:
+    """Share the bank-side difflib index and the result for both dedup thresholds."""
+
+    def __init__(self, keys):
+        self.matchers = {key: SequenceMatcher(None, "", key) for key in dict.fromkeys(keys)}
+        self.levels = {}
+
+    def match_level(self, question):
+        if question in self.matchers:
+            return STRICT
+        if question in self.levels:
+            return self.levels[question]
+        level = 0
+        for matcher in self.matchers.values():
+            matcher.set_seq1(question)
+            threshold = STRICT if level == SIM else SIM
+            if matcher.real_quick_ratio() < threshold or matcher.quick_ratio() < threshold:
+                continue
+            ratio = matcher.ratio()
+            if ratio >= STRICT:
+                level = STRICT
+                break
+            if ratio >= SIM:
+                level = SIM
+        self.levels[question] = level
+        return level
+
+
 def process(source, days=30):
     posts_path = BASE / "data" / "tmp" / source / "posts.jsonl"
     out_dir = posts_path.parent
@@ -176,7 +262,8 @@ def process(source, days=30):
     short_path = out_dir / "shortlist.jsonl"
     refined_path = out_dir / "refined.jsonl"
 
-    posts = [json.loads(l) for l in open(posts_path, encoding="utf-8") if l.strip()]
+    with posts_path.open(encoding="utf-8") as f:
+        posts = [json.loads(line) for line in f if line.strip()]
     # 微信源：混有官方噪声号（微信公众平台）与《投诉指引》等，过滤掉再处理
     if source == "weixin":
         before = len(posts)
@@ -188,24 +275,31 @@ def process(source, days=30):
     print("[%s] posts(raw): %d" % (source, len(posts)))
 
     # ---- 近一月时间窗过滤 ----
-    cutoff = datetime.now() - timedelta(days=days)
-    kept_posts, dropped, no_date = [], 0, 0
-    for p in posts:
-        if not within_window(p, cutoff):
-            dropped += 1
-            continue
-        if not (p.get("date") or "").strip():
-            no_date += 1
-        kept_posts.append(p)
-    print("  [时间窗 ≤%d天] 丢弃 %d 篇(超窗)，保留 %d 篇（其中 %d 篇无日期字段，按搜索新鲜保留）"
-          % (days, dropped, len(kept_posts), no_date))
-    posts = kept_posts
+    if source != "github":
+        cutoff = datetime.now() - timedelta(days=days)
+        kept_posts, dropped, no_date = [], 0, 0
+        for p in posts:
+            if not within_window(p, cutoff):
+                dropped += 1
+                continue
+            if not (p.get("date") or "").strip():
+                no_date += 1
+            kept_posts.append(p)
+        print("  [时间窗 ≤%d天] 丢弃 %d 篇(超窗)，保留 %d 篇（其中 %d 篇无日期字段，按搜索新鲜保留）"
+              % (days, dropped, len(kept_posts), no_date))
+        posts = kept_posts
 
     # ---- extract ----
     cand = {}
     for p in posts:
-        blob = (p.get("title", "") + "\n" + (p.get("text") or p.get("content") or ""))
-        for q in split_candidates(blob):
+        body = p.get("text") or p.get("content") or ""
+        if source == "github":
+            if MD_FRONT_MATTER_FILE.fullmatch(Path(p.get("path") or "").stem):
+                continue
+            questions = markdown_questions(body)
+        else:
+            questions = split_candidates(p.get("title", "") + "\n" + body)
+        for q in questions:
             key = norm(q)
             if len(key) < 4:
                 continue
@@ -223,8 +317,21 @@ def process(source, days=30):
     print("  candidates: %d" % len(rows))
 
     # ---- curate (0.72 vs bank + 内部去重) -> shortlist ----
-    bank = json.load(open(BANK, encoding="utf-8"))
-    bank_keys = [norm(bank_text(it)) for it in bank.get("items", []) if bank_text(it)]
+    if source == "github" and not BANK.exists():
+        authored = BASE / "questions_v2" / "authored"
+        files = sorted(path for path in authored.glob("*.jsonl") if not path.name.startswith("_"))
+        if not files:
+            raise FileNotFoundError(f"抽题需要本地母库 {BANK} 或已审核题库 {authored}")
+        titles = []
+        for path in files:
+            with path.open(encoding="utf-8") as stream:
+                titles.extend(json.loads(line)["title"] for line in stream if line.strip())
+        print(f"  去重基线：随仓库发布的已审核题库（{len(titles)} 条）")
+    else:
+        with BANK.open(encoding="utf-8") as f:
+            bank = json.load(f)
+        titles = [bank_text(it) for it in bank["items"]]
+    bank_matcher = BankMatcher(norm(title) for title in titles if title)
     kept, kept_norms = [], []
     for c in rows:
         q = c["question"].strip()
@@ -237,7 +344,7 @@ def process(source, days=30):
         if len(q) < 6:
             continue
         nq = norm(q)
-        if any(similar(nq, bk) >= SIM for bk in bank_keys):
+        if bank_matcher.match_level(nq) >= SIM:
             continue
         dup = False
         for i, kn in enumerate(kept_norms):
@@ -269,7 +376,7 @@ def process(source, days=30):
         if len(q) < 6:
             continue
         nq = norm(q)
-        if any(similar(nq, bk) >= STRICT for bk in bank_keys):
+        if bank_matcher.match_level(nq) >= STRICT:
             continue
         refined.append({"question": q, "category": c["category"],
                         "sources": c["sources"], "src_count": c["src_count"]})

@@ -13,7 +13,7 @@ from urllib.parse import unquote
 
 from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.engine import make_url
-from sqlalchemy.exc import OperationalError, SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -85,29 +85,15 @@ def _column_names(table_name: str) -> set[str]:
     return {column["name"] for column in inspector.get_columns(table_name)}
 
 
-def _ensure_keywords_column():
-    """给旧 ``questions`` 表补 ``keywords`` 列。
-
-    ``create_all`` 不会给已有表增加列。迁移必须针对当前 engine 运行，并让未知
-    错误显式冒出；否则配置错误会悄悄导致接口与模型不一致。
-    """
-    if "keywords" in _column_names("questions"):
+def _ensure_column(table, column, definition):
+    """兼容旧库；并发建列失败时通过独立连接确认列已存在。"""
+    if column in _column_names(table):
         return
-
-    dialect = engine.dialect.name
-    if dialect == "mysql":
-        # 旧 MySQL 对 TEXT DEFAULT 的支持不一致；VARCHAR 足以承载关键词。
-        ddl = "ALTER TABLE questions ADD COLUMN keywords VARCHAR(4096) DEFAULT ''"
-    else:
-        ddl = "ALTER TABLE questions ADD COLUMN keywords TEXT DEFAULT ''"
-
     try:
         with engine.begin() as connection:
-            connection.execute(text(ddl))
-    except OperationalError:
-        # 多 worker 首次启动时，另一个进程可能已经完成了同一迁移。仅这种已完成
-        # 情况可忽略；其余错误继续抛出，避免吞掉真实 schema 故障。
-        if "keywords" not in _column_names("questions"):
+            connection.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {definition}"))
+    except SQLAlchemyError:
+        if column not in _column_names(table):
             raise
 
 
@@ -247,11 +233,14 @@ def _ensure_question_uniqueness():
         return
 
     with engine.begin() as connection:
-        _dedupe_wrong_book(connection)
-        _dedupe_review_schedule(connection)
         for table_name in ("wrong_book", "review_schedule"):
             if _has_unique_question_index(table_name):
                 continue
+            # 已有唯一约束即无需再扫描历史数据；只在首次迁移时合并。
+            if table_name == "wrong_book":
+                _dedupe_wrong_book(connection)
+            else:
+                _dedupe_review_schedule(connection)
             index_name = f"uq_{table_name}_question_id"
             if engine.dialect.name in {"sqlite", "postgresql"}:
                 ddl = f"CREATE UNIQUE INDEX IF NOT EXISTS {index_name} ON {table_name} (question_id)"
@@ -267,12 +256,55 @@ def _ensure_question_uniqueness():
                     raise
 
 
+def _ensure_settings_singleton():
+    """保留历史首行配置，统一使用主键1；已迁移库只读最多两条主键。"""
+    with engine.begin() as connection:
+        ids = connection.execute(text("SELECT id FROM settings ORDER BY id LIMIT 2")).scalars().all()
+        if not ids or ids == [1]:
+            return
+        if ids[0] != 1:
+            connection.execute(text("UPDATE settings SET id=1 WHERE id=:old"), {"old": ids[0]})
+        connection.execute(text("DELETE FROM settings WHERE id<>1"))
+
+
+def _ensure_mysql_answer_response_capacity():
+    if engine.dialect.name != "mysql":
+        return
+    from sqlalchemy.dialects.mysql import LONGTEXT
+    columns = inspect(engine).get_columns("answer_requests")
+    response = next(column for column in columns if column["name"] == "response")
+    if not isinstance(response["type"], LONGTEXT):
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE answer_requests MODIFY COLUMN response LONGTEXT NULL"))
+
+
 def init_db():
     """创建所有表（幂等）。必须在导入 models 后调用，确保表已注册到 Base.metadata。"""
     from . import models  # noqa: F401  (确保表类已注册到元数据)
-    Base.metadata.create_all(bind=engine)
-    _ensure_keywords_column()
+    from . import retry_models, scheduler_models, idempotency  # noqa: F401
+    # checkfirst 的“检查/创建”不是原子的；多 worker 首次启动可能同时建新表。
+    # 仅对明确的已存在错误重试，连接失败/权限/schema 错误继续抛出。
+    for attempt in range(len(Base.metadata.tables) + 1):
+        try:
+            Base.metadata.create_all(bind=engine)
+            break
+        except SQLAlchemyError as exc:
+            original = getattr(exc, "orig", exc)
+            code = getattr(original, "sqlstate", None) or getattr(original, "pgcode", None)
+            args = getattr(original, "args", ())
+            already_exists = (
+                code in {"42P07", "42710"} or (args and args[0] == 1050)
+                or (engine.dialect.name == "sqlite" and "already exists" in str(original).lower())
+            )
+            if not already_exists or attempt == len(Base.metadata.tables):
+                raise
+    keyword_type = "VARCHAR(4096)" if engine.dialect.name == "mysql" else "TEXT"
+    _ensure_column("questions", "keywords", keyword_type + " DEFAULT ''")
+    _ensure_column("judgment_retries", "question_text", "TEXT")
+    _ensure_column("judgment_retries", "reference_answer", "TEXT")
+    _ensure_mysql_answer_response_capacity()
     _ensure_question_uniqueness()
+    _ensure_settings_singleton()
 
 
 def get_db():

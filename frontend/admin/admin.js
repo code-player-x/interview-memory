@@ -18,7 +18,10 @@ async function api(path, opts = {}) {
   });
   if (!res.ok) {
     let detail = res.statusText;
-    try { detail = (await res.json()).detail || detail; } catch (_) {}
+    try {
+      const error = (await res.json()).detail;
+      detail = typeof error === "string" ? error : detail;
+    } catch (_) {}
     throw new Error(detail);
   }
   const ct = res.headers.get("content-type") || "";
@@ -42,6 +45,7 @@ function tagsHtml(t) {
 // ----------------------------- Tab 切换 -----------------------------
 $$(".tab").forEach((btn) => {
   btn.addEventListener("click", () => {
+    modalVersion++;
     $$(".tab").forEach((b) => b.classList.remove("active"));
     $$(".tab-pane").forEach((p) => p.classList.remove("active"));
     btn.classList.add("active");
@@ -52,15 +56,61 @@ $$(".tab").forEach((btn) => {
 });
 
 // ----------------------------- 弹窗 -----------------------------
+let modalOpener = null;
+let modalVersion = 0;
 function openModal(title, bodyHtml, footHtml) {
+  modalVersion++;
+  modalOpener = document.activeElement;
   $("#modalTitle").textContent = title;
   $("#modalBody").innerHTML = bodyHtml;
   $("#modalFoot").innerHTML = footHtml || "";
+  $("#modalError").textContent = "";
   $("#modalMask").classList.remove("hidden");
+  $$(".form-row", $("#modalBody")).forEach(row => {
+    const label = $("label", row), input = $("input, select, textarea", row);
+    if (label && input && input.id) label.htmlFor = input.id;
+  });
+  document.body.style.overflow = "hidden";
+  ($("#modalBody input:not(:disabled), #modalBody select, #modalBody textarea") || $("#modalClose")).focus();
 }
-function closeModal() { $("#modalMask").classList.add("hidden"); }
+function closeModal() {
+  modalVersion++;
+  $("#modalMask").classList.add("hidden");
+  document.body.style.overflow = "";
+  if (modalOpener && modalOpener.isConnected) modalOpener.focus();
+}
+
+// A dialog may close while its write is in flight. Only its own controls and
+// messages belong to that response, while successful writes still refresh the list.
+function bindModalSave(selector, save, refresh, message) {
+  const button = $(selector), version = modalVersion;
+  button.addEventListener("click", async () => {
+    if (button.disabled) return;
+    button.disabled = true;
+    $("#modalError").textContent = "";
+    try {
+      await save();
+      if (version === modalVersion) closeModal();
+      await refresh();
+    } catch (error) {
+      if (version === modalVersion) $("#modalError").textContent = message + error.message;
+    } finally { button.disabled = false; }
+  });
+}
 $("#modalClose").addEventListener("click", closeModal);
 $("#modalMask").addEventListener("click", (e) => { if (e.target.id === "modalMask") closeModal(); });
+document.addEventListener("keydown", event => {
+  if ($("#modalMask").classList.contains("hidden")) return;
+  if (event.key === "Escape") { event.preventDefault(); closeModal(); return; }
+  if (event.key !== "Tab") return;
+  const controls = $$("button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]", $("#modalMask"));
+  const first = controls[0], last = controls[controls.length - 1];
+  if (event.shiftKey && (document.activeElement === first || !$("#modalMask").contains(document.activeElement))) {
+    event.preventDefault(); last.focus();
+  } else if (!event.shiftKey && (document.activeElement === last || !$("#modalMask").contains(document.activeElement))) {
+    event.preventDefault(); first.focus();
+  }
+});
 
 // ============================================================
 // A. 题目管理
@@ -74,7 +124,9 @@ async function loadCategoriesInto(sel, withAll) {
   return metas;
 }
 
+let questionsRequestId = 0;
 async function loadQuestions() {
+  const requestId = ++questionsRequestId;
   const msg = $("#qMsg");
   setMsg(msg, "加载中…");
   try {
@@ -83,7 +135,10 @@ async function loadQuestions() {
       keyword: Q.keyword, category: Q.category, level: Q.level,
     });
     const data = await api("/api/questions?" + params.toString());
+    if (requestId !== questionsRequestId) return;
     Q.total = data.total;
+    const lastPage = Math.max(1, Math.ceil(Q.total / Q.limit));
+    if (Q.page > lastPage) { Q.page = lastPage; return loadQuestions(); }
     const body = $("#qBody");
     if (!data.items.length) {
       body.innerHTML = `<tr><td colspan="6" style="color:var(--muted);padding:24px;text-align:center">暂无题目</td></tr>`;
@@ -107,6 +162,7 @@ async function loadQuestions() {
     $("#qNext").disabled = Q.page >= pages;
     setMsg(msg, "", "");
   } catch (e) {
+    if (requestId !== questionsRequestId) return;
     setMsg(msg, "加载失败：" + e.message, "err");
   }
 }
@@ -117,6 +173,9 @@ $("#qSearch").addEventListener("click", () => {
   Q.level = parseInt($("#qLevel").value, 10) || 0;
   Q.page = 1;
   loadQuestions();
+});
+$("#qKeyword").addEventListener("keydown", event => {
+  if (event.key === "Enter" && !event.isComposing) $("#qSearch").click();
 });
 $("#qReset").addEventListener("click", () => {
   $("#qKeyword").value = ""; $("#qCategory").value = ""; $("#qLevel").value = "0";
@@ -134,7 +193,11 @@ $("#qBody").addEventListener("click", async (e) => {
 });
 
 async function openEditModal(id) {
-  const q = await api("/api/question/" + id);
+  const version = ++modalVersion;
+  let q;
+  try { q = await api("/api/question/" + id); }
+  catch (error) { if (version === modalVersion) setMsg($("#qMsg"), "题目加载失败：" + error.message, "err"); return; }
+  if (version !== modalVersion) return;
   const body = `
     <div class="form-row"><label>来源平台</label><input id="ePlatform" value="${esc(q.platform)}"></div>
     <div class="form-row"><label>分类</label><input id="eCategory" value="${esc(q.category)}"></div>
@@ -146,24 +209,19 @@ async function openEditModal(id) {
   const foot = `<button class="btn ghost" onclick="closeModal()">取消</button>
     <button class="btn primary" id="eSave">保存</button>`;
   openModal("编辑题目 #" + id, body, foot);
-  $("#eSave").addEventListener("click", async () => {
-    try {
-      await api("/api/questions/" + id, {
-        method: "PUT",
-        body: JSON.stringify({
-          platform: $("#ePlatform").value.trim(),
-          category: $("#eCategory").value.trim(),
-          tags: $("#eTags").value.trim(),
-          difficulty: parseInt($("#eDiff").value, 10),
-          question_text: $("#eText").value,
-          reference_answer: $("#eAnswer").value,
-        }),
-      });
-      closeModal();
-      setMsg($("#qMsg"), "已保存 #" + id, "ok");
-      loadQuestions();
-    } catch (err) { setMsg($("#qMsg"), "保存失败：" + err.message, "err"); }
-  });
+  bindModalSave("#eSave", async () => {
+    await api("/api/questions/" + id, {
+      method: "PUT",
+      body: JSON.stringify({
+        platform: $("#ePlatform").value.trim(),
+        category: $("#eCategory").value.trim(),
+        tags: $("#eTags").value.trim(),
+        difficulty: parseInt($("#eDiff").value, 10),
+        question_text: $("#eText").value,
+        reference_answer: $("#eAnswer").value,
+      }),
+    });
+  }, loadQuestions, "保存失败：");
 }
 
 async function deleteQuestion(id) {
@@ -188,26 +246,21 @@ $("#qAdd").addEventListener("click", () => {
   const foot = `<button class="btn ghost" onclick="closeModal()">取消</button>
     <button class="btn primary" id="nSave">创建</button>`;
   openModal("新增题目", body, foot);
-  $("#nSave").addEventListener("click", async () => {
+  bindModalSave("#nSave", async () => {
     const text = $("#nText").value.trim();
-    if (!text) { setMsg($("#qMsg"), "题目内容必填", "err"); return; }
-    try {
-      await api("/api/questions/import", {
-        method: "POST",
-        body: JSON.stringify({
-          platform: $("#nPlatform").value.trim(),
-          category: $("#nCategory").value.trim(),
-          tags: $("#nTags").value.trim(),
-          difficulty: parseInt($("#nDiff").value, 10),
-          question_text: text,
-          reference_answer: $("#nAnswer").value,
-        }),
-      });
-      closeModal();
-      setMsg($("#qMsg"), "已新增题目", "ok");
-      loadQuestions();
-    } catch (err) { setMsg($("#qMsg"), "创建失败：" + err.message, "err"); }
-  });
+    if (!text) throw new Error("题目内容必填");
+    await api("/api/questions/import", {
+      method: "POST",
+      body: JSON.stringify({
+        platform: $("#nPlatform").value.trim(),
+        category: $("#nCategory").value.trim(),
+        tags: $("#nTags").value.trim(),
+        difficulty: parseInt($("#nDiff").value, 10),
+        question_text: text,
+        reference_answer: $("#nAnswer").value,
+      }),
+    });
+  }, loadQuestions, "创建失败：");
 });
 
 // 导出
@@ -262,7 +315,7 @@ async function loadCategories() {
           <td>${m.count}</td>
           <td class="cell-clip" title="${esc(m.description)}">${esc(m.description)}</td>
           <td><div class="row-actions">
-            <button class="btn sm" data-meta="${esc(m.name)}">图标/描述</button>
+            <button class="btn sm" data-meta="${esc(m.name)}" data-icon="${esc(m.icon)}" data-description="${esc(m.description)}">图标/描述</button>
             <button class="btn sm" data-rename="${esc(m.name)}">重命名</button>
             <button class="btn sm" data-merge="${esc(m.name)}">合并</button>
             <button class="btn sm danger" data-cdel="${esc(m.name)}">删除</button>
@@ -275,29 +328,26 @@ async function loadCategories() {
 
 $("#cBody").addEventListener("click", (e) => {
   const t = e.target;
-  if (t.dataset.meta) return editCatMeta(t.dataset.meta);
+  if (t.dataset.meta) return editCatMeta(t.dataset.meta, t.dataset.icon, t.dataset.description);
   if (t.dataset.rename) return renameCat(t.dataset.rename);
   if (t.dataset.merge) return mergeCat(t.dataset.merge);
   if (t.dataset.cdel) return deleteCat(t.dataset.cdel);
 });
 
-function editCatMeta(name) {
+function editCatMeta(name, icon, description) {
   const body = `
     <div class="form-row"><label>分类</label><input value="${esc(name)}" disabled></div>
-    <div class="form-row"><label>图标（单个 emoji）</label><input id="mIcon" placeholder="如：🐬"></div>
-    <div class="form-row"><label>描述</label><input id="mDesc" placeholder="一句话描述"></div>`;
+    <div class="form-row"><label>图标（单个 emoji）</label><input id="mIcon" value="${esc(icon)}" placeholder="如：🐬"></div>
+    <div class="form-row"><label>描述</label><input id="mDesc" value="${esc(description)}" placeholder="一句话描述"></div>`;
   const foot = `<button class="btn ghost" onclick="closeModal()">取消</button>
     <button class="btn primary" id="mSave">保存</button>`;
   openModal("设置图标/描述：" + name, body, foot);
-  $("#mSave").addEventListener("click", async () => {
-    try {
-      await api("/api/categories/meta/" + encodeURIComponent(name), {
-        method: "PUT",
-        body: JSON.stringify({ icon: $("#mIcon").value.trim(), description: $("#mDesc").value.trim() }),
-      });
-      closeModal(); setMsg($("#cMsg"), "已更新 " + name, "ok"); loadCategories();
-    } catch (err) { setMsg($("#cMsg"), "失败：" + err.message, "err"); }
-  });
+  bindModalSave("#mSave", async () => {
+    await api("/api/categories/meta/" + encodeURIComponent(name), {
+      method: "PUT",
+      body: JSON.stringify({ icon: $("#mIcon").value.trim(), description: $("#mDesc").value.trim() }),
+    });
+  }, loadCategories, "更新失败：");
 }
 
 function renameCat(oldName) {
@@ -307,18 +357,19 @@ function renameCat(oldName) {
   const foot = `<button class="btn ghost" onclick="closeModal()">取消</button>
     <button class="btn primary" id="rSave">重命名</button>`;
   openModal("重命名分类", body, foot);
-  $("#rSave").addEventListener("click", async () => {
+  bindModalSave("#rSave", async () => {
     const nw = $("#rNew").value.trim();
-    if (!nw) { setMsg($("#cMsg"), "新名称必填", "err"); return; }
-    try {
-      await api("/api/categories/rename", { method: "POST", body: JSON.stringify({ old_name: oldName, new_name: nw }) });
-      closeModal(); setMsg($("#cMsg"), `已重命名 ${oldName} → ${nw}`, "ok"); loadCategories();
-    } catch (err) { setMsg($("#cMsg"), "失败：" + err.message, "err"); }
-  });
+    if (!nw) throw new Error("新名称必填");
+    await api("/api/categories/rename", { method: "POST", body: JSON.stringify({ old_name: oldName, new_name: nw }) });
+  }, loadCategories, "重命名失败：");
 }
 
 async function mergeCat(fromName) {
-  const metas = await api("/api/categories/meta");
+  const version = ++modalVersion;
+  let metas;
+  try { metas = await api("/api/categories/meta"); }
+  catch (error) { if (version === modalVersion) setMsg($("#cMsg"), "分类加载失败：" + error.message, "err"); return; }
+  if (version !== modalVersion) return;
   const opts = metas.filter((m) => m.name !== fromName)
     .map((m) => `<option value="${esc(m.name)}">${esc(m.name)} (${m.count})</option>`).join("");
   const body = `
@@ -327,18 +378,19 @@ async function mergeCat(fromName) {
   const foot = `<button class="btn ghost" onclick="closeModal()">取消</button>
     <button class="btn primary" id="mgSave">合并</button>`;
   openModal("合并分类", body, foot);
-  $("#mgSave").addEventListener("click", async () => {
+  bindModalSave("#mgSave", async () => {
     const to = $("#mgTo").value;
-    if (!to) { setMsg($("#cMsg"), "请选择目标分类", "err"); return; }
-    try {
-      await api("/api/categories/merge", { method: "POST", body: JSON.stringify({ from_name: fromName, to_name: to }) });
-      closeModal(); setMsg($("#cMsg"), `已合并 ${fromName} → ${to}`, "ok"); loadCategories();
-    } catch (err) { setMsg($("#cMsg"), "失败：" + err.message, "err"); }
-  });
+    if (!to) throw new Error("请选择目标分类");
+    await api("/api/categories/merge", { method: "POST", body: JSON.stringify({ from_name: fromName, to_name: to }) });
+  }, loadCategories, "合并失败：");
 }
 
 async function deleteCat(name) {
-  const metas = await api("/api/categories/meta");
+  const version = ++modalVersion;
+  let metas;
+  try { metas = await api("/api/categories/meta"); }
+  catch (error) { if (version === modalVersion) setMsg($("#cMsg"), "分类加载失败：" + error.message, "err"); return; }
+  if (version !== modalVersion) return;
   const opts = `<option value="">未分类（空）</option>` +
     metas.filter((m) => m.name !== name)
       .map((m) => `<option value="${esc(m.name)}">${esc(m.name)} (${m.count})</option>`).join("");
@@ -349,13 +401,10 @@ async function deleteCat(name) {
   const foot = `<button class="btn ghost" onclick="closeModal()">取消</button>
     <button class="btn danger" id="cDel">删除分类</button>`;
   openModal("删除分类：" + name, body, foot);
-  $("#cDel").addEventListener("click", async () => {
+  bindModalSave("#cDel", async () => {
     const target = $("#cTarget").value;
-    try {
-      await api("/api/categories/" + encodeURIComponent(name) + "?target=" + encodeURIComponent(target), { method: "DELETE" });
-      closeModal(); setMsg($("#cMsg"), `已删除分类 ${name}`, "ok"); loadCategories();
-    } catch (err) { setMsg($("#cMsg"), "失败：" + err.message, "err"); }
-  });
+    await api("/api/categories/" + encodeURIComponent(name) + "?target=" + encodeURIComponent(target), { method: "DELETE" });
+  }, loadCategories, "删除失败：");
 }
 
 // ============================================================
@@ -380,7 +429,7 @@ function renderStats(s) {
     ["分类数", s.total_categories],
     ["面经数", s.total_experiences],
     ["作答总数", s.total_submissions],
-    ["正确率", s.accuracy + "%"],
+    ["正确率", s.correct_submissions + s.wrong_submissions ? s.accuracy + "%" : "—"],
     ["错题数", s.wrong_book_count],
     ["待复习", s.review_due_count],
   ];
@@ -446,6 +495,15 @@ $("#expBody").addEventListener("click", async (e) => {
 });
 
 // ----------------------------- 初始化 -----------------------------
+$$(".tbl").forEach(table => {
+  const wrapper = document.createElement("div");
+  wrapper.className = "table-scroll";
+  wrapper.tabIndex = 0;
+  wrapper.setAttribute("role", "region");
+  wrapper.setAttribute("aria-label", "数据表格，可横向滚动");
+  table.before(wrapper);
+  wrapper.appendChild(table);
+});
 (async function init() {
   try { await loadCategoriesInto($("#qCategory"), true); } catch (_) {}
   loadQuestions();

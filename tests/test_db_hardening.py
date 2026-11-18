@@ -9,6 +9,29 @@ import sys
 PROJECT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def test_mysql_idempotency_response_type_and_legacy_widening(monkeypatch):
+    from unittest.mock import MagicMock
+    from sqlalchemy.dialects import mysql
+    from backend import db
+    from backend.idempotency import AnswerRequest
+
+    assert AnswerRequest.response.type.compile(dialect=mysql.dialect()) == "LONGTEXT"
+    engine = MagicMock()
+    engine.dialect.name = "mysql"
+    inspector = MagicMock()
+    inspector.get_columns.side_effect = [
+        [{"name": "response", "type": mysql.TEXT()}],
+        [{"name": "response", "type": mysql.LONGTEXT()}],
+    ]
+    monkeypatch.setattr(db, "engine", engine)
+    monkeypatch.setattr(db, "inspect", lambda _engine: inspector)
+    db._ensure_mysql_answer_response_capacity()
+    db._ensure_mysql_answer_response_capacity()
+    execute = engine.begin.return_value.__enter__.return_value.execute
+    execute.assert_called_once()
+    assert str(execute.call_args.args[0]) == "ALTER TABLE answer_requests MODIFY COLUMN response LONGTEXT NULL"
+
+
 def _init_database_in_child(db_path):
     """隔离导入 backend.db，因为它在模块加载时读取 DATABASE_URL。"""
     code = """
@@ -96,6 +119,11 @@ def test_legacy_sqlite_is_migrated_without_losing_duplicate_learning_counts(tmp_
                 next_review_at DATETIME, last_reviewed_at DATETIME, review_count INTEGER,
                 status VARCHAR(20)
             );
+            CREATE TABLE judgment_retries (
+                submission_id INTEGER PRIMARY KEY, activity_day DATE NOT NULL, attempts INTEGER NOT NULL,
+                next_attempt_at DATETIME NOT NULL, claim_token VARCHAR(32), lease_until DATETIME
+            );
+            INSERT INTO judgment_retries VALUES (7, '2026-01-01', 1, '2026-01-02', NULL, NULL);
             """
         )
         connection.execute(
@@ -116,10 +144,16 @@ def test_legacy_sqlite_is_migrated_without_losing_duplicate_learning_counts(tmp_
 
     _init_database_in_child(db_path)
 
+    # A second process starting on the already migrated file must preserve rows and counts.
+    _init_database_in_child(db_path)
+
     connection = sqlite3.connect(db_path)
     try:
         question_columns = {row[1] for row in connection.execute("PRAGMA table_info(questions)")}
         assert "keywords" in question_columns
+        assert connection.execute(
+            "SELECT submission_id, attempts, question_text, reference_answer FROM judgment_retries"
+        ).fetchall() == [(7, 1, None, None)]
 
         wrong = connection.execute(
             "SELECT question_id, wrong_count, first_wrong_at, last_user_answer, mastery FROM wrong_book"

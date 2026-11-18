@@ -23,11 +23,14 @@ import re
 import sqlite3
 import sys
 from pathlib import Path
+from contextlib import closing
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dedup import resolve_spec, DedupRunner
 
 PROJ = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJ.parent))
+from scripts.sqlite_target import sqlite_target
 DEFAULT_BANK = PROJ / "data" / "questions-bank.json"
 DEFAULT_TARGET_DB = PROJ.parent / "data" / "interview_memory.db"  # 仓库根/data（与 crawler 同级）
 DEFAULT_OUT = PROJ / "data" / "tmp" / "interview_memory_import.json"
@@ -79,24 +82,16 @@ def convert(items):
 
 
 def load_target_texts(db_path: Path):
-    if not db_path.exists():
-        print(f"[warn] 目标库不存在: {db_path}，跳过交叉去重", file=sys.stderr)
-        return [], []
-    try:
-        con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    with closing(sqlite3.connect(db_path.resolve().as_uri() + "?mode=ro", uri=True)) as con:
         rows = con.execute("SELECT question_text FROM questions").fetchall()
-        con.close()
         texts = [r[0] for r in rows if r[0]]
         return texts, [norm(t) for t in texts]
-    except Exception as e:  # noqa: BLE001
-        print(f"[warn] 读取目标库失败: {e}，跳过交叉去重", file=sys.stderr)
-        return [], []
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bank", default=str(DEFAULT_BANK))
-    ap.add_argument("--target-db", default=str(DEFAULT_TARGET_DB))
+    ap.add_argument("--target-db", help="覆盖 DATABASE_URL 的 SQLite 文件路径")
     ap.add_argument("--out", default=str(DEFAULT_OUT))
     ap.add_argument("--fuzzy", type=float, default=0.85,
                     help="规则策略的字符模糊阈值（仅 rule 用）")
@@ -109,6 +104,11 @@ def main():
     ap.add_argument("--no-cross", action="store_true", help="不做与练习系统的交叉去重")
     ap.add_argument("--category", default="", help="仅导出分类含该子串的题")
     args = ap.parse_args()
+    if not args.no_cross:
+        try:
+            args.target_db = sqlite_target(args.target_db)
+        except ValueError as exc:
+            ap.error(str(exc))
 
     bank = json.loads(Path(args.bank).read_text(encoding="utf-8"))
     items = bank.get("items", [])

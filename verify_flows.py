@@ -8,7 +8,7 @@
   5. 错题本 (wrong-book / master)
   6. 待复习查询 (review/due)
   7. 复习反馈 + 艾宾浩斯推进 (review/{id})
-  8. 设置读写 + 调度重排 (settings)
+  8. 设置读写 + 推送时间配置 (settings)
   9. 每日邮件推送 (scheduler / emailer 模板渲染 + 缺失跳过)
  10. 判题三分支 (heuristic / agent成功 / agent不可用降级)
 """
@@ -16,12 +16,23 @@ import os
 import sys
 import tempfile
 import asyncio
+import atexit
+from contextlib import ExitStack
+from unittest.mock import patch
 from datetime import datetime, timedelta
 
+# Never load local credentials or send real mail from this regression script.
+os.environ["SCHEDULER_ENABLED"] = "0"
+os.environ["APP_AUTH_USER"] = os.environ["APP_AUTH_PASSWORD"] = ""
+os.environ["PYTHON_DOTENV_DISABLED"] = "1"
+for _key in ("SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "SMTP_PASS",
+             "AGENT_JUDGE_TOKEN", "OPENAI_API_KEY"):
+    os.environ[_key] = ""
+
 # ---- 0. 指向临时 DB，必须在 import backend.app 之前 ----
-TMP_DB = os.path.join(tempfile.gettempdir(), "im_verify_%d.db" % os.getpid())
-if os.path.exists(TMP_DB):
-    os.remove(TMP_DB)
+stack = ExitStack()
+atexit.register(stack.close)
+TMP_DB = os.path.join(stack.enter_context(tempfile.TemporaryDirectory(prefix="im_verify_")), "test.db")
 os.environ["DATABASE_URL"] = "sqlite:///" + TMP_DB
 os.environ["AGENT_JUDGE_URL"] = ""  # 默认走启发式
 os.environ["LLM_BASE_URL"] = ""
@@ -33,15 +44,19 @@ if PROJECT not in sys.path:
     sys.path.insert(0, PROJECT)
 
 from fastapi.testclient import TestClient  # noqa: E402
-import backend.app as appmod  # noqa: E402  (触发 init_db + start_scheduler)
-from backend.db import SessionLocal  # noqa: E402
+import backend.app as appmod  # noqa: E402
+from backend.db import SessionLocal, engine  # noqa: E402
 from backend import models as M  # noqa: E402
 from backend import judge as J  # noqa: E402
 from backend import emailer as E  # noqa: E402
 from backend import scheduler as S  # noqa: E402
 from backend.ebbinghaus import get_steps  # noqa: E402
 
-client = TestClient(appmod.app)
+stack.callback(engine.dispose)
+client = stack.enter_context(TestClient(appmod.app))
+# Windows 重定向到 GBK 控制台或文件时也能输出所有检查结果。
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(errors="backslashreplace")
 
 PASS, FAIL = [], []
 def check(name, cond, extra=""):
@@ -143,8 +158,8 @@ check("master 接口返回 mastered", rm["status"] == "mastered")
 wb_only = client.get("/api/wrong-book?only_reviewing=true").json()
 check("only_reviewing 过滤掉已掌握项", all(x["question_id"] != q3 for x in wb_only))
 
-# 8. 设置读写 + 调度重排
-print("\n[8] 设置读写 + 调度重排流程")
+# 8. 设置读写 + 推送时间配置
+print("\n[8] 设置读写 + 推送时间配置流程")
 gs = client.get("/api/settings").json()
 check("读取默认设置", gs["push_time"] == "09:00" and gs["ebbinghaus_steps"] == "1,2,4,7,15,30,60")
 ps = client.post("/api/settings", json={"email": "me@test.com", "push_time": "08:30",
@@ -171,6 +186,7 @@ check("run_daily_review 无邮箱时返回 0(不崩溃)", pushed == 0)
 print("\n[10] 判题三分支")
 # (a) heuristic 已通过(answer 流程)。这里单独验证 overlap 阈值
 loop = asyncio.new_event_loop()
+stack.callback(loop.close)
 async def j_heur():
     return await J.judge("q", "HashMap 是基于哈希表的 Map 实现，支持 O(1) 查询。",
                          "HashMap 是基于哈希表的 Map 实现，支持 O(1) 查询。")
@@ -187,24 +203,20 @@ class FakeClient:
     async def __aexit__(self, *a): return False
     async def post(self, *a, **k): return FakeResp()
 import httpx
-orig_url = os.environ.get("AGENT_JUDGE_URL", "")
-orig_client = httpx.AsyncClient
-os.environ["AGENT_JUDGE_URL"] = "http://mock-agent"
-httpx.AsyncClient = FakeClient
 async def j_agent():
     return await J.judge("q", "r", "u")
-ac = loop.run_until_complete(j_agent())
+with patch.dict(os.environ, {"AGENT_JUDGE_URL": "http://mock-agent"}), patch.object(httpx, "AsyncClient", FakeClient):
+    ac = loop.run_until_complete(j_agent())
 check("agent 成功分支解析 is_correct/explanation", ac[0] is True and ac[1] == "mock agent ok" and ac[3] == "agent")
-httpx.AsyncClient = orig_client  # 恢复真实 AsyncClient，否则(c)会误用 mock
 
-# (c) agent 不可用 → pending（连向关闭端口，连接必失败）
-os.environ["AGENT_JUDGE_URL"] = "http://127.0.0.1:1/nope"
-async def j_down():
-    return await J.judge("q", "r", "u")
-dc = loop.run_until_complete(j_down())
+# (c) 模拟连接失败，避免依赖本机端口或代理设置。
+class OfflineClient(FakeClient):
+    async def post(self, *args, **kwargs):
+        raise httpx.ConnectError("offline test")
+
+with patch.dict(os.environ, {"AGENT_JUDGE_URL": "http://mock-agent"}), patch.object(httpx, "AsyncClient", OfflineClient):
+    dc = loop.run_until_complete(j_agent())
 check("agent 不可用→降级 (None,'pending')", dc[0] is None and dc[3] == "pending")
-loop.close()
-os.environ["AGENT_JUDGE_URL"] = orig_url
 
 # ---- 汇总 ----
 print("\n========== 验证汇总 ==========")
@@ -216,16 +228,5 @@ if FAIL:
 else:
     print("🎉 全部流程通过！")
 
-# 清理
-try:
-    appmod.scheduler.shutdown(wait=False)
-    from backend.db import engine
-    engine.dispose()
-except Exception:
-    pass
-try:
-    if os.path.exists(TMP_DB):
-        os.remove(TMP_DB)
-except Exception:
-    pass
+stack.close()
 sys.exit(1 if FAIL else 0)

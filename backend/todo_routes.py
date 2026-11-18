@@ -4,10 +4,10 @@
 - 番茄专注：start 创建 FocusSession，stop 结算 actual_minutes（供成长中心统计）。
 后端 app.py 通过 app.include_router(todo_router) 挂载。
 """
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -130,7 +130,7 @@ def delete_todo(tid: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{tid}/focus/start")
-def focus_start(tid: int, minutes: int = 25, db: Session = Depends(get_db)):
+def focus_start(tid: int, minutes: int = Query(25, ge=1, le=1440), db: Session = Depends(get_db)):
     t = db.query(models.Todo).filter(models.Todo.id == tid, models.Todo.deleted == False).first()
     if not t:
         raise HTTPException(status_code=404, detail="待办不存在")
@@ -138,13 +138,13 @@ def focus_start(tid: int, minutes: int = 25, db: Session = Depends(get_db)):
         todo_id=tid,
         kind="pomodoro",
         minutes=minutes,
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(timezone.utc).replace(tzinfo=None),
         completed=False,
     )
     db.add(fs)
     db.commit()
     db.refresh(fs)
-    return {"id": fs.id, "started_at": fs.started_at.isoformat() if fs.started_at else ""}
+    return {"id": fs.id, "started_at": fs.started_at.replace(tzinfo=timezone.utc).isoformat()}
 
 
 @router.post("/{tid}/focus/stop")
@@ -157,7 +157,8 @@ def focus_stop(tid: int, session_id: int = None, db: Session = Depends(get_db)):
     fs = q.order_by(models.FocusSession.id.desc()).first()
     if not fs:
         raise HTTPException(status_code=404, detail="无进行中的专注会话")
-    fs.ended_at = datetime.utcnow()
+    fs.ended_at = (datetime.now(timezone.utc).replace(tzinfo=None)
+                   if fs.kind == "pomodoro" else datetime.now())
     fs.actual_minutes = (
         int((fs.ended_at - fs.started_at).total_seconds() // 60) if fs.started_at else 0
     )

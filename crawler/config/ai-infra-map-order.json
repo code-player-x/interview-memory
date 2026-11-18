@@ -1,0 +1,2726 @@
+{
+  "source_file": "D:\\codexProject\\AI-Infra\\ai-infra-learning-map.html",
+  "source_title": "AI Infra 学习图谱",
+  "order_policy": "主分类及子分类严格遵循 graph-data 数组顺序；六阶段学习路线单独保留，不替代知识图谱分类顺序。",
+  "children": [
+    {
+      "id": "systems",
+      "title": "系统与网络基础",
+      "order": 1,
+      "children": [
+        {
+          "id": "systems-1",
+          "title": "Linux 资源与隔离",
+          "order": 1,
+          "children": [
+            {
+              "id": "systems-1-1",
+              "title": "Linux Namespaces",
+              "order": 1,
+              "description": "用 PID、mount 和 network 命名空间隔离进程所见的进程树、挂载点和网络栈，理解容器如何共享同一内核。",
+              "reference_url": "https://man7.org/linux/man-pages/man7/namespaces.7.html",
+              "keywords": "Linux namespaces PID mount network container isolation"
+            },
+            {
+              "id": "systems-1-2",
+              "title": "cgroup v2 的 CPU 配额",
+              "order": 2,
+              "description": "cpu.max 给出周期内可使用的 CPU 时间，quota 耗尽后会被节流。用 cpu.stat 对照服务延迟。",
+              "reference_url": "https://docs.kernel.org/admin-guide/cgroup-v2.html",
+              "keywords": "Linux cgroup v2 cpu.max cpu.stat throttled_usec CPU quota"
+            },
+            {
+              "id": "systems-1-3",
+              "title": "cgroup v2 的内存阈值",
+              "order": 3,
+              "description": "memory.high 触发回收和节流，memory.max 设定硬上限。结合 memory.events 判断负载是否遭遇内存压力或 OOM。",
+              "reference_url": "https://docs.kernel.org/admin-guide/cgroup-v2.html",
+              "keywords": "Linux cgroup v2 memory.high memory.max memory.events OOM"
+            },
+            {
+              "id": "systems-1-4",
+              "title": "NUMA 内存分配策略",
+              "order": 4,
+              "description": "对照 CPU 所在 NUMA 节点、内存页所在节点和设备拓扑，辨认跨插槽数据访问的延迟与带宽代价。",
+              "reference_url": "https://docs.kernel.org/admin-guide/mm/numa_memory_policy.html",
+              "keywords": "Linux NUMA memory policy local remote memory affinity"
+            },
+            {
+              "id": "systems-1-5",
+              "title": "PSI 资源等待时间",
+              "order": 5,
+              "description": "PSI 用任务因 CPU、内存或 I/O 受限而停顿的时间刻画争用。用它补充单看利用率时遗漏的阻塞信息。",
+              "reference_url": "https://docs.kernel.org/accounting/psi.html",
+              "keywords": "Linux PSI pressure stall information some full CPU memory IO"
+            }
+          ]
+        },
+        {
+          "id": "systems-2",
+          "title": "异步 I/O 与高速网络",
+          "order": 2,
+          "children": [
+            {
+              "id": "systems-2-1",
+              "title": "epoll 的就绪通知",
+              "order": 1,
+              "description": "区分 level-triggered 与 edge-triggered。使用边沿触发时，用非阻塞 I/O 读到 EAGAIN 再等待下一次通知。",
+              "reference_url": "https://man7.org/linux/man-pages/man7/epoll.7.html",
+              "keywords": "Linux epoll edge triggered level triggered nonblocking EAGAIN"
+            },
+            {
+              "id": "systems-2-2",
+              "title": "网卡 RSS 与接收队列",
+              "order": 2,
+              "description": "用网卡的流哈希把接收流量分发到硬件队列。观察队列与 CPU 亲和性对单核热点和吞吐的影响。",
+              "reference_url": "https://docs.kernel.org/networking/scaling.html",
+              "keywords": "Linux networking RSS receive side scaling queues CPU affinity"
+            },
+            {
+              "id": "systems-2-3",
+              "title": "RoCE、PFC 与 ECN",
+              "order": 3,
+              "description": "理解 RDMA over Ethernet 中 PFC 的链路优先级暂停，以及 ECN 对端到端拥塞反馈的作用。用计数器判断拥塞位置。",
+              "reference_url": "https://docs.nvidia.com/networking-ethernet-software/cumulus-linux-59/Layer-1-and-Switch-Ports/Quality-of-Service/RDMA-over-Converged-Ethernet-RoCE/",
+              "keywords": "NVIDIA RoCE RDMA PFC ECN congestion control"
+            },
+            {
+              "id": "systems-2-4",
+              "title": "NCCL 网卡选择与链路验证",
+              "order": 4,
+              "description": "核对通信选中的网络接口和传输路径，用点对点带宽、错误计数和 NCCL 日志区分链路与集合通信问题。",
+              "reference_url": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting/networking_troubleshooting.html",
+              "keywords": "NCCL networking troubleshooting interface selection ib_write_bw"
+            }
+          ]
+        },
+        {
+          "id": "systems-3",
+          "title": "RPC 与负载分配",
+          "order": 3,
+          "children": [
+            {
+              "id": "systems-3-1",
+              "title": "RPC Deadline 传播",
+              "order": 1,
+              "description": "让下游调用继承上游剩余的时间预算。记录连接、排队与执行阶段耗时，避免每一跳各自耗尽完整超时。",
+              "reference_url": "https://grpc.io/docs/guides/deadlines/",
+              "keywords": "gRPC deadlines propagation remaining timeout budget"
+            },
+            {
+              "id": "systems-3-2",
+              "title": "重试、退避与抖动",
+              "order": 2,
+              "description": "为可重试错误设上限，用退避和随机抖动分散并发重试。对有副作用的操作检查幂等性。",
+              "reference_url": "https://builder.aws.com/content/3EumjoZascWd1oZiEgL8ORlv3qE/timeouts-retries-and-backoff-with-jitter",
+              "keywords": "AWS retries exponential backoff jitter idempotency retry amplification"
+            },
+            {
+              "id": "systems-3-3",
+              "title": "Least Request 负载均衡",
+              "order": 3,
+              "description": "根据活跃请求数偏向空闲后端。压测时对照轮询，并检查请求长短差异对实际在途负载的影响。",
+              "reference_url": "https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/load_balancers",
+              "keywords": "Envoy least request load balancing active requests round robin"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "compute",
+      "title": "GPU 硬件与算子",
+      "order": 2,
+      "children": [
+        {
+          "id": "compute-1",
+          "title": "GPU 架构与互连",
+          "order": 1,
+          "children": [
+            {
+              "id": "compute-1-1",
+              "title": "SM、Warp 与 SIMT",
+              "order": 1,
+              "description": "理解线程如何以 warp 为单位执行，以及同一 warp 的控制流分歧为何可能降低执行效率。",
+              "reference_url": "https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/writing-cuda-kernels.html",
+              "keywords": "CUDA SM warp SIMT branch divergence"
+            },
+            {
+              "id": "compute-1-2",
+              "title": "GPU 存储层次",
+              "order": 2,
+              "description": "比较寄存器、共享内存、L2 和设备内存在可见范围、容量和带宽上的差异。",
+              "reference_url": "https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/#memory-optimizations",
+              "keywords": "CUDA GPU memory hierarchy registers shared L2 HBM"
+            },
+            {
+              "id": "compute-1-3",
+              "title": "Tensor Core 矩阵乘累加",
+              "order": 3,
+              "description": "从矩阵乘加指令理解输入、累加数据类型和矩阵分块如何影响可用的硬件路径。",
+              "reference_url": "https://docs.nvidia.com/cuda/archive/13.0.2/cuda-c-programming-guide/index.html#warp-matrix-functions",
+              "keywords": "NVIDIA tensor cores WMMA matrix multiply accumulate accumulator precision"
+            },
+            {
+              "id": "compute-1-4",
+              "title": "NVLink 与 NVSwitch",
+              "order": 4,
+              "description": "区分 GPU 之间的高速链路和交换结构，理解节点内互联拓扑如何影响通信带宽。",
+              "reference_url": "https://docs.nvidia.com/datacenter/tesla/fabric-manager-user-guide/",
+              "keywords": "NVIDIA NVLink NVSwitch GPU fabric topology bandwidth"
+            },
+            {
+              "id": "compute-1-5",
+              "title": "GPUDirect RDMA",
+              "order": 5,
+              "description": "理解支持的网卡如何直接访问 GPU 显存，以及 PCIe 拓扑如何影响这条路径。",
+              "reference_url": "https://docs.nvidia.com/cuda/gpudirect-rdma/#how-gpudirect-rdma-works",
+              "keywords": "NVIDIA GPUDirect RDMA NIC GPU memory PCIe topology"
+            }
+          ]
+        },
+        {
+          "id": "compute-2",
+          "title": "CUDA 执行与调度",
+          "order": 2,
+          "children": [
+            {
+              "id": "compute-2-1",
+              "title": "Grid、Block 与 Thread",
+              "order": 1,
+              "description": "用线程和 block 的索引把输入数据分配给并行执行单元，并为尾部元素加边界检查。",
+              "reference_url": "https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/writing-cuda-kernels.html",
+              "keywords": "CUDA grid block thread indexing bounds check"
+            },
+            {
+              "id": "compute-2-2",
+              "title": "Block 同步与可见性",
+              "order": 2,
+              "description": "理解 block 内线程何时用 __syncthreads 等待写入共享内存的线程。",
+              "reference_url": "https://docs.nvidia.com/cuda/archive/13.0.2/cuda-c-programming-guide/index.html#synchronization-functions",
+              "keywords": "CUDA syncthreads block synchronization shared memory visibility"
+            },
+            {
+              "id": "compute-2-3",
+              "title": "Stream 与 Event",
+              "order": 3,
+              "description": "用 event 建立跨 stream 依赖，区分 CPU 提交顺序与 GPU 实际执行顺序。",
+              "reference_url": "https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/asynchronous-execution.html",
+              "keywords": "CUDA streams events cudaStreamWaitEvent dependency"
+            },
+            {
+              "id": "compute-2-4",
+              "title": "Pinned Memory 与异步拷贝",
+              "order": 4,
+              "description": "理解页锁定主机内存如何配合异步拷贝和不同 stream 重叠传输与计算。",
+              "reference_url": "https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/#asynchronous-and-overlapping-transfers-with-computation",
+              "keywords": "CUDA pinned host memory async memcpy overlap copy compute"
+            },
+            {
+              "id": "compute-2-5",
+              "title": "CUDA Graph 捕获与重放",
+              "order": 5,
+              "description": "将反复执行的 GPU 工作流捕获成依赖图并重放，减少逐算子提交的 CPU 开销。",
+              "reference_url": "https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html",
+              "keywords": "CUDA Graph stream capture replay kernel launch overhead"
+            }
+          ]
+        },
+        {
+          "id": "compute-3",
+          "title": "访存与资源优化",
+          "order": 3,
+          "children": [
+            {
+              "id": "compute-3-1",
+              "title": "全局内存访问合并",
+              "order": 1,
+              "description": "把同一 warp 的地址模式映射到内存事务，比较连续、跨步和未对齐读写的开销。",
+              "reference_url": "https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/#coalesced-access-to-global-memory",
+              "keywords": "CUDA global memory coalescing warp strided access"
+            },
+            {
+              "id": "compute-3-2",
+              "title": "共享内存 Bank Conflict",
+              "order": 2,
+              "description": "理解不同地址映射到同一 bank 时的序列化，并用转置示例观察填充如何减少冲突。",
+              "reference_url": "https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/#shared-memory-and-memory-banks",
+              "keywords": "CUDA shared memory bank conflict transpose padding"
+            },
+            {
+              "id": "compute-3-3",
+              "title": "Occupancy 与寄存器压力",
+              "order": 3,
+              "description": "估算寄存器和共享内存用量能容纳的活跃 warp 数，并区分 occupancy 与实际吞吐。",
+              "reference_url": "https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/#occupancy",
+              "keywords": "CUDA achieved occupancy registers per thread shared memory"
+            },
+            {
+              "id": "compute-3-4",
+              "title": "寄存器溢出",
+              "order": 4,
+              "description": "理解编译器如何将放不进寄存器的值移入 local memory，并在分析中识别额外访存。",
+              "reference_url": "https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/writing-cuda-kernels.html",
+              "keywords": "CUDA register spilling local memory ptxas lmem"
+            },
+            {
+              "id": "compute-3-5",
+              "title": "流有序显存分配",
+              "order": 5,
+              "description": "把分配和释放纳入 stream 的执行顺序，通过内存池复用设备内存。",
+              "reference_url": "https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/stream-ordered-memory-allocation.html",
+              "keywords": "CUDA cudaMallocAsync cudaFreeAsync stream ordered memory pool"
+            }
+          ]
+        },
+        {
+          "id": "compute-4",
+          "title": "算子实现",
+          "order": 4,
+          "children": [
+            {
+              "id": "compute-4-1",
+              "title": "GEMM 层次化分块",
+              "order": 1,
+              "description": "沿 thread block、warp 和指令层分块，理解 A、B 矩阵数据在各级存储之间的复用。",
+              "reference_url": "https://docs.nvidia.com/cutlass/4.3.5/media/docs/cpp/efficient_gemm.html",
+              "keywords": "CUTLASS efficient GEMM hierarchical tiling threadblock warp"
+            },
+            {
+              "id": "compute-4-2",
+              "title": "GEMM Epilogue 融合",
+              "order": 2,
+              "description": "把偏置、激活或类型转换放入矩阵乘法的输出阶段，减少结果写回后再读入的流量。",
+              "reference_url": "https://docs.nvidia.com/cutlass/4.3.5/media/docs/cpp/efficient_gemm.html#epilogue",
+              "keywords": "CUTLASS GEMM epilogue fused bias activation"
+            },
+            {
+              "id": "compute-4-3",
+              "title": "Triton 程序实例与掩码",
+              "order": 3,
+              "description": "用 program_id 把输入切成数据块，并在 load、store 时用掩码处理尾块。",
+              "reference_url": "https://triton-lang.org/main/getting-started/tutorials/01-vector-add.html",
+              "keywords": "Triton program_id block tl.load tl.store mask vector addition"
+            },
+            {
+              "id": "compute-4-4",
+              "title": "融合 Softmax",
+              "order": 4,
+              "description": "在同一 kernel 中完成按行最大值、指数和归约，减少中间张量的设备内存读写。",
+              "reference_url": "https://triton-lang.org/main/getting-started/tutorials/02-fused-softmax.html",
+              "keywords": "Triton fused softmax max reduction memory bandwidth"
+            },
+            {
+              "id": "compute-4-5",
+              "title": "FlashAttention 的分块与在线归一化",
+              "order": 5,
+              "description": "分块读取 Q、K、V，累积 softmax 的归一化状态，避免将完整注意力矩阵写入 HBM。",
+              "reference_url": "https://arxiv.org/abs/2205.14135",
+              "keywords": "FlashAttention IO aware tiling online softmax HBM"
+            }
+          ]
+        },
+        {
+          "id": "compute-5",
+          "title": "性能测量",
+          "order": 5,
+          "children": [
+            {
+              "id": "compute-5-1",
+              "title": "Roofline 与算术强度",
+              "order": 1,
+              "description": "以单位字节的浮点操作数定位性能上限，判断提高数据复用或算力利用率的优先级。",
+              "reference_url": "https://docs.nvidia.com/nsight-compute/ProfilingGuide/#roofline-charts",
+              "keywords": "Nsight Compute roofline arithmetic intensity memory compute bound"
+            },
+            {
+              "id": "compute-5-2",
+              "title": "CPU 与 GPU 时间线",
+              "order": 2,
+              "description": "在 Nsight Systems 时间线对照 CPU 提交、GPU kernel、数据拷贝和等待事件，定位空闲区间。",
+              "reference_url": "https://docs.nvidia.com/nsight-systems/UserGuide/",
+              "keywords": "Nsight Systems CUDA CPU GPU trace kernel timeline launch gaps"
+            },
+            {
+              "id": "compute-5-3",
+              "title": "单 kernel 计数器",
+              "order": 3,
+              "description": "在 Nsight Compute 中结合显存吞吐、指令流水线利用率和 warp stall 指标，缩小瓶颈范围。",
+              "reference_url": "https://docs.nvidia.com/nsight-compute/ProfilingGuide/",
+              "keywords": "Nsight Compute kernel profiling warp stall SM DRAM throughput"
+            },
+            {
+              "id": "compute-5-4",
+              "title": "CUDA Event 计时",
+              "order": 4,
+              "description": "把计时事件放入执行 stream，在工作完成后读取设备侧耗时。",
+              "reference_url": "https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/#using-cuda-gpu-timers",
+              "keywords": "CUDA event elapsed time async GPU kernel benchmark"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "compiler",
+      "title": "深度学习框架与编译器",
+      "order": 3,
+      "children": [
+        {
+          "id": "compiler-1",
+          "title": "张量与自动微分",
+          "order": 1,
+          "children": [
+            {
+              "id": "compiler-1-1",
+              "title": "张量布局与 Stride",
+              "order": 1,
+              "description": "用形状、步幅和存储偏移解释索引如何映射到内存，以及转置何时只创建视图。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/tensor_view.html",
+              "keywords": "PyTorch tensor storage stride offset view transpose contiguous"
+            },
+            {
+              "id": "compiler-1-2",
+              "title": "Autograd 图与保存张量",
+              "order": 2,
+              "description": "理解前向如何记录反向所需的算子关系，以及保存的中间值何时占用显存。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/notes/autograd.html",
+              "keywords": "PyTorch autograd graph saved tensors backward"
+            },
+            {
+              "id": "compiler-1-3",
+              "title": "原地更新与版本计数",
+              "order": 3,
+              "description": "理解 autograd 如何用版本计数检测反向所需的张量是否在前向后被修改。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/notes/autograd.html",
+              "keywords": "PyTorch autograd inplace correctness version counter saved tensors"
+            },
+            {
+              "id": "compiler-1-4",
+              "title": "CUDA 缓存分配器快照",
+              "order": 4,
+              "description": "区分张量当前使用的显存和分配器保留的显存，通过分配历史追踪峰值与碎片。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/torch_cuda_memory.html",
+              "keywords": "PyTorch CUDA allocator memory snapshot allocated reserved fragmentation"
+            }
+          ]
+        },
+        {
+          "id": "compiler-2",
+          "title": "图捕获与特化",
+          "order": 2,
+          "children": [
+            {
+              "id": "compiler-2-1",
+              "title": "Dynamo 与 Python Frame",
+              "order": 1,
+              "description": "理解 torch.compile 如何在 Python 执行过程中截取可编译的张量运算。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/user_guide/torch_compiler/torch.compiler_dynamo_overview.html",
+              "keywords": "PyTorch TorchDynamo Python frame evaluation bytecode FX graph"
+            },
+            {
+              "id": "compiler-2-2",
+              "title": "Graph Break",
+              "order": 2,
+              "description": "跟踪遇到不可捕获的 Python 代码时，编译区域如何结束、回到 eager 并可能重新进入捕获。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/user_guide/torch_compiler/compile/programming_model.dynamo_core_concepts.html",
+              "keywords": "torch.compile Dynamo graph break unsupported Python eager fallback"
+            },
+            {
+              "id": "compiler-2-3",
+              "title": "Guard 与重编译",
+              "order": 3,
+              "description": "识别编译图依赖的类型、形状或 Python 值，解释这些假设失效为何触发再次捕获或编译。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/user_guide/torch_compiler/compile/programming_model.dynamo_core_concepts.html",
+              "keywords": "torch.compile guards recompilation specialization cache"
+            },
+            {
+              "id": "compiler-2-4",
+              "title": "动态形状与符号维度",
+              "order": 4,
+              "description": "用符号尺寸和约束复用编译图，观察数据依赖的形状何时需要额外处理。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/user_guide/torch_compiler/torch.compiler_dynamic_shapes.html",
+              "keywords": "PyTorch torch.compile symbolic shapes SymInt dynamic shape constraints"
+            },
+            {
+              "id": "compiler-2-5",
+              "title": "FX 图表示与改写",
+              "order": 5,
+              "description": "用节点和数据依赖表示模块中的计算，理解图改写如何修改调用或替换子图。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/fx.html",
+              "keywords": "PyTorch FX symbolic trace graph node graph rewrite"
+            }
+          ]
+        },
+        {
+          "id": "compiler-3",
+          "title": "图优化与代码生成",
+          "order": 3,
+          "children": [
+            {
+              "id": "compiler-3-1",
+              "title": "AOTAutograd 前后向图",
+              "order": 1,
+              "description": "跟踪前向和反向的张量运算，理解为什么要在训练执行前生成后端可优化的反向图。",
+              "reference_url": "https://pytorch.org/blog/pytorch-2-0-release/",
+              "keywords": "PyTorch AOTAutograd joint forward backward graph partition"
+            },
+            {
+              "id": "compiler-3-2",
+              "title": "算子分解",
+              "order": 2,
+              "description": "把高层复合算子转写成更小的算子集合，让不同后端可以复用同一套分解。",
+              "reference_url": "https://pytorch.org/blog/pytorch-2-0-release/",
+              "keywords": "PyTorch PrimTorch ATen decomposition primitive operators"
+            },
+            {
+              "id": "compiler-3-3",
+              "title": "TorchInductor 代码生成",
+              "order": 3,
+              "description": "跟踪编译图如何由 Inductor 生成目标后端代码，并定位融合前后的 kernel 边界。",
+              "reference_url": "https://pytorch.org/blog/pytorch-2-0-release/",
+              "keywords": "TorchInductor graph lowering kernel fusion Triton code generation"
+            },
+            {
+              "id": "compiler-3-4",
+              "title": "XLA GPU Fusion",
+              "order": 4,
+              "description": "通过 HLO Fusion 示例观察中间值何时保存在设备片上、何时产生独立 kernel。",
+              "reference_url": "https://openxla.org/xla/gpu_architecture",
+              "keywords": "OpenXLA GPU HLO fusion kernel global memory"
+            },
+            {
+              "id": "compiler-3-5",
+              "title": "MLIR Bufferization",
+              "order": 5,
+              "description": "理解张量语义何时转换为 memref，并用读写冲突分析解释拷贝或原地缓冲区复用。",
+              "reference_url": "https://mlir.llvm.org/docs/Bufferization/",
+              "keywords": "MLIR one shot bufferize tensor memref in-place copy"
+            }
+          ]
+        },
+        {
+          "id": "compiler-4",
+          "title": "模型导出与中间表示",
+          "order": 4,
+          "children": [
+            {
+              "id": "compiler-4-1",
+              "title": "torch.export 图签名",
+              "order": 1,
+              "description": "理解导出产物如何用图签名表示参数、缓冲区和用户输入，并记录形状约束。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/export.html",
+              "keywords": "PyTorch torch.export ExportedProgram graph signature range constraints"
+            },
+            {
+              "id": "compiler-4-2",
+              "title": "ONNX Opset",
+              "order": 2,
+              "description": "区分 ONNX IR 版本和算子集版本，理解导出时算子语义如何由 domain 与 opset 决定。",
+              "reference_url": "https://onnx.ai/onnx/repo-docs/IR.html",
+              "keywords": "ONNX IR version operator sets domain opset import compatibility"
+            },
+            {
+              "id": "compiler-4-3",
+              "title": "StableHLO 算子语义",
+              "order": 3,
+              "description": "读取带维度和类型约束的算子规范，理解前端如何通过统一算子表示连接不同后端。",
+              "reference_url": "https://openxla.org/stablehlo/spec",
+              "keywords": "OpenXLA StableHLO operation semantics type constraints portability"
+            },
+            {
+              "id": "compiler-4-4",
+              "title": "MLIR Dialect Lowering",
+              "order": 4,
+              "description": "用合法目标、重写模式和类型转换把高层 dialect 逐步降级到后端可接受的 IR。",
+              "reference_url": "https://mlir.llvm.org/docs/DialectConversion/",
+              "keywords": "MLIR dialect conversion legal target rewrite pattern type converter"
+            }
+          ]
+        },
+        {
+          "id": "compiler-5",
+          "title": "算子扩展与框架变换",
+          "order": 5,
+          "children": [
+            {
+              "id": "compiler-5-1",
+              "title": "Dispatcher 与 Dispatch Key",
+              "order": 1,
+              "description": "理解框架如何按设备及 autograd 等 dispatch key 为同一算子选择不同的实现。",
+              "reference_url": "https://docs.pytorch.org/tutorials/advanced/extend_dispatcher",
+              "keywords": "PyTorch dispatcher dispatch keys CPU CUDA autograd operator registration"
+            },
+            {
+              "id": "compiler-5-2",
+              "title": "自定义算子的 FakeTensor 实现",
+              "order": 2,
+              "description": "编写只计算输出形状、步幅和数据类型的实现，使编译器能在缺少真实数据时跟踪算子。",
+              "reference_url": "https://docs.pytorch.org/tutorials/advanced/python_custom_ops.html",
+              "keywords": "PyTorch custom operator register_fake FakeTensor metadata torch compile"
+            },
+            {
+              "id": "compiler-5-3",
+              "title": "自定义算子注册检查",
+              "order": 3,
+              "description": "用 opcheck 核对算子的 schema、梯度注册和 FakeTensor 实现是否能配合编译。",
+              "reference_url": "https://docs.pytorch.org/tutorials/advanced/cpp_custom_ops.html",
+              "keywords": "PyTorch custom operator opcheck registration autograd FakeTensor"
+            },
+            {
+              "id": "compiler-5-4",
+              "title": "JAX Tracing 与 JIT",
+              "order": 4,
+              "description": "观察 JAX 如何用抽象 tracer 记录计算，并理解依赖数组值的 Python 控制流为何不能直接跟踪。",
+              "reference_url": "https://docs.jax.dev/en/latest/tracing.html",
+              "keywords": "JAX tracing abstract tracer jit value dependent control flow"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "training",
+      "title": "大规模训练与通信",
+      "order": 4,
+      "children": [
+        {
+          "id": "training-1",
+          "title": "训练循环与数值稳定性",
+          "order": 1,
+          "children": [
+            {
+              "id": "training-1-1",
+              "title": "全局 Batch 与梯度累积",
+              "order": 1,
+              "description": "根据每卡 microbatch、数据并行副本数和累积步数计算每次参数更新处理的样本数。",
+              "reference_url": "https://www.deepspeed.ai/docs/config-json/#batch-size-related-parameters",
+              "keywords": "DeepSpeed global train batch size micro batch gradient accumulation data parallel"
+            },
+            {
+              "id": "training-1-2",
+              "title": "AdamW 状态开销",
+              "order": 2,
+              "description": "理解一阶、二阶矩状态如何随参数规模增长，以及权重衰减如何与梯度更新解耦。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/generated/torch.optim.AdamW.html",
+              "keywords": "PyTorch AdamW optimizer first second moment states decoupled weight decay"
+            },
+            {
+              "id": "training-1-3",
+              "title": "Autocast 与梯度缩放",
+              "order": 3,
+              "description": "追踪按算子选择精度的规则，并理解 FP16 梯度缩放如何减少下溢及处理溢出。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/amp.html",
+              "keywords": "PyTorch AMP autocast FP16 GradScaler underflow overflow"
+            },
+            {
+              "id": "training-1-4",
+              "title": "Activation Checkpointing",
+              "order": 4,
+              "description": "少保存部分前向激活，在反向时重新执行相应前向计算以换取更低显存峰值。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/checkpoint.html",
+              "keywords": "PyTorch activation checkpointing recomputation memory compute tradeoff"
+            }
+          ]
+        },
+        {
+          "id": "training-2",
+          "title": "数据并行与状态分片",
+          "order": 2,
+          "children": [
+            {
+              "id": "training-2-1",
+              "title": "DDP 梯度分桶",
+              "order": 1,
+              "description": "理解反向计算完成的梯度如何触发对应 bucket 的 AllReduce，使通信与反向计算部分重叠。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/notes/ddp.html",
+              "keywords": "PyTorch DDP gradient bucket reducer allreduce overlap backward"
+            },
+            {
+              "id": "training-2-2",
+              "title": "DDP no_sync",
+              "order": 2,
+              "description": "在梯度累积的中间步推迟副本间通信，并在最终步同步累积的梯度。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html",
+              "keywords": "PyTorch DDP no_sync gradient accumulation forward backward"
+            },
+            {
+              "id": "training-2-3",
+              "title": "ZeRO 分片阶段",
+              "order": 3,
+              "description": "比较各阶段对优化器状态、梯度和参数的分片范围，推算显存与通信开销。",
+              "reference_url": "https://arxiv.org/abs/1910.02054",
+              "keywords": "DeepSpeed ZeRO stage 1 2 3 optimizer gradients parameters"
+            },
+            {
+              "id": "training-2-4",
+              "title": "FSDP2 参数物化",
+              "order": 4,
+              "description": "跟踪层执行前 AllGather、执行后重新分片以及梯度 ReduceScatter 的时序。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/distributed.fsdp.fully_shard.html",
+              "keywords": "PyTorch FSDP2 fully_shard all-gather reshard reduce-scatter"
+            },
+            {
+              "id": "training-2-5",
+              "title": "DeviceMesh 与 DTensor Placement",
+              "order": 5,
+              "description": "用多维设备网格表示并行组，并用 Shard、Replicate、Partial 描述张量的分布状态。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/distributed.tensor.html",
+              "keywords": "PyTorch DTensor DeviceMesh Shard Replicate Partial redistribute"
+            }
+          ]
+        },
+        {
+          "id": "training-3",
+          "title": "模型与序列并行",
+          "order": 3,
+          "children": [
+            {
+              "id": "training-3-1",
+              "title": "张量并行的行切分与列切分",
+              "order": 1,
+              "description": "推导线性层权重沿输入或输出维度切分后，何时要对局部结果求和或拼接。",
+              "reference_url": "https://arxiv.org/abs/1909.08053",
+              "keywords": "Megatron tensor parallel column row linear all reduce"
+            },
+            {
+              "id": "training-3-2",
+              "title": "流水线并行的 Microbatch 调度",
+              "order": 2,
+              "description": "观察 GPipe 与 1F1B 如何交错执行前向和反向，以及调度如何改变空转和激活峰值。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/distributed.pipelining.html",
+              "keywords": "PyTorch pipeline parallel ScheduleGPipe Schedule1F1B pipeline bubble microbatch"
+            },
+            {
+              "id": "training-3-3",
+              "title": "序列并行 SP",
+              "order": 3,
+              "description": "沿序列维分摊部分非矩阵乘层的激活，理解其与张量并行之间的 AllGather、ReduceScatter 边界。",
+              "reference_url": "https://arxiv.org/abs/2205.05198",
+              "keywords": "Megatron sequence parallelism activation memory dropout layer norm tensor parallel"
+            },
+            {
+              "id": "training-3-4",
+              "title": "上下文并行 CP",
+              "order": 4,
+              "description": "按序列片段分配长序列训练的激活和计算，并为跨片段注意力交换所需的 K、V。",
+              "reference_url": "https://docs.nvidia.com/megatron-core/developer-guide/latest/user-guide/features/context_parallel.html",
+              "keywords": "Megatron context parallel long sequence KV exchange attention"
+            },
+            {
+              "id": "training-3-5",
+              "title": "专家并行 EP",
+              "order": 5,
+              "description": "按设备分布 MoE 专家，跟踪路由 token 的分发、专家计算和返回聚合。",
+              "reference_url": "https://docs.nvidia.com/megatron-core/developer-guide/latest/user-guide/features/moe.html",
+              "keywords": "Megatron MoE expert parallel token dispatcher alltoall router"
+            }
+          ]
+        },
+        {
+          "id": "training-4",
+          "title": "集合通信",
+          "order": 4,
+          "children": [
+            {
+              "id": "training-4-1",
+              "title": "AllReduce 归约",
+              "order": 1,
+              "description": "多个 rank 提供相同形状的张量，各自获得相同的逐元素归约结果。",
+              "reference_url": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html#allreduce",
+              "keywords": "NCCL allreduce ranks sum gradient collective operation"
+            },
+            {
+              "id": "training-4-2",
+              "title": "ReduceScatter 与 AllGather",
+              "order": 2,
+              "description": "先分发归约后的不同分片，再拼出每个 rank 的完整结果，理解它们与 AllReduce 的等价关系。",
+              "reference_url": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html#reducescatter",
+              "keywords": "NCCL reduce scatter all gather equivalent allreduce"
+            },
+            {
+              "id": "training-4-3",
+              "title": "AllToAll 数据交换",
+              "order": 3,
+              "description": "每个 rank 向每个目标发送对应数据块，理解其如何支撑专家并行中的 token 重分布。",
+              "reference_url": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html#alltoall",
+              "keywords": "NCCL AllToAll personalized exchange rank MoE tokens"
+            },
+            {
+              "id": "training-4-4",
+              "title": "集合通信匹配规则",
+              "order": 4,
+              "description": "检查组内 rank 对通信调用顺序、元素个数和数据类型的约定，定位不一致导致的卡住或错误。",
+              "reference_url": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html",
+              "keywords": "NCCL collective call order count datatype mismatched ranks hang"
+            },
+            {
+              "id": "training-4-5",
+              "title": "NCCL 测试带宽",
+              "order": 5,
+              "description": "区分按有效数据量计算的 algbw 和按集合算法换算的 busbw，对比节点内与跨节点基线。",
+              "reference_url": "https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md",
+              "keywords": "nccl-tests algbw busbw all_reduce_perf calculation"
+            }
+          ]
+        },
+        {
+          "id": "training-5",
+          "title": "吞吐、扩展与恢复",
+          "order": 5,
+          "children": [
+            {
+              "id": "training-5-1",
+              "title": "模型算力利用率 MFU",
+              "order": 1,
+              "description": "以模型所需 FLOPs 和实测吞吐估算有效算力，再除以设备理论峰值。",
+              "reference_url": "https://arxiv.org/abs/2204.02311",
+              "keywords": "PaLM model FLOPs utilization MFU tokens per second theoretical peak"
+            },
+            {
+              "id": "training-5-2",
+              "title": "多维并行与拓扑映射",
+              "order": 2,
+              "description": "把通信频繁的并行组放在高速互联域内，再比较跨节点通信和流水线空转。",
+              "reference_url": "https://arxiv.org/abs/2104.04473",
+              "keywords": "Megatron-LM 3D parallelism topology tensor pipeline data parallel throughput"
+            },
+            {
+              "id": "training-5-3",
+              "title": "分布式 Checkpoint 重分片",
+              "order": 3,
+              "description": "在分布式任务中按分片保存模型与优化器状态，理解恢复时如何映射到新分布。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/distributed.checkpoint.html",
+              "keywords": "PyTorch distributed checkpoint save load reshard world size optimizer state"
+            },
+            {
+              "id": "training-5-4",
+              "title": "TorchElastic Worker 重启",
+              "order": 4,
+              "description": "区分 rendezvous、rank 分配和 worker 重启，结合持久化 checkpoint 恢复训练进度。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/elastic/run.html",
+              "keywords": "torchrun elastic worker failure rendezvous restart checkpoint"
+            }
+          ]
+        },
+        {
+          "id": "training-6",
+          "title": "容量估算与通信模型",
+          "order": 6,
+          "children": [
+            {
+              "id": "training-6-1",
+              "title": "训练显存预算",
+              "order": 1,
+              "description": "先声明表示方式。假设 BF16 参数和梯度各占 2P 字节，另存 FP32 主权重及两个 FP32 动量，则静态模型状态约 16P 字节；实现不维护主权重时需重算。 再加入激活、临时工作区、通信缓冲和分配器预留，激活随 batch、序列长度及保存策略变化。 用峰值 allocated 与 reserved 验证预算，区分状态、激活和碎片；分片与重计算作用于不同部分。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/distributed.html",
+              "keywords": "训练显存预算 原理"
+            },
+            {
+              "id": "training-6-2",
+              "title": "Ring AllReduce 通信量",
+              "order": 2,
+              "description": "ReduceScatter 和 AllGather 各有 n−1 步，每步传输 M/n 字节，所以每 rank 总发送量为 2(n−1)M/n，接收量相同。 声明计算口径。把发送和接收相加会再乘 2；时间模型还需加入步数延迟及有效链路带宽。 小消息延迟占主导，拓扑、分层算法、通道与协议会影响实际表现，不能把理想公式直接当实测带宽。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/distributed.html",
+              "keywords": "Ring AllReduce 通信量 原理"
+            },
+            {
+              "id": "training-6-3",
+              "title": "MoE 路由与负载均衡",
+              "order": 3,
+              "description": "Top-k 路由只激活部分专家，但路由倾斜会让部分设备过载，其他设备等待。 跨设备 dispatch/combine 带来 AllToAll 通信，专家粒度小或 token 数少时 GEMM 效率下降。 检查每专家 token 数、capacity/drop 策略、路由均衡目标和通信重叠；同时观测质量变化。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/distributed.html",
+              "keywords": "MoE 路由与负载均衡 原理"
+            }
+          ]
+        },
+        {
+          "id": "training-7",
+          "title": "参数高效微调与后训练",
+          "order": 7,
+          "children": [
+            {
+              "id": "training-7-1",
+              "title": "LoRA 低秩适配",
+              "order": 1,
+              "description": "LoRA 冻结基础权重并学习低秩更新 ΔW=BA，训练状态主要来自适配器，但反向仍需穿过基础模型。",
+              "reference_url": "https://huggingface.co/docs/peft/zh/conceptual_guides/lora",
+              "keywords": "LoRA 低秩 适配 参数量"
+            },
+            {
+              "id": "training-7-2",
+              "title": "QLoRA 量化微调",
+              "order": 2,
+              "description": "冻结的基础权重量化存储，适配器以较高精度训练。按实现反量化参与计算，激活仍可能占据主要显存，需分别评估内存、速度和质量。",
+              "reference_url": "https://arxiv.org/abs/2305.14314",
+              "keywords": "QLoRA NF4 双重量化 分页优化器"
+            },
+            {
+              "id": "training-7-3",
+              "title": "PPO 的 rollout 与价值模型",
+              "order": 3,
+              "description": "典型 RLHF PPO 包含策略 rollout、奖励计算、价值估计和策略/价值更新，需管理多模型状态与采样吞吐。",
+              "reference_url": "https://huggingface.co/docs/trl/index",
+              "keywords": "PPO 的 rollout 与价值模型 工程实现"
+            },
+            {
+              "id": "training-7-4",
+              "title": "DPO 的偏好对训练",
+              "order": 4,
+              "description": "DPO 常用离线偏好对直接优化偏好目标，通常不需要在线 rollout 或单独训练价值模型。",
+              "reference_url": "https://huggingface.co/docs/trl/index",
+              "keywords": "DPO 的偏好对训练 工程实现"
+            },
+            {
+              "id": "training-7-5",
+              "title": "GRPO 的组内相对优势",
+              "order": 5,
+              "description": "GRPO 对同一 prompt 采样一组回答构造相对优势，通常省去价值模型；重点关注组内奖励方差、长序列、采样成本和策略版本一致性。",
+              "reference_url": "https://huggingface.co/docs/trl/index",
+              "keywords": "GRPO 的组内相对优势 工程实现"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "data",
+      "title": "训练数据与存储",
+      "order": 5,
+      "children": [
+        {
+          "id": "data-1",
+          "title": "语料处理",
+          "order": 1,
+          "children": [
+            {
+              "id": "data-1-1",
+              "title": "WARC、WAT 与 WET",
+              "order": 1,
+              "description": "同一次网页抓取可产出原始响应、提取的元数据和纯文本。按是否需要重跑正文提取选择输入格式。",
+              "reference_url": "https://www.commoncrawl.org/get-started",
+              "keywords": "Common Crawl WARC WAT WET format"
+            },
+            {
+              "id": "data-1-2",
+              "title": "正文提取与语言过滤",
+              "order": 2,
+              "description": "从网页响应提取正文，再按语言识别置信度筛选。对照保留率和抽样结果检查规则对低资源语种的影响。",
+              "reference_url": "https://github.com/huggingface/datatrove/blob/main/examples/fineweb.py",
+              "keywords": "DataTrove FineWeb WARC text extraction language filter"
+            },
+            {
+              "id": "data-1-3",
+              "title": "MinHash 近重复去重",
+              "order": 3,
+              "description": "将文档切成词组，使用 MinHash 签名和分桶召回候选近重复。分别观察阈值对保留率和误删的影响。",
+              "reference_url": "https://github.com/huggingface/datatrove/blob/main/src/datatrove/pipeline/dedup/minhash.py",
+              "keywords": "DataTrove MinHash deduplication n-grams LSH buckets"
+            },
+            {
+              "id": "data-1-4",
+              "title": "质量过滤的消融实验",
+              "order": 4,
+              "description": "固定模型配置和训练预算，对照不同过滤规则生成的子集，再测下游任务表现与语料保留率。",
+              "reference_url": "https://arxiv.org/abs/2406.17557",
+              "keywords": "FineWeb dataset ablation quality filtering downstream benchmarks"
+            },
+            {
+              "id": "data-1-5",
+              "title": "多源数据混采比例",
+              "order": 5,
+              "description": "按样本数或比例为不同来源分配采样份额。混采后的样本占比与 token 占比会随文档长度而变化。",
+              "reference_url": "https://docs.mosaicml.com/projects/streaming/en/stable/getting_started/main_concepts.html",
+              "keywords": "MosaicML Streaming Stream proportion repeat choose dataset mixture"
+            }
+          ]
+        },
+        {
+          "id": "data-2",
+          "title": "分词与样本成批",
+          "order": 2,
+          "children": [
+            {
+              "id": "data-2-1",
+              "title": "Unicode 规范化与预分词",
+              "order": 1,
+              "description": "规范化先处理字符表现形式，预分词再限定子词模型可以合并的边界。比对输入变换和字符偏移映射。",
+              "reference_url": "https://huggingface.co/docs/tokenizers/python/latest/pipeline.html",
+              "keywords": "Hugging Face Tokenizers normalization pre-tokenization offset alignment"
+            },
+            {
+              "id": "data-2-2",
+              "title": "BPE 子词合并",
+              "order": 2,
+              "description": "从基本符号出发，反复合并训练语料中的高频符号对，形成词表和有顺序的合并规则。",
+              "reference_url": "https://huggingface.co/docs/tokenizers/python/latest/components.html#models",
+              "keywords": "BPE tokenizer merge rules subword frequency"
+            },
+            {
+              "id": "data-2-3",
+              "title": "Unigram 子词选择",
+              "order": 3,
+              "description": "从候选子词词表出发训练概率模型，对一段文本选择概率最高的切分，并理解可选的子词采样。",
+              "reference_url": "https://github.com/google/sentencepiece",
+              "keywords": "SentencePiece Unigram language model subword segmentation"
+            },
+            {
+              "id": "data-2-4",
+              "title": "序列打包与样本边界",
+              "order": 4,
+              "description": "把短样本放进较长序列可减少 padding。确认位置和注意力边界符合训练目标，避免样本间出现非预期的注意力连接。",
+              "reference_url": "https://huggingface.co/docs/trl/en/reducing_memory_usage#packing",
+              "keywords": "Hugging Face TRL sequence packing attention boundaries BFD"
+            },
+            {
+              "id": "data-2-5",
+              "title": "SFT 标签掩码",
+              "order": 5,
+              "description": "在 prompt-completion 数据上仅对 completion 部分计算损失时，检查训练标签中答案、填充和停止标记的位置。",
+              "reference_url": "https://huggingface.co/docs/trl/en/sft_trainer",
+              "keywords": "TRL SFTTrainer completion_only_loss label mask ignore index"
+            }
+          ]
+        },
+        {
+          "id": "data-3",
+          "title": "数据格式与版本",
+          "order": 3,
+          "children": [
+            {
+              "id": "data-3-1",
+              "title": "Parquet 行组与列块",
+              "order": 1,
+              "description": "行组横向划分样本，列块保存该行组的单列数据。通过列投影和行组统计量减少扫描量。",
+              "reference_url": "https://parquet.apache.org/docs/file-format/",
+              "keywords": "Apache Parquet row group column chunk footer predicate pushdown"
+            },
+            {
+              "id": "data-3-2",
+              "title": "Arrow 内存映射",
+              "order": 2,
+              "description": "按需映射本地 Arrow 数据文件。区分虚拟地址空间映射、系统页缓存和实际驻留内存。",
+              "reference_url": "https://huggingface.co/docs/datasets/v2.18.0/about_arrow",
+              "keywords": "Hugging Face Datasets Apache Arrow memory mapping page cache"
+            },
+            {
+              "id": "data-3-3",
+              "title": "WebDataset TAR 分片",
+              "order": 3,
+              "description": "把同一样本的图像、文本和元数据按共同文件名前缀放进 TAR 分片，以顺序 I/O 读取批量样本。",
+              "reference_url": "https://github.com/webdataset/webdataset#the-webdataset-format",
+              "keywords": "WebDataset tar shard sample basename sequential IO"
+            },
+            {
+              "id": "data-3-4",
+              "title": "Iceberg 快照与时间旅行",
+              "order": 4,
+              "description": "用快照标识固定训练所读取的表版本。通过历史查询验证复现实验所用的数据切片。",
+              "reference_url": "https://iceberg.apache.org/docs/latest/spark-queries/",
+              "keywords": "Apache Iceberg Spark time travel snapshot-id reproducible data"
+            },
+            {
+              "id": "data-3-5",
+              "title": "数据卡与数据集版本",
+              "order": 5,
+              "description": "记录语料构建流程、分割方式和使用限制。运行清单中保留所用数据集提交版本以便追溯。",
+              "reference_url": "https://huggingface.co/docs/hub/datasets-cards",
+              "keywords": "Hugging Face dataset card metadata dataset revision"
+            },
+            {
+              "id": "data-3-6",
+              "title": "数据血缘的 Job、Run 与 Dataset",
+              "order": 6,
+              "description": "用 Job 表示处理定义，用 Run 表示某次执行，用 Dataset 表示输入输出资产，便于回溯一个数据版本的生成链路。",
+              "reference_url": "https://openlineage.io/docs/spec/object-model/",
+              "keywords": "OpenLineage object model Job Run Dataset input output facets"
+            }
+          ]
+        },
+        {
+          "id": "data-4",
+          "title": "分布式数据加载",
+          "order": 4,
+          "children": [
+            {
+              "id": "data-4-1",
+              "title": "DistributedSampler 与 set_epoch",
+              "order": 1,
+              "description": "为不同 rank 分配索引范围，了解对齐副本数时的丢弃或补齐策略。在每个 epoch 开始前更新洗牌种子。",
+              "reference_url": "https://docs.pytorch.org/docs/main/utils/data.html#torch.utils.data.distributed.DistributedSampler",
+              "keywords": "PyTorch DistributedSampler set_epoch drop_last padded indices"
+            },
+            {
+              "id": "data-4-2",
+              "title": "流式缓冲区洗牌",
+              "order": 2,
+              "description": "流式加载用有限缓冲区近似全量随机洗牌。分别观察分片顺序、缓冲区大小和数据局部相关性。",
+              "reference_url": "https://huggingface.co/docs/datasets/en/stream#shuffle",
+              "keywords": "Hugging Face IterableDataset shuffle buffer size streaming shards"
+            },
+            {
+              "id": "data-4-3",
+              "title": "按 rank 与 worker 划分分片",
+              "order": 3,
+              "description": "分别对分布式进程和 DataLoader worker 分配输入，检查重复读、负载偏斜和过少分片引起的空闲。",
+              "reference_url": "https://docs.mosaicml.com/projects/streaming/en/stable/getting_started/main_concepts.html",
+              "keywords": "StreamingDataset partition nodes ranks workers shard download"
+            },
+            {
+              "id": "data-4-4",
+              "title": "预取深度与持久 worker",
+              "order": 4,
+              "description": "调整 worker 数和预取批数，比较 GPU 等待时间、主机内存占用和 epoch 边界的进程启动开销。",
+              "reference_url": "https://docs.pytorch.org/tutorials/intermediate/intermediate_data_loading_tutorial.html",
+              "keywords": "PyTorch dataloader num_workers prefetch_factor persistent_workers profile"
+            },
+            {
+              "id": "data-4-5",
+              "title": "DataLoader 的批次内存锁定",
+              "order": 5,
+              "description": "用 pin_memory 为 DataLoader 产出的批次准备页锁定内存。自定义批次类型需要实现 pin_memory()，再测量传输和计算的重叠程度。",
+              "reference_url": "https://docs.pytorch.org/docs/main/utils/data.html#memory-pinning",
+              "keywords": "PyTorch pinned memory non_blocking GPU transfer overlap CUDA stream"
+            },
+            {
+              "id": "data-4-6",
+              "title": "数据迭代器断点恢复",
+              "order": 6,
+              "description": "将采样器、迭代位置和必要的随机状态与模型 checkpoint 一并保存。对照恢复前后的样本 ID 序列。",
+              "reference_url": "https://docs.pytorch.org/tensordict/main/training_at_scale.html",
+              "keywords": "PyTorch StatefulDataLoader state_dict load_state_dict checkpoint sampler state"
+            }
+          ]
+        },
+        {
+          "id": "data-5",
+          "title": "存储访问与基准",
+          "order": 5,
+          "children": [
+            {
+              "id": "data-5-1",
+              "title": "对象存储字节范围读取",
+              "order": 1,
+              "description": "用 Range GET 仅读取需要的字节区间，并比较多路读取、请求次数和对象分块对吞吐及尾延迟的影响。",
+              "reference_url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance-guidelines.html",
+              "keywords": "Amazon S3 byte-range fetches parallel training data object storage"
+            },
+            {
+              "id": "data-5-2",
+              "title": "分片下载与本地缓存",
+              "order": 2,
+              "description": "缓存已下载的分片并预取未来样本所需分片。按命中率、下载并发和本地磁盘容量调整上限。",
+              "reference_url": "https://docs.mosaicml.com/projects/streaming/en/stable/getting_started/main_concepts.html",
+              "keywords": "MosaicML Streaming shard cache eviction predownload cache_limit"
+            },
+            {
+              "id": "data-5-3",
+              "title": "MLPerf Storage 训练读基准",
+              "order": 3,
+              "description": "用模拟加速器的训练访问模式衡量存储供数能力，并把吞吐和加速器利用率门槛一起看。",
+              "reference_url": "https://github.com/mlcommons/storage",
+              "keywords": "MLPerf Storage training benchmark simulated accelerator utilization"
+            },
+            {
+              "id": "data-5-4",
+              "title": "Checkpoint 写读带宽",
+              "order": 4,
+              "description": "测量多 rank 同时保存与加载 checkpoint 的有效带宽和操作耗时，并用端到端训练验证对停顿的影响。",
+              "reference_url": "https://github.com/mlcommons/storage/blob/main/checkpointing/README.md",
+              "keywords": "MLPerf Storage checkpoint benchmark distributed read write bandwidth"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "serving",
+      "title": "模型推理与在线服务",
+      "order": 6,
+      "children": [
+        {
+          "id": "serving-1",
+          "title": "自回归生成与接口",
+          "order": 1,
+          "children": [
+            {
+              "id": "serving-1-1",
+              "title": "Prefill 与 Decode",
+              "order": 1,
+              "description": "Prefill 批量处理输入并建立 KV cache，Decode 逐步生成 token。分别测量两阶段耗时，判断算力与显存带宽瓶颈。",
+              "reference_url": "https://vllm.ai/blog/2025-09-05-anatomy-of-vllm",
+              "keywords": "LLM serving prefill decode compute memory bandwidth"
+            },
+            {
+              "id": "serving-1-2",
+              "title": "KV cache 容量估算",
+              "order": 2,
+              "description": "常规 Transformer 的每 token KV 容量约为 2 × 层数 × KV 头数 × 头维度 × 每元素字节数。再计入序列长度、并发及分片策略。",
+              "reference_url": "https://huggingface.co/docs/transformers/en/kv_cache",
+              "keywords": "transformer KV cache memory size formula layers kv heads head dimension"
+            },
+            {
+              "id": "serving-1-3",
+              "title": "MHA、MQA 与 GQA",
+              "order": 3,
+              "description": "比较每个查询头独享、所有查询头共享、按组共享 KV 头三种设计，推导 KV 头数如何影响缓存大小。",
+              "reference_url": "https://arxiv.org/abs/2305.13245",
+              "keywords": "grouped query attention MHA MQA KV cache head sharing"
+            },
+            {
+              "id": "serving-1-4",
+              "title": "Chat Template",
+              "order": 4,
+              "description": "将消息角色及对话边界编码为模型训练时使用的控制 token，核对生成起始标记和 BOS/EOS 的处理。",
+              "reference_url": "https://huggingface.co/docs/transformers/en/chat_templating",
+              "keywords": "Hugging Face apply_chat_template control tokens add_generation_prompt"
+            },
+            {
+              "id": "serving-1-5",
+              "title": "温度、Top-k 与 Top-p 采样",
+              "order": 5,
+              "description": "用温度缩放 logits，并按候选数量或累积概率筛选 token。比较采样与贪心解码的输出多样性。",
+              "reference_url": "https://huggingface.co/docs/transformers/en/generation_strategies",
+              "keywords": "LLM token sampling temperature top-k top-p generation logits"
+            },
+            {
+              "id": "serving-1-6",
+              "title": "约束解码",
+              "order": 6,
+              "description": "按照 JSON Schema 或语法过滤当前步的可选 token，理解结构合法性和内容正确性需要各自验证。",
+              "reference_url": "https://docs.vllm.ai/en/stable/features/structured_outputs/",
+              "keywords": "vLLM structured outputs grammar constrained decoding JSON schema"
+            }
+          ]
+        },
+        {
+          "id": "serving-2",
+          "title": "批处理、KV 缓存与调度",
+          "order": 2,
+          "children": [
+            {
+              "id": "serving-2-1",
+              "title": "PagedAttention",
+              "order": 1,
+              "description": "用逻辑块到物理块的映射让单条序列的 KV cache 分散存放，按需分配块以降低预留和碎片开销。",
+              "reference_url": "https://arxiv.org/abs/2309.06180",
+              "keywords": "vLLM PagedAttention KV cache block table physical allocation fragmentation"
+            },
+            {
+              "id": "serving-2-2",
+              "title": "Continuous Batching",
+              "order": 2,
+              "description": "在生成迭代边界引入新请求，及时移除已完成请求，避免短序列一直等待同批最长序列。",
+              "reference_url": "https://www.usenix.org/conference/osdi22/presentation/yu",
+              "keywords": "Orca iteration-level scheduling continuous batching autoregressive generation"
+            },
+            {
+              "id": "serving-2-3",
+              "title": "Chunked Prefill",
+              "order": 3,
+              "description": "把长提示词切成块，分多个调度步与解码 token 交错执行。观察 token 预算对首字延迟与解码间隔的影响。",
+              "reference_url": "https://arxiv.org/abs/2403.02310",
+              "keywords": "Sarathi-Serve chunked prefill decode latency token budget"
+            },
+            {
+              "id": "serving-2-4",
+              "title": "前缀 KV 复用",
+              "order": 4,
+              "description": "当请求的 token 前缀一致时复用已计算的 KV 块。查看块哈希如何包含前缀哈希，以便辨别内容相同但上下文不同的块。",
+              "reference_url": "https://docs.vllm.ai/en/stable/design/prefix_caching/",
+              "keywords": "vLLM automatic prefix caching parent hash block token IDs KV reuse"
+            },
+            {
+              "id": "serving-2-5",
+              "title": "显存压力下的抢占与重算",
+              "order": 5,
+              "description": "当调度器无法分配足够 KV 块时，部分请求会被抢占。通过 KV 占用、抢占次数和尾延迟观察重算开销。",
+              "reference_url": "https://docs.vllm.ai/en/stable/configuration/optimization/#preemption",
+              "keywords": "vLLM preemption KV cache recomputation gpu memory utilization"
+            },
+            {
+              "id": "serving-2-6",
+              "title": "请求准入与 token 预算",
+              "order": 6,
+              "description": "理解每步可调度 token 数与同时运行序列数的作用，针对长短提示词混合的负载验证排队时间。",
+              "reference_url": "https://docs.vllm.ai/en/stable/configuration/engine_args/",
+              "keywords": "vLLM max_num_batched_tokens max_num_seqs scheduler admission token budget"
+            }
+          ]
+        },
+        {
+          "id": "serving-3",
+          "title": "量化、投机解码与内核",
+          "order": 3,
+          "children": [
+            {
+              "id": "serving-3-1",
+              "title": "AWQ 权重量化",
+              "order": 1,
+              "description": "依据激活分布识别重要通道，对权重做等价缩放以降低低比特量化误差。",
+              "reference_url": "https://arxiv.org/abs/2306.00978",
+              "keywords": "AWQ activation aware weight quantization salient channels scaling W4A16"
+            },
+            {
+              "id": "serving-3-2",
+              "title": "GPTQ 权重量化",
+              "order": 2,
+              "description": "利用近似二阶信息估计量化误差，并在逐步量化权重时补偿误差。",
+              "reference_url": "https://arxiv.org/abs/2210.17323",
+              "keywords": "GPTQ post training weight quantization approximate second order Hessian"
+            },
+            {
+              "id": "serving-3-3",
+              "title": "SmoothQuant 激活量化",
+              "order": 3,
+              "description": "通过等价的通道缩放把激活离群值带来的量化难度部分转移到权重，支持 W8A8 推理。",
+              "reference_url": "https://arxiv.org/abs/2211.10438",
+              "keywords": "SmoothQuant activation outliers equivalent channel rescaling W8A8"
+            },
+            {
+              "id": "serving-3-4",
+              "title": "FP8 KV Cache",
+              "order": 4,
+              "description": "降低缓存中的 K/V 精度以节省显存，检查缩放因子的校准方式并测量长上下文精度。",
+              "reference_url": "https://docs.vllm.ai/en/stable/features/quantization/quantized_kvcache/",
+              "keywords": "vLLM FP8 quantized KV cache scales calibration accuracy"
+            },
+            {
+              "id": "serving-3-5",
+              "title": "Speculative Decoding",
+              "order": 5,
+              "description": "用草稿模型提出多个候选 token，再由目标模型批量验证。用接受率和验证开销分析加速条件。",
+              "reference_url": "https://arxiv.org/abs/2211.17192",
+              "keywords": "speculative decoding draft target verification acceptance rate exact sampling"
+            },
+            {
+              "id": "serving-3-6",
+              "title": "FlashInfer 分页注意力内核",
+              "order": 6,
+              "description": "研究推理内核如何读取分页 KV、处理不等长序列，并在不同请求形状下维持 GPU 利用率。",
+              "reference_url": "https://arxiv.org/abs/2501.01005",
+              "keywords": "FlashInfer paged KV cache attention inference load balancing heterogeneous sequence lengths"
+            }
+          ]
+        },
+        {
+          "id": "serving-4",
+          "title": "分布式推理与服务拓扑",
+          "order": 4,
+          "children": [
+            {
+              "id": "serving-4-1",
+              "title": "张量并行与流水线并行",
+              "order": 1,
+              "description": "张量并行切分层内算子，流水线并行切分模型层。对照互连拓扑评估通信开销与流水线气泡。",
+              "reference_url": "https://docs.vllm.ai/en/stable/serving/parallelism_scaling/",
+              "keywords": "vLLM tensor parallel pipeline parallel inference interconnect communication"
+            },
+            {
+              "id": "serving-4-2",
+              "title": "副本与数据并行",
+              "order": 2,
+              "description": "让多个副本处理不同请求。对稠密模型比较增副本扩吞吐与增张量并行度扩单实例容量的差异。",
+              "reference_url": "https://docs.vllm.ai/en/stable/serving/data_parallel_deployment/",
+              "keywords": "vLLM data parallel serving replicas request distribution load balancing"
+            },
+            {
+              "id": "serving-4-3",
+              "title": "Prefill/Decode 分离",
+              "order": 3,
+              "description": "将两阶段分配给独立 GPU 池，并传输请求的 KV cache。衡量相互干扰的降低与跨池传输的成本。",
+              "reference_url": "https://arxiv.org/abs/2401.09670",
+              "keywords": "DistServe prefill decode disaggregation KV transfer goodput SLO"
+            },
+            {
+              "id": "serving-4-4",
+              "title": "KV 感知路由",
+              "order": 4,
+              "description": "在多个推理副本之间综合可复用前缀长度与当前负载，减少重复 prefill，同时控制热点副本排队。",
+              "reference_url": "https://docs.dynamo.nvidia.com/dynamo/knowledge-base/concepts/system-architecture/kv-aware-routing",
+              "keywords": "NVIDIA Dynamo KV aware routing prefix overlap load balance"
+            },
+            {
+              "id": "serving-4-5",
+              "title": "多租户 LoRA 服务",
+              "order": 5,
+              "description": "多个请求共享基础模型权重，同时在请求维度选择不同 LoRA 适配器。关注适配器驻留、装载和批处理效率。",
+              "reference_url": "https://docs.vllm.ai/en/stable/features/lora/",
+              "keywords": "vLLM multi LoRA serving adapter residency max_loras batching"
+            }
+          ]
+        },
+        {
+          "id": "serving-5",
+          "title": "在线运行与压测",
+          "order": 5,
+          "children": [
+            {
+              "id": "serving-5-1",
+              "title": "HTTP 流式生成",
+              "order": 1,
+              "description": "通过流式接口增量返回生成结果，追踪首个有效 token、结束原因和取消请求后的资源释放。",
+              "reference_url": "https://docs.vllm.ai/en/latest/serving/online_serving/openai_compatible_server/",
+              "keywords": "vLLM OpenAI compatible Chat Completions streaming SSE cancellation finish_reason"
+            },
+            {
+              "id": "serving-5-2",
+              "title": "传统模型 Dynamic Batching",
+              "order": 2,
+              "description": "对可合批的无状态请求设置目标批大小与等待上限，比较排队增加量和吞吐收益。",
+              "reference_url": "https://docs.nvidia.com/deeplearning/triton-inference-server/user-guide/docs/user_guide/batcher.html",
+              "keywords": "NVIDIA Triton dynamic batcher max queue delay preferred batch size"
+            },
+            {
+              "id": "serving-5-3",
+              "title": "TTFT、TPOT 与 ITL",
+              "order": 3,
+              "description": "TTFT 衡量请求至首 token 的时间，TPOT 衡量首 token 之后的平均生成时间，ITL 衡量相邻 token 间隔。分别看尾分位。",
+              "reference_url": "https://docs.vllm.ai/en/stable/design/metrics/",
+              "keywords": "LLM serving benchmark TTFT TPOT ITL time per output token latency percentiles"
+            },
+            {
+              "id": "serving-5-4",
+              "title": "吞吐量与 Goodput",
+              "order": 4,
+              "description": "分别记录请求数、输出 tokens/s，以及同时满足指定延迟 SLO 的请求数每秒。",
+              "reference_url": "https://arxiv.org/abs/2401.09670",
+              "keywords": "DistServe goodput request throughput TTFT TPOT SLO definition"
+            },
+            {
+              "id": "serving-5-5",
+              "title": "基于工作负载的压测",
+              "order": 5,
+              "description": "固定输入和输出长度分布、到达速率、并发上限与缓存预热条件，构造可复现的在线压测。",
+              "reference_url": "https://docs.vllm.ai/en/stable/cli/bench/serve/",
+              "keywords": "vLLM benchmark serving request rate concurrency prompt output distribution warmup"
+            },
+            {
+              "id": "serving-5-6",
+              "title": "MLPerf Server 与 Offline 场景",
+              "order": 6,
+              "description": "Server 场景按规定的到达过程和延迟约束测吞吐，Offline 场景集中提交待处理样本测吞吐。",
+              "reference_url": "https://github.com/mlcommons/inference_policies/blob/master/inference_rules.adoc",
+              "keywords": "MLPerf Inference datacenter Server Offline scenarios LoadGen Poisson latency"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "application",
+      "title": "检索、评测与 Agent 基础设施",
+      "order": 7,
+      "children": [
+        {
+          "id": "application-1",
+          "title": "RAG 与文档索引管道",
+          "order": 1,
+          "children": [
+            {
+              "id": "application-1-1",
+              "title": "RAG 数据流",
+              "order": 1,
+              "description": "把文档索引、查询检索、上下文组装、模型生成拆成独立阶段，用中间结果定位是检索缺证据还是生成未采用证据。",
+              "reference_url": "https://arxiv.org/abs/2005.11401",
+              "keywords": "retrieval augmented generation retriever generator non-parametric memory"
+            },
+            {
+              "id": "application-1-2",
+              "title": "文档切分粒度与重叠",
+              "order": 2,
+              "description": "按结构或递归分隔符切分文档，比较 chunk 大小和 overlap 对证据完整性、索引规模及上下文重复的影响。",
+              "reference_url": "https://docs.langchain.com/oss/python/integrations/splitters/recursive_text_splitter",
+              "keywords": "RAG recursive document chunking chunk size overlap structure"
+            },
+            {
+              "id": "application-1-3",
+              "title": "增量索引与文档去重",
+              "order": 3,
+              "description": "用稳定的文档 ID 和内容哈希识别变化；更新时重跑转换与嵌入，并维护旧向量的删除。",
+              "reference_url": "https://developers.llamaindex.ai/python/framework/module_guides/loading/ingestion_pipeline/#document-management",
+              "keywords": "LlamaIndex ingestion pipeline document management doc_id hash upsert delete stale vectors"
+            },
+            {
+              "id": "application-1-4",
+              "title": "检索证据与上下文预算",
+              "order": 4,
+              "description": "根据排序结果、来源和 token 预算组装上下文。测量关键信息出现在不同位置时的问答效果。",
+              "reference_url": "https://arxiv.org/abs/2307.03172",
+              "keywords": "Lost in the Middle RAG document order context token budget"
+            },
+            {
+              "id": "application-1-5",
+              "title": "文档级权限过滤",
+              "order": 5,
+              "description": "检索阶段使用租户、用户或文档权限等元数据限制候选范围，防止未经授权的文本进入模型上下文。",
+              "reference_url": "https://docs.opensearch.org/latest/security/access-control/document-level-security/",
+              "keywords": "OpenSearch vector search metadata filtering document level access control RAG ACL"
+            }
+          ]
+        },
+        {
+          "id": "application-2",
+          "title": "向量检索、索引与重排",
+          "order": 2,
+          "children": [
+            {
+              "id": "application-2-1",
+              "title": "双塔稠密检索",
+              "order": 1,
+              "description": "分别编码查询与文档，预先索引文档向量，在线用查询向量近邻搜索候选文档。",
+              "reference_url": "https://aclanthology.org/2020.emnlp-main.550/",
+              "keywords": "DPR dense passage retrieval dual encoder query passage embeddings"
+            },
+            {
+              "id": "application-2-2",
+              "title": "余弦相似度、内积与 L2",
+              "order": 2,
+              "description": "区分三种近邻度量。对单位归一化向量，比较最大内积与最小平方 L2 距离的排序关系。",
+              "reference_url": "https://github.com/facebookresearch/faiss/wiki/MetricType-and-distances",
+              "keywords": "Faiss cosine similarity normalized vectors inner product squared L2 ranking"
+            },
+            {
+              "id": "application-2-3",
+              "title": "HNSW 图索引",
+              "order": 3,
+              "description": "在分层近邻图上从稀疏层进入稠密层搜索，用 M 与 efSearch 理解内存、召回率和查询延迟的权衡。",
+              "reference_url": "https://github.com/facebookresearch/faiss/wiki/Faiss-indexes#indexhnsw-variants",
+              "keywords": "HNSW hierarchical navigable small world M efSearch recall latency"
+            },
+            {
+              "id": "application-2-4",
+              "title": "IVF 倒排向量索引",
+              "order": 4,
+              "description": "先用聚类中心划分向量，仅扫描查询附近的部分倒排桶。调整 nprobe 比较候选量与召回率。",
+              "reference_url": "https://github.com/facebookresearch/faiss/wiki/Faiss-indexes#cell-probe-method-with-a-flat-index-as-coarse-quantizer",
+              "keywords": "Faiss IndexIVFFlat inverted file centroid nlist nprobe recall"
+            },
+            {
+              "id": "application-2-5",
+              "title": "乘积量化 PQ",
+              "order": 5,
+              "description": "将向量拆成子向量，每个子空间用独立码本编码，以降低存储与距离计算成本。",
+              "reference_url": "https://github.com/facebookresearch/faiss/wiki/Faiss-indexes#indexes-based-on-product-quantization-codes",
+              "keywords": "Faiss product quantization subvector codebook distance lookup IndexPQ"
+            },
+            {
+              "id": "application-2-6",
+              "title": "ANN 过滤与迭代扫描",
+              "order": 6,
+              "description": "后过滤可能让近似检索返回的候选不足。比较预过滤与扩大搜索范围，并用实际过滤选择率压测。",
+              "reference_url": "https://github.com/pgvector/pgvector#iterative-index-scans",
+              "keywords": "pgvector approximate nearest neighbor post filter iterative index scans selectivity"
+            },
+            {
+              "id": "application-2-7",
+              "title": "BM25 词法检索",
+              "order": 7,
+              "description": "理解词频饱和与长度归一化，观察关键词匹配在编号、专有名词和错误码查询中的表现。",
+              "reference_url": "https://www.elastic.co/docs/reference/elasticsearch/index-settings/similarity",
+              "keywords": "BM25 term frequency saturation document length normalization k1 b"
+            },
+            {
+              "id": "application-2-8",
+              "title": "RRF 混合排序",
+              "order": 8,
+              "description": "按不同检索器返回的名次融合结果，避开直接比较 BM25 分数与向量相似度。",
+              "reference_url": "https://www.elastic.co/docs/reference/elasticsearch/rest-apis/reciprocal-rank-fusion",
+              "keywords": "Elasticsearch hybrid search reciprocal rank fusion BM25 dense vector"
+            },
+            {
+              "id": "application-2-9",
+              "title": "Cross-Encoder 重排",
+              "order": 9,
+              "description": "让重排模型联合读取查询与候选文本，对粗召回的 Top-k 重新打分，测量排序收益与额外延迟。",
+              "reference_url": "https://www.sbert.net/examples/sentence_transformer/applications/retrieve_rerank/README.html",
+              "keywords": "Sentence Transformers retrieve rerank bi encoder cross encoder top k latency"
+            }
+          ]
+        },
+        {
+          "id": "application-3",
+          "title": "检索与生成质量评测",
+          "order": 3,
+          "children": [
+            {
+              "id": "application-3-1",
+              "title": "Recall@k 与 nDCG@k",
+              "order": 1,
+              "description": "用 Recall@k 衡量前 k 条覆盖的相关结果比例，用 nDCG@k 衡量排序位置和分级相关性。",
+              "reference_url": "https://github.com/beir-cellar/beir",
+              "keywords": "BEIR evaluation retrieval Recall@k nDCG@k relevance ranking"
+            },
+            {
+              "id": "application-3-2",
+              "title": "Context Recall",
+              "order": 2,
+              "description": "根据参考答案中的信息判断检索结果是否包含回答所需的证据，区分上下文漏召回与生成遗漏。",
+              "reference_url": "https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/context_recall/",
+              "keywords": "Ragas Context Recall reference answer claims retrieved contexts"
+            },
+            {
+              "id": "application-3-3",
+              "title": "Context Precision",
+              "order": 3,
+              "description": "检查相关上下文是否排在无关段落之前，识别排序差导致有效证据被预算截断的问题。",
+              "reference_url": "https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/context_precision/",
+              "keywords": "Ragas Context Precision relevant contexts ranking average precision"
+            },
+            {
+              "id": "application-3-4",
+              "title": "Faithfulness",
+              "order": 4,
+              "description": "把回答拆成可验证的陈述，判断检索到的上下文能否支持每条陈述。",
+              "reference_url": "https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/faithfulness/",
+              "keywords": "Ragas faithfulness claim decomposition entailment retrieved context"
+            },
+            {
+              "id": "application-3-5",
+              "title": "回答相关性",
+              "order": 5,
+              "description": "判断回答是否正面覆盖用户问题。与证据忠实度和事实正确性分开记分。",
+              "reference_url": "https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/answer_relevance/",
+              "keywords": "Ragas response relevancy generated questions embedding similarity"
+            },
+            {
+              "id": "application-3-6",
+              "title": "LLM 裁判偏差",
+              "order": 6,
+              "description": "对比交换候选答案展示顺序后的偏好，抽样与人类标注对照，监控位置偏差和冗长偏差。",
+              "reference_url": "https://arxiv.org/abs/2306.05685",
+              "keywords": "LLM as a Judge MT Bench position bias verbosity bias human agreement"
+            }
+          ]
+        },
+        {
+          "id": "application-4",
+          "title": "Agent 运行时与工具协议",
+          "order": 4,
+          "children": [
+            {
+              "id": "application-4-1",
+              "title": "状态图与线程检查点",
+              "order": 1,
+              "description": "以状态、节点和转移条件组织工作流，并按线程保存检查点以支持恢复和状态查询。",
+              "reference_url": "https://docs.langchain.com/oss/python/langgraph/persistence",
+              "keywords": "LangGraph state graph thread ID checkpoints persistence supersteps"
+            },
+            {
+              "id": "application-4-2",
+              "title": "重放与副作用幂等",
+              "order": 2,
+              "description": "区分可重放的状态计算与外部写入操作。把副作用放进明确的活动边界，用幂等键处理重试。",
+              "reference_url": "https://docs.temporal.io/workflow-definition",
+              "keywords": "Temporal workflow replay determinism side effects activity idempotency"
+            },
+            {
+              "id": "application-4-3",
+              "title": "人工审批中断与恢复",
+              "order": 3,
+              "description": "在需要人工决策时持久化状态并暂停，使用同一线程提交批准或修改后恢复执行。",
+              "reference_url": "https://docs.langchain.com/oss/python/langgraph/interrupts",
+              "keywords": "LangGraph human in the loop interrupt Command resume thread ID"
+            },
+            {
+              "id": "application-4-4",
+              "title": "MCP 工具发现与调用",
+              "order": 4,
+              "description": "理解 tools/list 和 tools/call 如何暴露工具元数据与执行能力，区分参数 schema 验证与工具执行结果。",
+              "reference_url": "https://modelcontextprotocol.io/specification/2025-11-25/server/tools",
+              "keywords": "Model Context Protocol tools list call JSON Schema tool result"
+            },
+            {
+              "id": "application-4-5",
+              "title": "MCP Resources 资源读取",
+              "order": 5,
+              "description": "资源通过 URI 标识并提供可读取的上下文。理解 resources/list、resources/read 与资源更新通知。",
+              "reference_url": "https://modelcontextprotocol.io/specification/2025-11-25/server/resources",
+              "keywords": "MCP resources list read URI subscriptions updates"
+            },
+            {
+              "id": "application-4-6",
+              "title": "MCP 传输",
+              "order": 6,
+              "description": "比较本地 stdio 与 Streamable HTTP 如何传输 JSON-RPC 消息，关注流式响应和会话管理。",
+              "reference_url": "https://modelcontextprotocol.io/specification/2025-11-25/basic/transports",
+              "keywords": "Model Context Protocol stdio Streamable HTTP JSON RPC SSE session"
+            }
+          ]
+        },
+        {
+          "id": "application-5",
+          "title": "评测数据集与链路追踪",
+          "order": 5,
+          "children": [
+            {
+              "id": "application-5-1",
+              "title": "评测集版本与回归样例",
+              "order": 1,
+              "description": "保存问题、参考答案或证据及元数据，固定评测数据版本，按任务类型比较模型、提示词或检索配置变更。",
+              "reference_url": "https://docs.langchain.com/langsmith/manage-datasets",
+              "keywords": "LangSmith evaluation dataset versions splits regression examples"
+            },
+            {
+              "id": "application-5-2",
+              "title": "离线评测与线上抽样",
+              "order": 2,
+              "description": "用固定数据集比较变更前后的质量，再抽样真实请求观察数据漂移和典型失败。",
+              "reference_url": "https://docs.langchain.com/langsmith/evaluation-types",
+              "keywords": "LangSmith offline evaluation online evaluation production tracing sampling"
+            },
+            {
+              "id": "application-5-3",
+              "title": "GenAI 调用链路",
+              "order": 3,
+              "description": "把模型调用、检索和工具执行记录为关联 span，用 trace 定位失败步骤与高延迟阶段。",
+              "reference_url": "https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-agent-spans.md",
+              "keywords": "OpenTelemetry GenAI agent spans retrieval execute_tool invoke_agent tracing"
+            },
+            {
+              "id": "application-5-4",
+              "title": "Token 用量与调用耗时",
+              "order": 4,
+              "description": "按模型和操作类型记录输入及输出 token 用量和调用延迟，为成本归因与延迟分析提供数据。",
+              "reference_url": "https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md",
+              "keywords": "OpenTelemetry gen_ai.client.token.usage operation.duration semantic conventions"
+            },
+            {
+              "id": "application-5-5",
+              "title": "追踪内容的最小化采集",
+              "order": 5,
+              "description": "提示词、检索查询和工具参数可能含用户数据。配置按需记录、字段脱敏和内容截断。",
+              "reference_url": "https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/client-inference.md",
+              "keywords": "OpenTelemetry GenAI recording content span attributes sensitive data opt in"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cluster",
+      "title": "集群编排与资源调度",
+      "order": 8,
+      "children": [
+        {
+          "id": "cluster-1",
+          "title": "容器与批处理作业",
+          "order": 1,
+          "children": [
+            {
+              "id": "cluster-1-1",
+              "title": "Pod 资源请求与限制",
+              "order": 1,
+              "description": "调度器按 requests 计算节点是否容得下 Pod，运行时由内核通过 CPU 节流和内存 OOM 等机制执行相应 limits。",
+              "reference_url": "https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#requests-and-limits",
+              "keywords": "Kubernetes Pod requests limits CPU throttling memory OOM"
+            },
+            {
+              "id": "cluster-1-2",
+              "title": "Indexed Job 的分片索引",
+              "order": 2,
+              "description": "通过 JOB_COMPLETION_INDEX 将每个 Job 副本映射到一个确定的输入分片，并让控制器逐个记录索引的完成状态。",
+              "reference_url": "https://kubernetes.io/docs/concepts/workloads/controllers/job/#completion-mode",
+              "keywords": "Kubernetes Indexed Job JOB_COMPLETION_INDEX static sharding"
+            },
+            {
+              "id": "cluster-1-3",
+              "title": "Job 失败分类与重试预算",
+              "order": 3,
+              "description": "使用 podFailurePolicy 按退出码和 Pod 条件决定立即失败、正常计数或跳过计数，例如避免维护驱逐消耗重试预算。",
+              "reference_url": "https://kubernetes.io/docs/tasks/job/pod-failure-policy/",
+              "keywords": "Kubernetes Job podFailurePolicy backoffLimit DisruptionTarget"
+            },
+            {
+              "id": "cluster-1-4",
+              "title": "TrainJob 的运行时模板",
+              "order": 4,
+              "description": "通过 runtimeRef 让 TrainJob 引用平台维护的 TrainingRuntime 或 ClusterTrainingRuntime，复用分布式进程配置和容器模板。",
+              "reference_url": "https://trainer.kubeflow.org/en/latest/operator-guides/runtime.html",
+              "keywords": "Kubeflow Trainer TrainJob runtimeRef ClusterTrainingRuntime"
+            },
+            {
+              "id": "cluster-1-5",
+              "title": "RayJob 的集群生命周期",
+              "order": 5,
+              "description": "用 RayJob 将作业提交与 RayCluster 管理关联，并通过 shutdownAfterJobFinishes 在作业结束后回收专用集群。",
+              "reference_url": "https://docs.ray.io/en/latest/cluster/kubernetes/getting-started/rayjob-quick-start.html",
+              "keywords": "KubeRay RayJob shutdownAfterJobFinishes RayCluster lifecycle"
+            }
+          ]
+        },
+        {
+          "id": "cluster-2",
+          "title": "Pod 放置与协同调度",
+          "order": 2,
+          "children": [
+            {
+              "id": "cluster-2-1",
+              "title": "调度器 Filter 与 Score",
+              "order": 1,
+              "description": "Filter 剔除资源或约束不匹配的节点，Score 对通过筛选的节点排序，选出的节点进入后续绑定流程。",
+              "reference_url": "https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/",
+              "keywords": "Kubernetes scheduler framework Filter Score Bind extension points"
+            },
+            {
+              "id": "cluster-2-2",
+              "title": "专用 GPU 节点的污点与亲和性",
+              "order": 2,
+              "description": "用污点排斥普通 Pod，给 GPU 作业添加容忍，再用节点亲和性限制其候选节点范围。",
+              "reference_url": "https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#example-use-cases",
+              "keywords": "Kubernetes dedicated GPU node taint toleration node affinity"
+            },
+            {
+              "id": "cluster-2-3",
+              "title": "Pod 优先级与抢占",
+              "order": 3,
+              "description": "高优先级 Pod 无法排入时，调度器可尝试从候选节点移除低优先级 Pod，为该 Pod 腾出足够资源。",
+              "reference_url": "https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#preemption",
+              "keywords": "Kubernetes PriorityClass pod priority preemption victims"
+            },
+            {
+              "id": "cluster-2-4",
+              "title": "跨可用区的副本分布",
+              "order": 4,
+              "description": "用 topologyKey 定义故障域，再用 maxSkew 与 DoNotSchedule 约束各域的匹配副本数偏差。",
+              "reference_url": "https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/",
+              "keywords": "Kubernetes topology spread maxSkew DoNotSchedule zone failure domain"
+            },
+            {
+              "id": "cluster-2-5",
+              "title": "Gang Scheduling 的最小成员数",
+              "order": 5,
+              "description": "协同调度在能满足最小成员数时才推进放置，降低同步训练因为只占到部分 GPU 而长期等待的风险。",
+              "reference_url": "https://volcano.sh/docs/scheduler/plugins/gang/",
+              "keywords": "Volcano gang scheduling minAvailable distributed training"
+            }
+          ]
+        },
+        {
+          "id": "cluster-3",
+          "title": "作业队列与配额准入",
+          "order": 3,
+          "children": [
+            {
+              "id": "cluster-3-1",
+              "title": "LocalQueue 与 ClusterQueue",
+              "order": 1,
+              "description": "用户向命名空间内的 LocalQueue 提交作业，由其指向的 ClusterQueue 管理集群资源池和准入配额。",
+              "reference_url": "https://kueue.sigs.k8s.io/docs/concepts/#local-queue",
+              "keywords": "Kueue LocalQueue ClusterQueue namespace quota admission"
+            },
+            {
+              "id": "cluster-3-2",
+              "title": "ResourceFlavor 的资源分类",
+              "order": 2,
+              "description": "用节点标签和资源规格将 GPU 型号或容量类型映射到不同资源类别，再为每类资源设置可分配额度。",
+              "reference_url": "https://kueue.sigs.k8s.io/docs/concepts/resource_flavor/",
+              "keywords": "Kueue ResourceFlavor GPU types node labels quota"
+            },
+            {
+              "id": "cluster-3-3",
+              "title": "Cohort 的配额借用",
+              "order": 3,
+              "description": "同一 Cohort 内的 ClusterQueue 可在规则允许时借用空闲配额，borrowingLimit 与 lendingLimit 约束借入和借出。",
+              "reference_url": "https://kueue.sigs.k8s.io/docs/concepts/cluster_queue/",
+              "keywords": "Kueue cohort nominalQuota borrowingLimit lendingLimit"
+            },
+            {
+              "id": "cluster-3-4",
+              "title": "AdmissionCheck 的准入门槛",
+              "order": 4,
+              "description": "配额预留后，作业还可以等待外部准入检查就绪，例如确认已具备启动所需的集群容量。",
+              "reference_url": "https://kueue.sigs.k8s.io/docs/concepts/admission_check/",
+              "keywords": "Kueue admission checks quota reservation provision capacity ready"
+            },
+            {
+              "id": "cluster-3-5",
+              "title": "机架级拓扑感知放置",
+              "order": 5,
+              "description": "为 PodSet 指定 required topology，使同组 Pod 放在同一机架或其他指定拓扑域内，以满足通信局部性需求。",
+              "reference_url": "https://kueue.sigs.k8s.io/docs/concepts/topology_aware_scheduling/",
+              "keywords": "Kueue topology aware scheduling podset required topology rack"
+            }
+          ]
+        },
+        {
+          "id": "cluster-4",
+          "title": "GPU 资源暴露与共享",
+          "order": 4,
+          "children": [
+            {
+              "id": "cluster-4-1",
+              "title": "Device Plugin 扩展资源",
+              "order": 1,
+              "description": "Device Plugin 向 kubelet 注册并报告健康设备，调度器再将可用 GPU 作为 nvidia.com/gpu 等整数扩展资源分配给 Pod。",
+              "reference_url": "https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/",
+              "keywords": "Kubernetes device plugin registration ListAndWatch nvidia.com/gpu"
+            },
+            {
+              "id": "cluster-4-2",
+              "title": "MIG 的硬件级分区",
+              "order": 2,
+              "description": "在支持的 GPU 上用 MIG profile 划出具有独立计算和显存资源的实例，再按实例类型调度工作负载。",
+              "reference_url": "https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/gpu-operator-mig.html",
+              "keywords": "NVIDIA MIG profile hardware memory isolation GPU operator"
+            },
+            {
+              "id": "cluster-4-3",
+              "title": "GPU 时间片共享",
+              "order": 3,
+              "description": "Device Plugin 通过 replicas 广告同一卡的多个可调度份额，底层轮转执行，共享份额也共享显存和故障域。",
+              "reference_url": "https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/25.3.0/gpu-sharing.html",
+              "keywords": "NVIDIA GPU time slicing replicas shared memory fault isolation"
+            },
+            {
+              "id": "cluster-4-4",
+              "title": "DRA 的设备声明与属性筛选",
+              "order": 4,
+              "description": "驱动用 ResourceSlice 发布设备及属性，应用通过 ResourceClaim 请求匹配 DeviceClass 和选择条件的设备。",
+              "reference_url": "https://kubernetes.io/docs/concepts/resource-management/dynamic-resource-allocation/dra-api/",
+              "keywords": "Kubernetes DRA DeviceClass ResourceClaim ResourceSlice device selectors"
+            },
+            {
+              "id": "cluster-4-5",
+              "title": "NUMA 亲和性与 Topology Manager",
+              "order": 5,
+              "description": "single-numa-node 策略将 CPU 和设备等资源的拓扑提示合并，要求资源对齐到同一个 NUMA 节点。用 pod scope 可以将这一约束施加于整个 Pod。",
+              "reference_url": "https://kubernetes.io/docs/tasks/administer-cluster/topology-manager/",
+              "keywords": "Kubernetes Topology Manager single-numa-node CPU GPU NUMA affinity"
+            }
+          ]
+        },
+        {
+          "id": "cluster-5",
+          "title": "扩缩容与高性能计算调度",
+          "order": 5,
+          "children": [
+            {
+              "id": "cluster-5-1",
+              "title": "HPA 指标驱动的副本扩缩",
+              "order": 1,
+              "description": "根据实际指标与目标值的比例计算目标副本数，用缩容稳定窗口避免短时负载变化触发反复缩放。",
+              "reference_url": "https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/#algorithm-details",
+              "keywords": "Kubernetes HPA desired replicas ratio stabilization window scale down"
+            },
+            {
+              "id": "cluster-5-2",
+              "title": "不可调度 Pod 触发节点扩容",
+              "order": 2,
+              "description": "节点自动扩容器根据待调度 Pod 的资源请求和放置约束，判断增加哪些节点能满足这些 Pod。",
+              "reference_url": "https://kubernetes.io/docs/concepts/cluster-administration/node-autoscaling/#provisioning",
+              "keywords": "Kubernetes node autoscaling pending unschedulable pods requests provisioning"
+            },
+            {
+              "id": "cluster-5-3",
+              "title": "Karpenter 节点整合",
+              "order": 3,
+              "description": "模拟迁移 Pod 后的放置结果，删除可清空节点或换成成本更低的节点，同时考虑驱逐约束。",
+              "reference_url": "https://karpenter.sh/docs/concepts/disruption/#consolidation",
+              "keywords": "Karpenter consolidation node replacement simulation PDB"
+            },
+            {
+              "id": "cluster-5-4",
+              "title": "Slurm GRES 的 GPU 请求",
+              "order": 4,
+              "description": "用 GRES 表达每个作业需要的 GPU 数量与可选型号，由 Slurm 按节点上配置的设备资源进行分配。",
+              "reference_url": "https://slurm.schedmd.com/gres.html",
+              "keywords": "Slurm GRES GPU allocation sbatch gres gpu type"
+            },
+            {
+              "id": "cluster-5-5",
+              "title": "Slurm Backfill 回填调度",
+              "order": 5,
+              "description": "利用预计运行时间，将较短的低优先级作业填入资源空档，同时保护高优先级作业的预计开始时间。",
+              "reference_url": "https://slurm.schedmd.com/sched_config.html",
+              "keywords": "Slurm backfill scheduling walltime higher priority start time"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "operations",
+      "title": "可观测性、可靠性与成本治理",
+      "order": 9,
+      "children": [
+        {
+          "id": "operations-1",
+          "title": "平台遥测与监控",
+          "order": 1,
+          "children": [
+            {
+              "id": "operations-1-1",
+              "title": "分布式追踪上下文传播",
+              "order": 1,
+              "description": "跨服务传递 traceparent 中的 trace ID 与父 span ID，将网关、模型服务和下游调用连接为一条请求链路。",
+              "reference_url": "https://opentelemetry.io/docs/concepts/context-propagation/",
+              "keywords": "OpenTelemetry W3C traceparent context propagation distributed trace"
+            },
+            {
+              "id": "operations-1-2",
+              "title": "直方图聚合与尾延迟",
+              "order": 2,
+              "description": "先聚合经典直方图的 bucket 序列，再用 histogram_quantile 估计 P95 或 P99，使不同副本的延迟分布可合并。",
+              "reference_url": "https://prometheus.io/docs/practices/histograms/",
+              "keywords": "Prometheus histogram_quantile aggregate buckets le tail latency"
+            },
+            {
+              "id": "operations-1-3",
+              "title": "Prometheus 标签基数",
+              "order": 3,
+              "description": "每个标签值组合都会创建时间序列，避免将请求 ID 之类的无界值用作指标标签。",
+              "reference_url": "https://prometheus.io/docs/practices/instrumentation/#do-not-overuse-labels",
+              "keywords": "Prometheus label cardinality unique request ID time series"
+            },
+            {
+              "id": "operations-1-4",
+              "title": "DCGM Exporter 的 GPU 健康指标",
+              "order": 4,
+              "description": "从 Prometheus 端点采集显存用量、GPU 温度和 XID 错误码等数据，关联 GPU 与节点定位故障。",
+              "reference_url": "https://github.com/NVIDIA/dcgm-exporter",
+              "keywords": "NVIDIA DCGM Exporter Prometheus GPU memory temperature XID metrics"
+            },
+            {
+              "id": "operations-1-5",
+              "title": "SM 活跃率与驻留占用率",
+              "order": 5,
+              "description": "区分至少有一个 warp 被分配的周期比例与驻留 warp 相对理论上限的比例，用两类指标观察 GPU 负载。",
+              "reference_url": "https://docs.nvidia.com/datacenter/dcgm/latest/learn/modules/profiling.html",
+              "keywords": "DCGM profiling SM_ACTIVE SM_OCCUPANCY resident warps"
+            },
+            {
+              "id": "operations-1-6",
+              "title": "作业准入等待的 P95",
+              "order": 6,
+              "description": "按 ClusterQueue 汇总 admission wait time 的直方图，另看准入后的调度门槛等待以定位延迟阶段。",
+              "reference_url": "https://kueue.sigs.k8s.io/docs/tasks/manage/observability/common_grafana_queries/#admission-wait-time",
+              "keywords": "Kueue admission wait time P95 cluster_queue post-admission startup latency"
+            }
+          ]
+        },
+        {
+          "id": "operations-2",
+          "title": "发布与故障恢复",
+          "order": 2,
+          "children": [
+            {
+              "id": "operations-2-1",
+              "title": "模型加载的启动与就绪探针",
+              "order": 1,
+              "description": "用 startupProbe 覆盖模型冷启动阶段，待模型可接流量后让 readinessProbe 通过并加入 Service 端点。",
+              "reference_url": "https://kubernetes.io/docs/concepts/workloads/pods/probes/",
+              "keywords": "Kubernetes startup readiness probe model load slow startup service endpoints"
+            },
+            {
+              "id": "operations-2-2",
+              "title": "滚动发布的副本预算",
+              "order": 2,
+              "description": "用 maxSurge 和 maxUnavailable 控制发布期间的临时额外 GPU 需求与可用副本下限。",
+              "reference_url": "https://kubernetes.io/docs/tasks/run-application/update-deployment-rolling/#configuring-rolling-update-strategy",
+              "keywords": "Kubernetes Deployment rolling update maxSurge maxUnavailable GPU replicas"
+            },
+            {
+              "id": "operations-2-3",
+              "title": "金丝雀指标门槛",
+              "order": 3,
+              "description": "用 Argo Rollouts 的 AnalysisTemplate 查询候选版本的错误率或延迟，根据判定结果推进或中止发布。",
+              "reference_url": "https://argoproj.github.io/argo-rollouts/features/analysis/",
+              "keywords": "Argo Rollouts AnalysisTemplate canary Prometheus successCondition failureLimit"
+            },
+            {
+              "id": "operations-2-4",
+              "title": "PDB 与计划性驱逐",
+              "order": 4,
+              "description": "以 minAvailable 或 maxUnavailable 限制节点维护中经 Eviction API 执行的自愿驱逐，保留所需服务容量。",
+              "reference_url": "https://kubernetes.io/docs/concepts/workloads/pods/disruptions/#pod-disruption-budgets",
+              "keywords": "Kubernetes PodDisruptionBudget voluntary eviction node drain minAvailable"
+            },
+            {
+              "id": "operations-2-5",
+              "title": "Spot 中断与训练恢复",
+              "order": 5,
+              "description": "将 EC2 Spot 中断通知作为尽力而为的退出信号，并依靠定期保存到持久存储的检查点恢复训练。",
+              "reference_url": "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html",
+              "keywords": "EC2 Spot interruption notice best effort training checkpoint resume"
+            }
+          ]
+        },
+        {
+          "id": "operations-3",
+          "title": "服务目标与事件响应",
+          "order": 3,
+          "children": [
+            {
+              "id": "operations-3-1",
+              "title": "以请求为单位的 SLI 与 SLO",
+              "order": 1,
+              "description": "把符合成功条件或时延门槛的请求占比定义为 SLI，在明确的时间窗口内为该比率设定 SLO。",
+              "reference_url": "https://sre.google/workbook/implementing-slos/",
+              "keywords": "Google SRE request based SLI SLO good events latency threshold"
+            },
+            {
+              "id": "operations-3-2",
+              "title": "多窗口错误预算燃烧率",
+              "order": 2,
+              "description": "用失败率除以允许失败率计算 burn rate，将短窗口与长窗口联用，检测持续消耗错误预算的故障。",
+              "reference_url": "https://sre.google/workbook/alerting-on-slos/#6-multiwindow-multi-burn-rate-alerts",
+              "keywords": "Google SRE multiwindow multi burn rate alerting error budget"
+            },
+            {
+              "id": "operations-3-3",
+              "title": "错误预算约束发布节奏",
+              "order": 3,
+              "description": "将 1 减去 SLO 得到的失败额度写入发布政策，约定预算耗尽后何时暂停变更并优先处理可靠性问题。",
+              "reference_url": "https://sre.google/workbook/error-budget-policy/",
+              "keywords": "Google SRE error budget policy freeze releases budget exhausted"
+            },
+            {
+              "id": "operations-3-4",
+              "title": "过载丢弃与背压",
+              "order": 4,
+              "description": "当服务达到并发上限或等待队列过长时，尽早拒绝一部分请求，并向上游返回限流信号，降低排队放大与连锁故障。",
+              "reference_url": "https://sre.google/sre-book/handling-overload/",
+              "keywords": "Google SRE handling overload load shedding bounded queues client side throttling"
+            },
+            {
+              "id": "operations-3-5",
+              "title": "故障复盘的行动项",
+              "order": 5,
+              "description": "记录事件影响、时间线与系统条件，将可预防或可缓解的问题转化为有负责人和期限的行动项。",
+              "reference_url": "https://sre.google/sre-book/postmortem-culture/",
+              "keywords": "Google SRE blameless postmortem timeline action items owner"
+            }
+          ]
+        },
+        {
+          "id": "operations-4",
+          "title": "租户隔离与软件供应链",
+          "order": 4,
+          "children": [
+            {
+              "id": "operations-4-1",
+              "title": "命名空间级 RBAC 授权",
+              "order": 1,
+              "description": "用 Role 定义所需资源和操作，再通过 RoleBinding 将权限限制在指定命名空间并授予工作负载身份。",
+              "reference_url": "https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding",
+              "keywords": "Kubernetes RBAC RoleBinding ServiceAccount namespace least privilege"
+            },
+            {
+              "id": "operations-4-2",
+              "title": "短期 ServiceAccount 令牌",
+              "order": 2,
+              "description": "通过投射卷向 Pod 提供绑定 audience 与有效期的令牌，由 kubelet 随到期时间轮换。",
+              "reference_url": "https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#serviceaccount-token-volume-projection",
+              "keywords": "Kubernetes projected ServiceAccount token audience expiration rotation"
+            },
+            {
+              "id": "operations-4-3",
+              "title": "NetworkPolicy 默认拒绝",
+              "order": 3,
+              "description": "在支持 NetworkPolicy 的 CNI 中，按 Pod 选择器启用 ingress 和 egress 隔离，再显式放行所需通信。",
+              "reference_url": "https://kubernetes.io/docs/concepts/services-networking/network-policies/#default-policies",
+              "keywords": "Kubernetes NetworkPolicy default deny ingress egress CNI"
+            },
+            {
+              "id": "operations-4-4",
+              "title": "Pod 安全准入模式",
+              "order": 4,
+              "description": "按命名空间设置 enforce、audit 或 warn 模式，用 Restricted 等策略约束容器的权限和安全配置。",
+              "reference_url": "https://kubernetes.io/docs/concepts/security/pod-security-admission/",
+              "keywords": "Kubernetes Pod Security Admission Restricted enforce audit warn"
+            },
+            {
+              "id": "operations-4-5",
+              "title": "命名空间 ResourceQuota",
+              "order": 5,
+              "description": "对命名空间内 GPU 请求总量或作业对象数设置上限，使 API 准入阶段拒绝超过配额的创建请求。",
+              "reference_url": "https://kubernetes.io/docs/concepts/policy/resource-quotas/",
+              "keywords": "Kubernetes ResourceQuota requests.nvidia.com/gpu namespace object count"
+            },
+            {
+              "id": "operations-4-6",
+              "title": "API 审计的事件级别",
+              "order": 6,
+              "description": "通过审计规则选择 Metadata 等级，记录操作者、资源和操作动词，并控制是否保留请求与响应正文。",
+              "reference_url": "https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#audit-policy",
+              "keywords": "Kubernetes audit policy Metadata RequestResponse API server audit events"
+            },
+            {
+              "id": "operations-4-7",
+              "title": "容器镜像签名验证",
+              "order": 7,
+              "description": "用 Cosign 验证镜像摘要绑定的签名，并在无密钥签名流程中校验预期证书身份与 OIDC issuer。",
+              "reference_url": "https://docs.sigstore.dev/cosign/verifying/verify/",
+              "keywords": "Cosign verify image digest certificate identity OIDC issuer"
+            },
+            {
+              "id": "operations-4-8",
+              "title": "SLSA 构建来源证明",
+              "order": 8,
+              "description": "用 provenance 将构建产物摘要关联到构建器、外部参数和可解析的依赖摘要，以验证产物来源。",
+              "reference_url": "https://slsa.dev/spec/v1.2/build-provenance",
+              "keywords": "SLSA build provenance subject builder externalParameters resolvedDependencies"
+            }
+          ]
+        },
+        {
+          "id": "operations-5",
+          "title": "成本分摊与单位经济性",
+          "order": 5,
+          "children": [
+            {
+              "id": "operations-5-1",
+              "title": "Kubernetes 工作负载成本分摊",
+              "order": 1,
+              "description": "按命名空间和团队标签聚合 OpenCost 分配数据，建立可用于账单展示或分摊的租户成本口径。",
+              "reference_url": "https://opencost.io/docs/integrations/api/#allocation",
+              "keywords": "OpenCost allocation aggregate namespace label workload cost"
+            },
+            {
+              "id": "operations-5-2",
+              "title": "节点闲置与工作负载闲置成本",
+              "order": 2,
+              "description": "区分节点上未被分配的资源成本与工作负载已请求但未使用的资源成本，以定位缩容或下调资源请求的机会。",
+              "reference_url": "https://opencost.io/docs/specification/#idle-costs",
+              "keywords": "OpenCost asset idle cost workload idle cost requested versus used"
+            },
+            {
+              "id": "operations-5-3",
+              "title": "GPU·小时的容量计量",
+              "order": 3,
+              "description": "按资源分配时段累加 GPU 数量乘以时长，再乘对应机型的单位 GPU·小时成本估算训练资源开销。",
+              "reference_url": "https://opencost.io/docs/specification/#appendix-a",
+              "keywords": "GPU hours allocated GPUs duration hourly rate OpenCost asset"
+            },
+            {
+              "id": "operations-5-4",
+              "title": "每百万 Token 的推理成本",
+              "order": 4,
+              "description": "用固定窗口的推理总成本除以该窗口处理的 Token 数，再乘一百万，并固定输入与输出 Token 的计数口径。",
+              "reference_url": "https://www.finops.org/framework/capabilities/unit-economics/",
+              "keywords": "FinOps inference cost per million tokens input output tokens unit economics"
+            }
+          ]
+        },
+        {
+          "id": "operations-6",
+          "title": "实验与模型制品",
+          "order": 6,
+          "children": [
+            {
+              "id": "operations-6-1",
+              "title": "Run、参数与训练制品",
+              "order": 1,
+              "description": "给每次训练分配 run ID，关联参数、指标曲线和制品，并记录数据版本、代码提交和运行环境以支持复现。",
+              "reference_url": "https://mlflow.org/docs/latest/ml/tracking",
+              "keywords": "MLflow tracking run params metrics artifacts reproducibility"
+            },
+            {
+              "id": "operations-6-2",
+              "title": "模型版本与可变别名",
+              "order": 2,
+              "description": "保留可审计的版本标识，用别名指向当前候选或线上版本。部署记录解析后的版本，以便回滚到原制品。",
+              "reference_url": "https://mlflow.org/docs/latest/model-registry/",
+              "keywords": "MLflow model registry version aliases champion rollback"
+            },
+            {
+              "id": "operations-6-3",
+              "title": "模型签名与输入契约",
+              "order": 3,
+              "description": "将输入字段、张量形状和类型记录为模型签名。用输入样例验证发布前后的接口兼容性。",
+              "reference_url": "https://mlflow.org/docs/latest/ml/model/signatures/",
+              "keywords": "MLflow model signature input schema tensor shape validation"
+            },
+            {
+              "id": "operations-6-4",
+              "title": "Safetensors 与分片索引",
+              "order": 4,
+              "description": "了解 safetensors 头部如何记录张量类型、形状与字节偏移，再用分片索引定位张量所在的权重文件。",
+              "reference_url": "https://huggingface.co/docs/huggingface_hub/package_reference/serialization",
+              "keywords": "Hugging Face safetensors shard index weight_map tensor serialization"
+            }
+          ]
+        },
+        {
+          "id": "operations-7",
+          "title": "性能实验与故障定位",
+          "order": 7,
+          "children": [
+            {
+              "id": "operations-7-1",
+              "title": "GPU 利用率低的定位顺序",
+              "order": 1,
+              "description": "先确认指标定义与采样窗口，结合吞吐、SM 活跃率、显存带宽、功耗和时间线判断实际工作状态。 将一步执行拆成数据加载、主机到设备传输、算子计算、通信和同步，查找 GPU 空闲区间对应的阻塞来源。 对疑似瓶颈做单变量实验，例如合成数据绕过 I/O、调整 batch 或检查 CPU 线程争用，再比较端到端结果。",
+              "reference_url": "https://docs.pytorch.org/tutorials/recipes/recipes/profiler_recipe.html",
+              "keywords": "GPU 利用率低的定位顺序 原理"
+            },
+            {
+              "id": "operations-7-2",
+              "title": "训练 OOM 与内存增长",
+              "order": 2,
+              "description": "启动期按参数、梯度、优化器状态、激活和临时工作区估算峰值，检查精度、序列长度、batch 和参数分片配置。 逐步记录已分配与保留显存，检查是否把带计算图的 loss 或输出长期保存、动态 shape 是否改变峰值及 allocator 是否发生碎片化。 依据瓶颈选择减小 microbatch、激活重计算、分片或修复张量生命周期，同时用同等有效 batch 和质量标准验证。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/notes/cuda.html",
+              "keywords": "训练 OOM 与内存增长 原理"
+            },
+            {
+              "id": "operations-7-3",
+              "title": "NCCL 卡死与 Collective 不匹配",
+              "order": 3,
+              "description": "收集所有 rank 的日志、异常和堆栈，确认是否有 rank 提前退出、输入耗尽或走入不同控制分支。 核对 collective 的顺序、参与进程组、张量数量和形状，定位各 rank 最后完成的同一个训练步骤。 再检查网卡路径、链路错误、拓扑和通信库环境，用小规模复现及通信基准区分程序失配和网络故障。",
+              "reference_url": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting.html",
+              "keywords": "NCCL 卡死与 Collective 不匹配 原理"
+            },
+            {
+              "id": "operations-7-4",
+              "title": "尾延迟恶化与排队",
+              "order": 4,
+              "description": "按模型、租户、长度、缓存命中和实例拆分样本，确认直方图聚合与分位数计算方法正确。 分解排队、prefill、decode 和网络耗时，查找流量突发、长请求阻塞、冷启动或后端不均衡。 通过控制到达率、改变调度或路由策略验证原因，并同时观察超时和失败请求，避免成功样本筛选掩盖问题。",
+              "reference_url": "https://sre.google/sre-book/handling-overload/",
+              "keywords": "尾延迟恶化与排队 原理"
+            },
+            {
+              "id": "operations-7-5",
+              "title": "扩展效率下降与慢节点",
+              "order": 5,
+              "description": "先明确强扩展还是弱扩展，固定比较口径，核对全局 batch、序列长度和实际处理样本数。 比较每 rank 的计算、通信与等待时间，检查通信计算重叠、跨节点拓扑和数据供给是否成为瓶颈。 排查慢节点的温度降频、CPU 亲和性、磁盘和网络错误，移除或替换疑似节点后做对照实验。",
+              "reference_url": "https://docs.pytorch.org/tutorials/recipes/recipes/profiler_recipe.html",
+              "keywords": "扩展效率下降与慢节点 原理"
+            },
+            {
+              "id": "operations-7-6",
+              "title": "性能优化结论的可信度",
+              "order": 6,
+              "description": "明确端到端指标与基线版本，固定硬件、模型、精度、输入输出分布和并发条件，说明是否包含编译与冷启动。 进行预热与多次重复测量，报告波动和异常样本处理；在单因素实验之外验证真实负载收益。 同步检查结果正确性、模型质量、显存、尾延迟和失败率，说明收益来源及退化场景。",
+              "reference_url": "https://docs.pytorch.org/docs/stable/benchmark_utils.html",
+              "keywords": "性能优化结论的可信度 原理"
+            }
+          ]
+        },
+        {
+          "id": "operations-8",
+          "title": "服务与训练平台设计",
+          "order": 8,
+          "children": [
+            {
+              "id": "operations-8-1",
+              "title": "推理服务的端到端设计",
+              "order": 1,
+              "description": "先明确模型与精度、输入输出长度分布、并发、到达率以及 TTFT 和生成延迟目标，再建立显存和吞吐容量预算。 入口负责认证、配额和请求校验，队列实施 token 预算准入，路由结合副本负载与缓存局部性，执行层负责批处理和 KV cache。 对取消、超时、流式连接中断和实例故障定义处理语义，观测排队、prefill、decode 三段耗时，并用实际工作负载压测。",
+              "reference_url": "https://kubernetes.io/zh-cn/docs/concepts/",
+              "keywords": "推理服务的端到端设计 原理"
+            },
+            {
+              "id": "operations-8-2",
+              "title": "训练平台与作业生命周期",
+              "order": 2,
+              "description": "以作业规格固化代码、镜像、数据版本、资源、启动命令和 checkpoint 位置，记录提交、排队、运行、恢复及结束状态。 准入层检查配额与资源可用性，调度层处理拓扑和协同启动，运行控制器管理 worker 生命周期与失败策略。 提供日志、指标、制品和审计关联，重试沿用可追溯的作业身份，同时为每次尝试建立独立记录。",
+              "reference_url": "https://kubernetes.io/zh-cn/docs/concepts/",
+              "keywords": "训练平台与作业生命周期 原理"
+            },
+            {
+              "id": "operations-8-3",
+              "title": "模型版本与缓存一致性",
+              "order": 3,
+              "description": "缓存键包含影响输出或中间状态的模型版本、tokenizer、adapter、输入及相关执行配置，明确各类缓存的可复用边界。 新旧版本使用独立命名空间或显式失效机制，切换流量时记录实际执行版本，并为正在执行的请求保留一致配置。 对跨租户缓存设置隔离与访问控制，测试版本回滚、并发填充、过期以及失效通知丢失的情况。",
+              "reference_url": "https://kubernetes.io/zh-cn/docs/concepts/",
+              "keywords": "模型版本与缓存一致性 原理"
+            },
+            {
+              "id": "operations-8-4",
+              "title": "分布式训练故障恢复",
+              "order": 4,
+              "description": "列出模型、优化器、调度器、随机数和数据迭代状态，确定支持 epoch 边界还是任意 step 恢复以及允许的数据重放范围。 各 rank 完成持久化后再发布完整性清单或提交标记，避免恢复到部分写入的 checkpoint；异步保存必须保证状态快照一致。 按保存耗时、故障率和恢复耗时选择间隔，演练 worker 数变化后的重分片，并校验恢复步数、采样序列和损失轨迹。",
+              "reference_url": "https://kubernetes.io/zh-cn/docs/concepts/",
+              "keywords": "分布式训练故障恢复 原理"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "foundations",
+      "title": "编程、系统与模型基础",
+      "order": 10,
+      "children": [
+        {
+          "id": "foundations-1",
+          "title": "编程与算法",
+          "order": 1,
+          "children": [
+            {
+              "id": "foundations-1-1",
+              "title": "RAII 与异常安全",
+              "order": 1,
+              "description": "把资源获取和释放绑定到对象生命周期，构造成功后由析构负责清理。 区分基本保证、强异常保证和不抛异常保证；析构通常应避免抛出异常。 资源对象应明确拷贝和移动语义，防止双重释放；异步 GPU 操作结束前必须保证底层资源有效。",
+              "reference_url": "https://zh.cppreference.com/w/cpp",
+              "keywords": "RAII 与异常安全 原理"
+            },
+            {
+              "id": "foundations-1-2",
+              "title": "移动语义与 noexcept",
+              "order": 2,
+              "description": "std::move 将表达式转换为可供移动重载匹配的右值引用，本身不搬运资源。 移动构造转移所有权并维持源对象合法但通常未指定的状态，实际是否移动取决于被调用类型。 容器扩容时可能为了异常保证选择拷贝；正确声明 noexcept 移动操作有助于采用移动。",
+              "reference_url": "https://zh.cppreference.com/w/cpp",
+              "keywords": "移动语义与 noexcept 原理"
+            },
+            {
+              "id": "foundations-1-3",
+              "title": "智能指针与所有权",
+              "order": 3,
+              "description": "unique_ptr 表示独占所有权，借助移动转移所有权，适合作为默认资源拥有者。 shared_ptr 共享控制块和引用计数，计数安全不代表所管理对象的并发访问安全。 weak_ptr 不增加强引用计数，用于打破循环引用；lock 返回持有对象的 shared_ptr 或空指针。",
+              "reference_url": "https://zh.cppreference.com/w/cpp",
+              "keywords": "智能指针与所有权 原理"
+            },
+            {
+              "id": "foundations-1-4",
+              "title": "互斥锁与数据竞争",
+              "order": 4,
+              "description": "并发访问同一内存位置、至少一个为写入且缺少适当同步时，需要检查是否构成数据竞争。 用互斥锁保护完整的不变量，锁住单个读写操作可能仍无法保证组合操作正确。 用一致的加锁顺序降低死锁风险，分别测量锁等待与临界区执行时间。",
+              "reference_url": "https://zh.cppreference.com/w/cpp",
+              "keywords": "互斥锁与数据竞争 原理"
+            },
+            {
+              "id": "foundations-1-5",
+              "title": "原子操作与内存序",
+              "order": 5,
+              "description": "生产者先写入数据，再对发布标志执行 release store。 消费者的 acquire load 读到相应发布值时，可建立同步关系，使发布前写入对后续读取可见。 relaxed 只提供该原子对象操作的原子性及修改顺序，不能单独建立普通数据的发布关系。",
+              "reference_url": "https://zh.cppreference.com/w/cpp",
+              "keywords": "原子操作与内存序 原理"
+            },
+            {
+              "id": "foundations-1-6",
+              "title": "Python GIL 与多进程",
+              "order": 6,
+              "description": "先确认解释器和构建模式；传统带 GIL 的 CPython 中，同一解释器的 Python 字节码通常不能由多个线程并行执行。 I/O 等待或释放 GIL 的原生扩展仍可受益于线程；纯 Python CPU 工作通常考虑多进程。 多进程需计入启动、序列化和通信成本，并处理入口保护、可序列化任务和 worker 生命周期。",
+              "reference_url": "https://zh.cppreference.com/w/cpp",
+              "keywords": "Python GIL 与多进程 原理"
+            },
+            {
+              "id": "foundations-1-7",
+              "title": "LRU 缓存实现",
+              "order": 7,
+              "description": "哈希表将键映射到双向链表节点，链表维护最近使用顺序。 命中后移动到头部，容量超限时删除尾节点，并同步更新哈希表。 覆盖容量为零、更新已有键、重复淘汰及并发访问；缓存容量按条目或字节计量须明确。",
+              "reference_url": "https://zh.cppreference.com/w/cpp",
+              "keywords": "LRU 缓存实现 原理"
+            },
+            {
+              "id": "foundations-1-8",
+              "title": "Top-k 与堆",
+              "order": 8,
+              "description": "维护大小最多为 k 的最小堆，超过堆顶的元素替换堆顶。 n 个元素的处理复杂度为 O(n log k)，额外空间为 O(k)，最终排序另需 O(k log k)。 明确 k 为零、k 大于 n、重复元素及稳定排序要求，避免保存全部输入。",
+              "reference_url": "https://zh.cppreference.com/w/cpp",
+              "keywords": "Top-k 与堆 原理"
+            },
+            {
+              "id": "foundations-1-9",
+              "title": "阻塞队列与背压",
+              "order": 9,
+              "description": "用同一互斥锁保护队列和关闭状态，使用条件变量分别等待非空或非满。 等待时通过谓词循环处理伪唤醒，状态改变后通知适当等待者。 定义关闭后的 push/pop 行为，唤醒所有等待线程，并通过容量限制让生产者感知背压。",
+              "reference_url": "https://zh.cppreference.com/w/cpp",
+              "keywords": "阻塞队列与背压 原理"
+            },
+            {
+              "id": "foundations-1-10",
+              "title": "完美转发与引用折叠",
+              "order": 10,
+              "description": "转发引用结合模板类型推导保存实参的值类别，std::forward<T> 根据推导出的 T 转发。理解引用折叠规则以及 std::move 与 std::forward 的适用位置。",
+              "reference_url": "https://zh.cppreference.com/w/cpp/utility/forward",
+              "keywords": "C++ 完美转发 引用折叠"
+            },
+            {
+              "id": "foundations-1-11",
+              "title": "哈希表冲突与扩容",
+              "order": 11,
+              "description": "理解链式和开放寻址的冲突处理、负载因子与 rehash。区分平均 O(1) 查找与最坏复杂度，并分析扩容时迭代器失效。",
+              "reference_url": "https://zh.cppreference.com/w/cpp/container/unordered_map",
+              "keywords": "哈希表 冲突 负载因子 rehash"
+            },
+            {
+              "id": "foundations-1-12",
+              "title": "二分查找与边界不变量",
+              "order": 12,
+              "description": "用闭区间或半开区间明确搜索范围，维护循环不变量。处理重复元素、空输入以及 lower_bound 和 upper_bound 的边界。",
+              "reference_url": "https://zh.cppreference.com/w/cpp/algorithm/lower_bound",
+              "keywords": "二分查找 lower_bound 边界"
+            },
+            {
+              "id": "foundations-1-13",
+              "title": "图遍历与拓扑排序",
+              "order": 13,
+              "description": "理解 BFS 队列、DFS 栈及访问标记。用入度或 DFS 状态检测有向环并构造依赖执行顺序，复杂度为 O(V+E)。",
+              "reference_url": "https://www.hello-algo.com/chapter_graph/graph_traversal/",
+              "keywords": "图遍历 拓扑排序 有向无环图"
+            },
+            {
+              "id": "foundations-1-14",
+              "title": "动态规划的状态与转移",
+              "order": 14,
+              "description": "从子问题定义状态、转移、边界和计算顺序。分析时间与空间复杂度，并判断滚动数组是否会覆盖仍需使用的状态。",
+              "reference_url": "https://www.hello-algo.com/chapter_dynamic_programming/intro_to_dynamic_programming/",
+              "keywords": "动态规划 状态 转移 滚动数组"
+            }
+          ]
+        },
+        {
+          "id": "foundations-2",
+          "title": "操作系统与网络",
+          "order": 2,
+          "children": [
+            {
+              "id": "foundations-2-1",
+              "title": "进程、线程与上下文切换",
+              "order": 1,
+              "description": "同一进程的线程通常共享地址空间和打开的文件等资源，各线程有独立执行栈和寄存器状态。 进程间默认地址空间隔离，通信可使用管道、socket 或共享内存并配合同步。 上下文切换包括调度及寄存器状态切换，也可能影响缓存局部性与 TLB，实际成本依工作负载而变。",
+              "reference_url": "https://docs.kernel.org/translations/zh_CN/index.html",
+              "keywords": "进程、线程与上下文切换 原理"
+            },
+            {
+              "id": "foundations-2-2",
+              "title": "虚拟内存与缺页",
+              "order": 2,
+              "description": "虚拟地址映射与物理页驻留不同，映射文件通常按访问触发页加载。 缺页可能只需要建立映射，也可能需要从存储读取，二者延迟差别显著。 结合 RSS、页缓存、缺页次数和 I/O 判断真实瓶颈，留意顺序预读与随机访问模式。",
+              "reference_url": "https://docs.kernel.org/translations/zh_CN/index.html",
+              "keywords": "虚拟内存与缺页 原理"
+            },
+            {
+              "id": "foundations-2-3",
+              "title": "TCP 可靠传输与连接",
+              "order": 3,
+              "description": "通过序列号、确认与重传实现可靠有序字节流，应用需自行定义消息边界。 流量控制限制接收方承载，拥塞控制调节网络中的发送速率，需区分二者。 连接建立、重传和队头阻塞可影响请求尾延迟，使用连接复用与分阶段耗时定位。",
+              "reference_url": "https://docs.kernel.org/translations/zh_CN/index.html",
+              "keywords": "TCP 可靠传输与连接 原理"
+            },
+            {
+              "id": "foundations-2-4",
+              "title": "缓存一致性与伪共享",
+              "order": 4,
+              "description": "变量可能位于同一 CPU cache line，使不同核心的写入引发一致性协议中的所有权迁移。 从数据布局、线程访问模式和硬件计数器验证伪共享，不能只凭线程数推断。 考虑对齐、填充或按线程局部累积后归并，同时衡量空间开销和实际收益。",
+              "reference_url": "https://docs.kernel.org/translations/zh_CN/index.html",
+              "keywords": "缓存一致性与伪共享 原理"
+            },
+            {
+              "id": "foundations-2-5",
+              "title": "死锁的必要条件与规避",
+              "order": 5,
+              "description": "理解互斥、持有并等待、不可抢占和循环等待四个必要条件。采用统一加锁顺序、缩小锁范围和超时退出，结合线程栈分析等待环。",
+              "reference_url": "https://zh.cppreference.com/w/cpp/thread/lock",
+              "keywords": "死锁 必要条件 锁顺序"
+            },
+            {
+              "id": "foundations-2-6",
+              "title": "一致性、共识与领导者选举",
+              "order": 6,
+              "description": "区分线性一致性、最终一致性和读写可用性。理解多数派、任期和日志复制如何支持故障后的领导者选举，避免将缓存一致性与分布式一致性混同。",
+              "reference_url": "https://raft.github.io/",
+              "keywords": "Raft 共识 领导者选举 线性一致性"
+            },
+            {
+              "id": "foundations-2-7",
+              "title": "幂等键与至少一次投递",
+              "order": 7,
+              "description": "网络重试可能造成重复执行。通过稳定请求 ID、结果记录和原子提交设计去重，明确去重有效期与跨系统副作用的边界。",
+              "reference_url": "https://docs.aws.amazon.com/zh_cn/prescriptive-guidance/latest/cloud-design-patterns/retry-backoff.html",
+              "keywords": "幂等键 至少一次 投递 重试"
+            }
+          ]
+        },
+        {
+          "id": "foundations-3",
+          "title": "模型基础",
+          "order": 3,
+          "children": [
+            {
+              "id": "foundations-3-1",
+              "title": "Transformer 前向形状",
+              "order": 1,
+              "description": "输入通常为 B×S×H，投影产生 Q/K/V，并按头组织为 B×h×S×d，常见情况下 H=h×d。 每个头的 QK 转置得到 S×S 分数，经缩放和 mask 后归一化，再与 V 相乘。 多头结果拼接并做输出投影，GQA/MQA 时须单独计算 KV 头数及映射。",
+              "reference_url": "https://zh.d2l.ai/chapter_attention-mechanisms/transformer.html",
+              "keywords": "Transformer 前向形状 原理"
+            },
+            {
+              "id": "foundations-3-2",
+              "title": "Attention 时间与空间复杂度",
+              "order": 2,
+              "description": "注意力矩阵相关计算量为 O(B S² H)，显式保存分数或概率的空间通常为 O(B h S²)。 线性投影也有 O(B S H²) 量级计算，实际主导项依序列长度和隐藏维度而变。 融合和分块算法可减少中间数据搬运与存储，但不能直接据此认定所有精确注意力计算都变为线性复杂度。",
+              "reference_url": "https://zh.d2l.ai/chapter_attention-mechanisms/transformer.html",
+              "keywords": "Attention 时间与空间复杂度 原理"
+            },
+            {
+              "id": "foundations-3-3",
+              "title": "Softmax 数值稳定性",
+              "order": 3,
+              "description": "对每行先减去最大值再取指数，利用分子分母共同缩放保持数学结果不变。 累计求和通常需考虑较高精度，低精度输入的舍入和溢出要单独验证。 处理 mask 和全被屏蔽的行，明确 NaN、无穷值及空维度的行为约定。",
+              "reference_url": "https://zh.d2l.ai/chapter_attention-mechanisms/transformer.html",
+              "keywords": "Softmax 数值稳定性 原理"
+            },
+            {
+              "id": "foundations-3-4",
+              "title": "因果掩码与自回归训练",
+              "order": 4,
+              "description": "训练的目标序列已知，可使用 teacher forcing 并通过因果 mask 限制每个位置看见未来 token。 生成时下一 token 依赖已经生成的前缀，因此标准自回归解码包含串行依赖。 训练标签与输入通常错位一个位置，并需正确处理 padding、文档边界和损失掩码。",
+              "reference_url": "https://zh.d2l.ai/chapter_attention-mechanisms/transformer.html",
+              "keywords": "因果掩码与自回归训练 原理"
+            },
+            {
+              "id": "foundations-3-5",
+              "title": "RoPE 位置编码",
+              "order": 5,
+              "description": "通常对 Q 和 K 的成对维度施加由位置决定的旋转，使点积具有与位置差相关的结构。 旋转角频率、头维度和位置索引必须与模型训练配置匹配。 长上下文外推或缩放需检查训练分布、实现约定及缓存位置，不能仅通过增大最大长度保证质量。",
+              "reference_url": "https://zh.d2l.ai/chapter_attention-mechanisms/transformer.html",
+              "keywords": "RoPE 位置编码 原理"
+            },
+            {
+              "id": "foundations-3-6",
+              "title": "LayerNorm 与 RMSNorm",
+              "order": 6,
+              "description": "LayerNorm 使用均值和方差规范化，RMSNorm 根据均方根进行尺度归一化而通常不减均值。 二者都需关注归一化维度、epsilon、可学习参数及累计精度。 是否更快取决于内核融合、访存和硬件，需在相同形状与精度条件下测量。",
+              "reference_url": "https://zh.d2l.ai/chapter_attention-mechanisms/transformer.html",
+              "keywords": "LayerNorm 与 RMSNorm 原理"
+            },
+            {
+              "id": "foundations-3-7",
+              "title": "SwiGLU 与前馈层",
+              "order": 7,
+              "description": "常见形式将一个线性投影经 SiLU 后，与另一线性投影逐元素相乘，再执行输出投影。 门控增加投影路径，模型通常调整中间维度以控制参数量和 FLOPs。 前馈层包含大规模矩阵乘和中间激活，融合激活与乘法可减少中间读写。",
+              "reference_url": "https://zh.d2l.ai/chapter_attention-mechanisms/transformer.html",
+              "keywords": "SwiGLU 与前馈层 原理"
+            },
+            {
+              "id": "foundations-3-8",
+              "title": "交叉熵与梯度归约",
+              "order": 8,
+              "description": "使用 log-softmax 或 logsumexp 等稳定实现计算目标 token 的负对数概率。 通过有效 token mask 排除 padding 等无监督位置，并明确 loss 是按 token 求和还是求平均。 不同 rank 有效 token 数不同时，简单平均每个 rank 的均值可能改变权重，应按预期全局分母归一化。",
+              "reference_url": "https://zh.d2l.ai/chapter_attention-mechanisms/transformer.html",
+              "keywords": "交叉熵与梯度归约 原理"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "learning_route": [
+    {
+      "order": 1,
+      "title": "训练闭环与数据",
+      "goal": "先用小模型理解数据、前向、反向、优化和保存。",
+      "core_node_ids": [
+        "compiler-1-1",
+        "compiler-1-2",
+        "training-1-2",
+        "data-4-4",
+        "operations-6-1"
+      ],
+      "later_node_ids": [
+        "data-3-3",
+        "data-1-3",
+        "compiler-1-3"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "单卡性能与显存",
+      "goal": "接着学会判断训练在等待数据、访存还是计算。",
+      "core_node_ids": [
+        "compute-1-1",
+        "compute-1-2",
+        "compute-2-3",
+        "compute-5-4",
+        "compute-5-2",
+        "training-1-3",
+        "data-4-5"
+      ],
+      "later_node_ids": [
+        "compute-4-1",
+        "compute-4-5",
+        "compiler-3-3",
+        "compute-3-3"
+      ]
+    },
+    {
+      "order": 3,
+      "title": "模型推理与压测",
+      "goal": "理解生成过程，再用请求级指标衡量一个模型服务。",
+      "core_node_ids": [
+        "data-2-2",
+        "serving-1-1",
+        "serving-1-2",
+        "serving-1-4",
+        "serving-5-1",
+        "serving-5-3",
+        "serving-2-2"
+      ],
+      "later_node_ids": [
+        "serving-2-1",
+        "serving-2-4",
+        "serving-3-1",
+        "serving-3-5",
+        "serving-4-3"
+      ]
+    },
+    {
+      "order": 4,
+      "title": "检索与质量评测",
+      "goal": "把推理服务接入有证据和可回归评测的应用。",
+      "core_node_ids": [
+        "application-1-1",
+        "application-1-2",
+        "application-2-1",
+        "application-2-2",
+        "application-3-1",
+        "application-3-4"
+      ],
+      "later_node_ids": [
+        "application-2-3",
+        "application-2-5",
+        "application-2-8",
+        "application-4-1",
+        "application-4-4"
+      ]
+    },
+    {
+      "order": 5,
+      "title": "分布式训练与恢复",
+      "goal": "在单卡基线之上理解同步、采样和训练状态。",
+      "core_node_ids": [
+        "training-1-1",
+        "training-2-1",
+        "training-4-1",
+        "data-4-1",
+        "training-2-2",
+        "training-5-3"
+      ],
+      "later_node_ids": [
+        "training-2-3",
+        "training-2-4",
+        "training-3-1",
+        "training-3-2",
+        "training-3-5",
+        "training-4-5"
+      ]
+    },
+    {
+      "order": 6,
+      "title": "部署、可靠性与成本",
+      "goal": "把服务部署到可观测、可恢复且可计量的环境。",
+      "core_node_ids": [
+        "systems-1-1",
+        "systems-1-2",
+        "systems-1-3",
+        "cluster-1-1",
+        "operations-2-1",
+        "operations-1-2",
+        "operations-3-1",
+        "operations-5-4"
+      ],
+      "later_node_ids": [
+        "cluster-3-1",
+        "cluster-2-5",
+        "cluster-4-2",
+        "cluster-4-4",
+        "operations-2-3",
+        "operations-4-7"
+      ]
+    }
+  ]
+}
