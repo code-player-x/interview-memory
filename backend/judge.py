@@ -51,8 +51,9 @@ def _parse_judgment(data, source: str):
     is_correct = _parse_is_correct(data.get("is_correct"))
     explanation = data.get("explanation", "")
     error_reason = data.get("error_reason", "")
-    explanation = "" if explanation is None else explanation
-    error_reason = "" if error_reason is None else error_reason
+    # 正确作答没有错误原因，部分服务用 null 表示此字段不适用。
+    if is_correct and error_reason is None:
+        error_reason = ""
     if not isinstance(explanation, str) or not isinstance(error_reason, str):
         raise ValueError("judgment text must be strings")
     return is_correct, explanation, error_reason, source

@@ -110,10 +110,12 @@ function curatedTagsHtml(category, platform, tags, max) {
 }
 
 // 依赖无关的轻量 Markdown 渲染：图片 / 链接 / 行内代码 / 加粗 / 换行。
-// 先分词再转义；URL 仅放行 http(s)、图片 data URL 与站内绝对路径。
+// 先分词再转义；同源路径只允许上传的图片文件。
 function _safeUrl(u) {
-  const url = String(u).trim();
-  return /^(https?:|data:image\/)/i.test(url) || /^\/(?![\/\\])/.test(url) ? url : "#";
+  const url = u.trim();
+  return /^(https?:|data:image\/)/i.test(url) ||
+    /^\/data\/images\/[a-f0-9]{32}\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(url)
+    ? url : "#";
 }
 // 残缺链接：URL 部分为空或缺失（飞书导入时大量 [text]( 被截断），但意图是链接。
 // 两种形态：[text]() / [text]( ) —— 空 URL + 闭合括号
@@ -153,6 +155,55 @@ function renderSafeInline(text, keywords, lineBreaks = false) {
     last = match.index + match[0].length;
   }
   return result + plain(raw.slice(last));
+}
+
+function _renderTextBlocks(text, keywords) {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const listItem = line => /^(\s*)(?:(\d+)[.)]|([-*+]))\s+(.+)$/.exec(line);
+  const output = [];
+  let i = 0;
+  while (i < lines.length) {
+    if (!lines[i].trim()) { i++; continue; }
+    const first = listItem(lines[i]);
+    if (first) {
+      const ordered = Boolean(first[2]), indent = first[1].length;
+      const tag = ordered ? "ol" : "ul", items = [];
+      while (i < lines.length) {
+        const match = listItem(lines[i]);
+        if (!match || match[1].length !== indent || Boolean(match[2]) !== ordered) break;
+        const body = [match[4]];
+        i++;
+        while (i < lines.length) {
+          if (!lines[i].trim()) {
+            let next = i + 1;
+            while (next < lines.length && !lines[next].trim()) next++;
+            const following = next < lines.length ? listItem(lines[next]) : null;
+            if (following && following[1].length === indent && Boolean(following[2]) === ordered) {
+              i = next;
+              break;
+            }
+            if (next < lines.length && lines[next].search(/\S/) > indent) {
+              body.push(""); i++; continue;
+            }
+            break;
+          }
+          if (lines[i].search(/\S/) <= indent) break;
+          body.push(lines[i].slice(Math.min(indent + 2, lines[i].search(/\S/))));
+          i++;
+        }
+        items.push("<li>" + _renderTextBlocks(body.join("\n"), keywords) + "</li>");
+      }
+      output.push("<" + tag + " class='md-list'" + (ordered ? " start='" + Number(first[2]) + "'" : "") + ">" + items.join("") + "</" + tag + ">");
+      continue;
+    }
+    const paragraph = [];
+    while (i < lines.length && lines[i].trim() && !listItem(lines[i])) paragraph.push(lines[i++]);
+    const raw = paragraph.join("\n");
+    const content = renderSafeInline(raw, keywords, true);
+    const section = /^\*\*[^*\n]+\*\*$/.test(raw);
+    output.push("<p class='" + (section ? "md-section" : "md-p") + "'>" + content + "</p>");
+  }
+  return output.join("");
 }
 
 // 启发式：把「连续 2+ 行、每行以 ≥4 空格/Tab 缩进、且含代码特征、无中文标点」的段落
@@ -305,7 +356,7 @@ function _beautifyAnswer(text, _P0) {
   // 起始：^ 或 ；;。!！?？：\n（中文冒号也常见于"关键要素：1) ..."）
   // 编号括号：) / . / 、 / : / ：
   // 结束：下一编号前 或 串尾
-  const SEQ_RE = /(?:^|[；;。！!？?：\n])\s*(\d+)\s*[\)\.、:：]\s*([\s\S]+?)(?=(?:[；;。！!？?：]\s*\d+\s*[\)\.、:：])|$)/g;
+  const SEQ_RE = /(?:^|[；;。！!？?：])[ \t]*(\d+)[ \t]*[\)\.、:：][ \t]*([^\r\n]+?)(?=(?:[；;。！!？?：][ \t]*\d+[ \t]*[\)\.、:：])|\r?$)/gm;
   const ranges = []; // {start, end, items:[{num,content}]}
   let m;
   while ((m = SEQ_RE.exec(text)) !== null) {
@@ -393,8 +444,7 @@ function renderMarkdown(text, keywords) {
   while (raw.includes(prefix)) prefix += prefix;
   const pretty = _beautifyAnswer(raw, prefix);
   const listToken = new RegExp(prefix + "L(\\d+)" + _P1, "g");
-  const renderText = value => value.split(/\r?\n(?:[ \t]*\r?\n)+/)
-    .filter(p => p.trim()).map(p => "<p class='md-p'>" + renderSafeInline(p, keywords, true) + "</p>").join("");
+  const renderText = value => _renderTextBlocks(value, keywords);
 
   function renderBlocks(value) {
     let html = "", last = 0;
@@ -421,7 +471,7 @@ function renderMarkdown(text, keywords) {
 
 const TITLES = {
   bank:     ["题库", "浏览全部面试题，按难度、分类、标签筛选"],
-  memorize: ["背题", "大页面逐题展示问题与参考答案，← / → 翻页"],
+  memorize: ["背题", "大页面逐题展示问题与参考答案，← / → 逐题翻阅"],
   practice: ["练习", "作答后由判题引擎评分"],
   wrong:    ["错题本", "答错的题自动归集，按错误原因聚类"],
   review:   ["复习", "艾宾浩斯遗忘曲线调度"],
@@ -645,7 +695,7 @@ function renderPager() {
 }
 
 // ---------------- 背题模式 ----------------
-const mem = { category: "", level: 0, items: [], idx: 0, total: 0, offset: 0, limit: 5, pageSize: 5, loading: false };
+const mem = { category: "", level: 0, items: [], idx: 0, total: 0, offset: 0, limit: 5, loading: false };
 const memCategoryPicker = { items: [] };
 
 function selectedMemCategory() {
@@ -865,8 +915,6 @@ async function memStart() {
   const requestId = ++memRequestId;
   mem.category = document.getElementById("memCat").value;
   mem.level = parseInt(document.getElementById("memDiff").value, 10) || 0;
-  mem.pageSize = parseInt(document.getElementById("memSize").value, 10) || 5;
-  mem.limit = mem.pageSize;
   mem.items = []; mem.offset = 0; mem.idx = 0; mem.total = 0; mem.loading = true;
   document.getElementById("memCard").innerHTML = "<div class='empty'>正在加载题目…</div>";
   document.getElementById("memPrev").disabled = true;
@@ -884,10 +932,10 @@ async function memStart() {
 }
 
 async function memRender() {
-  const requestId = memRequestId;
-  // 单题文章式：mem.idx 是题索引（不再是页索引），mem.pageSize 仅用于后端一次拉多少
+  // 单题文章式：mem.idx 是题索引（不再是页索引），mem.limit 用于后台预取
   const endIdx = mem.idx + 1;
   while (endIdx > mem.items.length && mem.items.length < mem.total && !mem.loading) {
+    const requestId = memRequestId;
     mem.loading = true;
     document.getElementById("memNext").disabled = true;
     try {
@@ -920,15 +968,12 @@ async function memRender() {
   const kwHtml = kws.length
     ? "<div class='mem-kws'>" + kws.map(k => "<span class='kw-pill'>" + escapeHtml(k) + "</span>").join("") + "</div>"
     : "";
-  const statsHtml =
-    "<div class='mem-stats'>" +
-      "<button class='mem-share' type='button' title='复制链接' data-qid='" + q.id + "' onclick='copyShareLink(this)'>🔗 分享题目</button>" +
-    "</div>";
   const tagsHtml =
     "<div class='mem-tags'>" +
       "<span class='badge " + dm.cls + "'>" + dm.label + "</span>" +
       "<span class='pill'>" + escapeHtml(q.category || "") + "</span>" +
       curatedTagsHtml(q.category, q.platform, q.tags, 4) +
+      "<button class='mem-share' type='button' title='复制链接' data-qid='" + q.id + "' onclick='copyShareLink(this)'>🔗 分享题目</button>" +
     "</div>";
   box.innerHTML =
     "<article class='mem-article'>" +
@@ -937,7 +982,6 @@ async function memRender() {
         "<span class='md-inline'>" + renderInlineMarkdown(q.question_text || "") + "</span>" +
       "</h1>" +
       tagsHtml +
-      statsHtml +
       "<div class='mem-tabs'>" +
         "<div class='mem-tab active'>📖 推荐答案</div>" +
         "<div class='mem-tab muted'>🎙️ 开始面试（自测模式）</div>" +
@@ -1470,13 +1514,11 @@ async function pmSubmit() {
   updateSessionNav();
   let out;
   try {
-    const r = await fetch("/api/answer", {
+    out = await requestJson("/api/answer", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question_id: q.id, user_answer: ua, request_id: attempt.request_id })
     });
-    const payload = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(payload.detail || ("HTTP " + r.status));
-    out = payload;
+    if (!out || !Object.hasOwn(out, "is_correct")) throw new Error("判题结果不完整");
   } catch (e) {
     if (sessionId !== practice.sessionId || practice.current !== q) return;
     const resEl = document.getElementById("res");
@@ -2543,7 +2585,6 @@ document.getElementById("diffFilter").addEventListener("change", () => {
 setupMemCategoryPicker();
 document.getElementById("memCat").addEventListener("change", memStart);
 document.getElementById("memDiff").addEventListener("change", memStart);
-document.getElementById("memSize").addEventListener("change", memStart);
 document.getElementById("memPrev").onclick = memPrev;
 document.getElementById("memNext").onclick = memNext;
 document.addEventListener("keydown", (e) => {

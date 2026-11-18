@@ -647,6 +647,7 @@ _CATEGORY_DESCRIPTIONS = {
     "python": "Python 语言特性与工程实践面试题",
     "go": "Go 语言并发与工程实践面试题",
     "golang": "Go 语言并发与工程实践面试题",
+    "mongodb": "文档数据库、BSON 与数据建模面试题",
     "c++": "C++ 语言与系统开发面试题",
     "mysql": "关系型数据库与 SQL 优化面试题",
     "redis": "高性能缓存与分布式锁面试题",
@@ -1017,7 +1018,8 @@ def _next_question(db, category, categories, mode, offset, recent_ids):
     candidates = [qid for qid in available if qid not in seen]
     new_round = not candidates
     if new_round:
-        last_id = recent_ids[-1] if recent_ids else None
+        in_scope = set(available)
+        last_id = next(qid for qid in reversed(recent_ids) if qid in in_scope)
         candidates = [qid for qid in available if qid != last_id] or available
     question = db.get(models.Question, random.choice(candidates))
     if question is None:

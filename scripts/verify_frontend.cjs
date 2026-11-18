@@ -40,8 +40,8 @@ vm.runInContext(source.slice(0, source.indexOf('// 手动添加题目')) + sourc
 const run = code => vm.runInContext(code, sandbox);
 
 async function check() {
-  const rendered = run(`renderMarkdown('![diagram](/api/images/test.png) [docs](https://example.com?a=1&b=2) **缓存**', ['缓存', 'class', 'https'])`);
-  assert.match(rendered, /src='\/api\/images\/test.png'/);
+  const rendered = run(`renderMarkdown('![diagram](/data/images/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png) [docs](https://example.com?a=1&b=2) **缓存**', ['缓存', 'class', 'https'])`);
+  assert.match(rendered, /src='\/data\/images\/a{32}\.png'/);
   assert.match(rendered, /href='https:\/\/example.com\?a=1&amp;b=2'/);
   assert.match(rendered, /<strong><mark class='kw'>缓存<\/mark><\/strong>/);
   assert.doesNotMatch(rendered, /src='[^']*<mark|href='[^']*<mark/);
@@ -193,11 +193,14 @@ async function check() {
   sandbox.fetch = async (url, opts) => {
     submitted.push(JSON.parse(opts.body));
     if (submitted.length === 1) throw new Error('response lost');
+    if (submitted.length === 2) return {ok: true, json: async () => { throw new Error('truncated JSON'); }};
     return response({ is_correct: true });
   };
   run('practice.current = {id: 12};');
   await run('pmSubmit()');
   await run('pmSubmit()');
+  await run('pmSubmit()');
+  assert.equal(submitted[2].request_id, submitted[0].request_id, 'truncated success body must remain retryable');
   assert.equal(submitted[0].request_id, submitted[1].request_id, 'retry must reuse the same answer request id');
   assert.ok(submitted[0].request_id);
 

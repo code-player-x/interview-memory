@@ -18,7 +18,12 @@
 
 **参考回答**：
 
-选型先看场景是否匹配：Kafka 的强项是超高吞吐的分布式日志、持久化、多消费者组 replay，代价是引入 ZooKeeper/KRaft 运维、分区与消费语义复杂度。我们业务 QPS 不高，只需要异步解耦和简单削峰，用已有 Redis Stream 或 DB Binlog + 云托管 MQ 就能覆盖，没必要为可能用不上的能力买单；等吞吐或可靠性真到阈值再迁移。网关层面我们用 Spring Cloud Gateway，主要承担四件事：① 统一入口鉴权（JWT/OAuth 校验，非法请求在入口拦掉）；② 限流熔断降级（按用户/接口维度限流，后端异常快速失败）；③ 动态路由/负载均衡与灰度、AB 切流；④ 统一日志与链路追踪埋点、协议转换（HTTP→gRPC）。
+选型先看场景是否匹配：Kafka 的强项是超高吞吐的分布式日志、持久化、多消费者组 replay，代价是引入 ZooKeeper/KRaft 运维、分区与消费语义复杂度。我们业务 QPS 不高，只需要异步解耦和简单削峰，用已有 Redis Stream 或 DB Binlog + 云托管 MQ 就能覆盖，没必要为可能用不上的能力买单；等吞吐或可靠性真到阈值再迁移。
+
+- 网关层面我们用 Spring Cloud Gateway，主要承担四件事：① 统一入口鉴权（JWT/OAuth 校验，非法请求在入口拦掉）；
+- ② 限流熔断降级（按用户/接口维度限流，后端异常快速失败）；
+- ③ 动态路由/负载均衡与灰度、AB 切流；
+- ④ 统一日志与链路追踪埋点、协议转换（HTTP→gRPC）。
 
 **常见追问**：不选 Kafka 的量化依据是什么（QPS/数据量/延迟）？网关限流用的什么算法、限流维度怎么定？
 
@@ -84,7 +89,7 @@
 
 **参考**
 
-- <cite doc-id="L9IFwVLufiQQG5kUIBjcv1yBnFb" file-type="wiki" title="消息队列解决什么问题" type="doc"></cite>
+- 消息队列解决什么问题
 
 **常见追问**：削峰和异步的区别是什么？同一条消息既要保证不丢又要保证不被重复处理，你怎么设计？
 
@@ -114,7 +119,7 @@
 
 **参考**
 
-- <cite doc-id="K7uVwUJlCiGrIxk4zYNcIyDznWf" file-type="wiki" title="实践1：消息队列解耦" type="doc"></cite>
+- 实践1：消息队列解耦
 
 **常见追问**：解耦之后一致性怎么保证？如何避免消息丢了导致下游永远收不到？
 
@@ -144,7 +149,7 @@
 
 **参考**
 
-- <cite doc-id="MLKowappPiakENk0llFcppObnYb" file-type="wiki" title="实践2：消息队列削峰" type="doc"></cite>
+- 实践2：消息队列削峰
 
 **常见追问**：队列积压到上限怎么办？削峰会不会让用户等太久，你怎么控制端到端延迟？
 
@@ -174,7 +179,7 @@
 
 **参考**
 
-- <cite doc-id="Vlj8wN9jrib0d7kZOkqcjHvjnnb" file-type="wiki" title="实践3：消息队列分发" type="doc"></cite>
+- 实践3：消息队列分发
 
 **常见追问**：分发场景下某个下游一直消费失败怎么办？如何保证新加的下游能拿到历史事件？
 
@@ -218,7 +223,7 @@
 
 **参考**
 
-- <cite doc-id="NKV2wsYyNiebMykwNaTcnkQSnbe" file-type="wiki" title="消息队列选型" type="doc"></cite>
+- 消息队列选型
 
 **常见追问**：你们最终选了哪个、为什么？如果团队既有人熟 Kafka 又有人熟 RocketMQ 怎么决策？
 
@@ -257,7 +262,7 @@
 
 **参考**
 
-- <cite doc-id="NKV2wsYyNiebMykwNaTcnkQSnbe" file-type="wiki" title="消息队列选型" type="doc"></cite>
+- 消息队列选型
 
 **常见追问**：RocketMQ 的事务消息是怎么实现的？和 Kafka 的事务有什么不同？
 
@@ -289,7 +294,7 @@ Kafka优点非常多，我认为最核心的是**高吞吐**、**高可靠**、*
 
 **参考**
 
-总结性问题，需要整体学完Kafka，其次可以稍微参考下<cite doc-id="NKV2wsYyNiebMykwNaTcnkQSnbe" file-type="wiki" title="消息队列选型" type="doc"></cite>
+总结性问题，需要整体学完Kafka，其次可以稍微参考下消息队列选型
 
 **常见追问**：高吞吐和高可靠往往冲突，你们线上是怎么取舍的？acks 设成了多少？
 
@@ -325,7 +330,7 @@ Kafka优点非常多，我认为最核心的是**高吞吐**、**高可靠**、*
 
 **参考**
 
-- <cite doc-id="MHsRwoRnki1kXRkIF0GcM6MCn7e" file-type="wiki" title="把控全局，掌握整体架构" type="doc"></cite>
+- 把控全局，掌握整体架构
 
 **常见追问**：Consumer Group 内的消费者数量超过分区数会怎样？KRaft 相比 ZooKeeper 解决了什么问题？
 
@@ -432,7 +437,7 @@ Kafka是提供了获取主题列表的接口的，可以使用kafka-topics.sh �
 
 **参考**
 
-- <cite doc-id="AUN5wnNzqixiz5kuUaRcuEnfnme" file-type="wiki" title="开门见山，从Topic开始讲起" type="doc"></cite>
+- 开门见山，从Topic开始讲起
 
 **常见追问**：如何在代码里创建/删除 Topic 并指定分区和副本数？生产环境为什么建议禁用自动创建 Topic？
 
@@ -456,7 +461,9 @@ Kafka是提供了获取主题列表的接口的，可以使用kafka-topics.sh �
 
 Kafka消息会分发到不同Topic，这样既解决了消息混乱的问题，又顺带将流量进行了分摊，减少单个业务写入压力。
 
-但是，不同业务对应的数据量级是不一样的，就算按业务分了Topic，但一个Topic可能信息还是会非常多，我们需要进一步分而治之。所以Topic下面还划分了Partition来实际存储，每个Topic都可以有多个Partition。
+但是，不同业务对应的数据量级是不一样的，就算按业务分了Topic，但一个Topic可能信息还是会非常多，我们需要进一步分而治之。
+
+所以Topic下面还划分了Partition来实际存储，每个Topic都可以有多个Partition。
 
 **回答**
 
@@ -472,8 +479,8 @@ Kafka消息会分发到不同Topic，这样既解决了消息混乱的问题，�
 
 **参考**
 
-- <cite doc-id="AUN5wnNzqixiz5kuUaRcuEnfnme" file-type="wiki" title="开门见山，从Topic开始讲起" type="doc"></cite>
-- <cite doc-id="WswtwhbKhi7oKyk2AtncQMnYnwh" file-type="wiki" title="分而治之，主题分片Partition" type="doc"></cite>
+- 开门见山，从Topic开始讲起
+- 分而治之，主题分片Partition
 
 **常见追问**：分区数是不是越多越好？分区过多会带来哪些问题？
 
@@ -573,7 +580,7 @@ Partition是存放在Broker节点上的，如果单个Broker，很好理解，Pa
 
 **参考**
 
-- <cite doc-id="UGREw1wsYiJxAAkKMTvcAxWxnEc" file-type="wiki" title="坚如磐石，服务器节点Broker" type="doc"></cite>
+- 坚如磐石，服务器节点Broker
 
 **常见追问**：同一分区的多个副本为什么不能在同一 Broker？加了机架感知后分布算法有什么不同？
 
@@ -638,7 +645,7 @@ Topic 中的多个 Partition 以文件夹的形式保存到 Broker，每个分�
 
 **参考**
 
-- <cite doc-id="L3JgwhGfRiQUaxkRUUhcmxU0nDe" file-type="wiki" title="高性能秘诀-多层次" type="doc"></cite>
+- 高性能秘诀-多层次
 
 **常见追问**：稀疏索引是怎么加速查找的？为什么 Segment 大小要可配置、调大调小各有什么影响？
 
@@ -669,7 +676,7 @@ Topic 中的多个 Partition 以文件夹的形式保存到 Broker，每个分�
 
 参考
 
-- <cite doc-id="CFaSwBux8imVlekeST5cnEe7nhe" file-type="wiki" title="Kafka消息保留策略" type="doc"></cite>
+- Kafka消息保留策略
 
 **常见追问**：delete 和 compact 分别适合什么场景？compact 会不会导致消息被物理删除？
 
@@ -702,7 +709,7 @@ Topic 中的多个 Partition 以文件夹的形式保存到 Broker，每个分�
 
 **参考**
 
-- <cite doc-id="OVE3wagUaii4A6k4X7Pcyw0Ynfb" file-type="wiki" title="辛勤创造，生产者Producer" type="doc"></cite>
+- 辛勤创造，生产者Producer
 
 **常见追问**：缓冲区满了会怎样？如果某条消息一直发失败，retries 耗尽后怎么处理？
 
@@ -746,7 +753,7 @@ Topic 中的多个 Partition 以文件夹的形式保存到 Broker，每个分�
 
 **参考**
 
-- <cite doc-id="GnrnwtEJEiM8qqkmEOkc7arinBb" file-type="wiki" title="如何保证消息不丢失" type="doc"></cite>
+- 如何保证消息不丢失
 
 **常见追问**：acks=all 时如果 ISR 只剩 1 个副本会怎样？min.insync.replicas 设几合适、怎么算？
 
@@ -784,7 +791,7 @@ Topic 中的多个 Partition 以文件夹的形式保存到 Broker，每个分�
 
 **参考**
 
-- <cite doc-id="ZTxkwgpJ9ihXdMkHP7BcnDHSnNc" file-type="wiki" title="高性能秘诀-批量操作" type="doc"></cite> 搜buffer.memory
+- 高性能秘诀-批量操作 搜buffer.memory
 
 **常见追问**：QueueFullException 和 send() 阻塞是同一个现象吗？max.block.ms 起什么作用？
 
@@ -817,7 +824,7 @@ Topic 中的多个 Partition 以文件夹的形式保存到 Broker，每个分�
 
 **参考**
 
-- <cite doc-id="ZTxkwgpJ9ihXdMkHP7BcnDHSnNc" file-type="wiki" title="高性能秘诀-批量操作" type="doc"></cite>搜buffer.memory
+- 高性能秘诀-批量操作搜buffer.memory
 
 **常见追问**：linger.ms 设太大会有什么问题？高吞吐和低延迟场景你会怎么分别配？
 
@@ -856,7 +863,7 @@ Topic 中的多个 Partition 以文件夹的形式保存到 Broker，每个分�
 
 **参考**
 
-- <cite doc-id="QTLdwzoXFiX39lkZDPhcGsUqnHe" file-type="wiki" title="努力承接，消费者Consumer" type="doc"></cite>
+- 努力承接，消费者Consumer
 
 **常见追问**：把处理放到线程池后怎么保证分区内有序？pause/resume 在这里能起什么作用？
 
@@ -890,7 +897,7 @@ Topic 中的多个 Partition 以文件夹的形式保存到 Broker，每个分�
 
 **参考**
 
-- <cite doc-id="QTLdwzoXFiX39lkZDPhcGsUqnHe" file-type="wiki" title="努力承接，消费者Consumer" type="doc"></cite>
+- 努力承接，消费者Consumer
 
 **常见追问**：同一个消费者组里的消费者能消费同一个分区吗？多个组想要全量广播怎么配置？
 
@@ -921,7 +928,7 @@ Topic 中的多个 Partition 以文件夹的形式保存到 Broker，每个分�
 
 **参考**
 
-- <cite doc-id="HDMvwzerfiqMZ0ktTAdcFQjnnDg" file-type="wiki" title="拥抱变化，消费组再平衡机制" type="doc"></cite>
+- 拥抱变化，消费组再平衡机制
 
 **常见追问**：怎么避免频繁 rebalance？心跳相关参数怎么配合设置？
 
@@ -964,7 +971,7 @@ Topic 中的多个 Partition 以文件夹的形式保存到 Broker，每个分�
 
 **参考**
 
-- <cite doc-id="HDMvwzerfiqMZ0ktTAdcFQjnnDg" file-type="wiki" title="拥抱变化，消费组再平衡机制" type="doc"></cite>
+- 拥抱变化，消费组再平衡机制
 
 **常见追问**：GroupCoordinator 是怎么选出来的？谁在保存消费者组的 offset？
 
@@ -1011,7 +1018,7 @@ Topic 中的多个 Partition 以文件夹的形式保存到 Broker，每个分�
 
 **参考**
 
-- <cite doc-id="HDMvwzerfiqMZ0ktTAdcFQjnnDg" file-type="wiki" title="拥抱变化，消费组再平衡机制" type="doc"></cite>
+- 拥抱变化，消费组再平衡机制
 
 **常见追问**：增量再平衡为什么可能需要多轮？它对分区数增加的处理和 Eager 有何不同？
 
@@ -1041,7 +1048,7 @@ Topic 中的多个 Partition 以文件夹的形式保存到 Broker，每个分�
 
 **参考**
 
-- <cite doc-id="QTLdwzoXFiX39lkZDPhcGsUqnHe" file-type="wiki" title="努力承接，消费者Consumer" type="doc"></cite>
+- 努力承接，消费者Consumer
 
 **常见追问**：offset 提交是存在哪里的？提交频次太高会有什么问题？
 
@@ -1071,7 +1078,7 @@ Topic 中的多个 Partition 以文件夹的形式保存到 Broker，每个分�
 
 **参考**
 
-- <cite doc-id="QTLdwzoXFiX39lkZDPhcGsUqnHe" file-type="wiki" title="努力承接，消费者Consumer" type="doc"></cite>
+- 努力承接，消费者Consumer
 
 **常见追问**：seek 之后为什么常配合 pause/resume？重置 offset 有哪些前提条件？
 
@@ -1280,7 +1287,7 @@ Golang客户端有方法能指定开始消费的Offset，我之前有用过confl
 
 **参考**
 
-- <cite doc-id="QTLdwzoXFiX39lkZDPhcGsUqnHe" file-type="wiki" title="努力承接，消费者Consumer" type="doc"></cite>
+- 努力承接，消费者Consumer
 
 **常见追问**：既然消费了不删，磁盘怎么控制？多个消费组各自进度是怎么互不影响的？
 
@@ -1312,7 +1319,7 @@ Golang客户端有方法能指定开始消费的Offset，我之前有用过confl
 
 **参考**
 
-- <cite doc-id="GnrnwtEJEiM8qqkmEOkc7arinBb" file-type="wiki" title="如何保证消息不丢失" type="doc"></cite>
+- 如何保证消息不丢失
 
 **常见追问**：ack=all 就绝对不会丢吗？unclean 选举开启会带来什么风险？
 
@@ -1344,7 +1351,7 @@ Golang客户端有方法能指定开始消费的Offset，我之前有用过confl
 
 **参考**
 
-- <cite doc-id="GnrnwtEJEiM8qqkmEOkc7arinBb" file-type="wiki" title="如何保证消息不丢失" type="doc"></cite>
+- 如何保证消息不丢失
 
 **常见追问**：如果 ISR 缩到不足 min.insync.replicas，生产会怎样？刷盘策略怎么配才不丢？
 
@@ -1376,7 +1383,7 @@ Golang客户端有方法能指定开始消费的Offset，我之前有用过confl
 
 **参考**
 
-- <cite doc-id="MYzZw8MtUiLJIOkS9PSc7X4Ancc" file-type="wiki" title="消息积压怎么办" type="doc"></cite>
+- 消息积压怎么办
 
 **常见追问**：为什么消费者数超过分区数无效？临时 Topic 转发方案怎么保证不丢消息？
 
@@ -1411,8 +1418,8 @@ kafka出现消息重复消费的原因：
 
 **参考**
 
-- <cite doc-id="KrNGwaj5oi3P9vk7MxocvAWWnOO" file-type="wiki" title="如何让消息不重复" type="doc"></cite>
-- <cite doc-id="AFiVwuCfhiT86dkG9PyclDYOn9M" file-type="wiki" title="后端场景优化-接口幂等性" type="doc"></cite>
+- 如何让消息不重复
+- 后端场景优化-接口幂等性
 
 **常见追问**：去重表和业务表在一个事务里吗？消息量很大时 Redis 去重怎么防止无限增长？
 
@@ -1442,8 +1449,8 @@ kafka出现消息重复消费的原因：
 
 **参考**
 
-- <cite doc-id="GnrnwtEJEiM8qqkmEOkc7arinBb" file-type="wiki" title="如何保证消息不丢失" type="doc"></cite>
-- <cite doc-id="KrNGwaj5oi3P9vk7MxocvAWWnOO" file-type="wiki" title="如何让消息不重复" type="doc"></cite>
+- 如何保证消息不丢失
+- 如何让消息不重复
 
 **常见追问**：Kafka 事务能保证写 MySQL 也原子吗？事务超时或 producer 挂掉怎么处理悬挂事务？
 
@@ -1471,15 +1478,17 @@ kafka出现消息重复消费的原因：
 
 Kafka的分片流入规则是这样的：
 
-如果指定了Partition，那么就是发送到特定的Partition；如果没有指定Partition，但是指定了一个Key，那么就是根据Key的Hash值取模来决定是哪个Partition；如果都没有指定，就是依次轮替着写入。
+- 如果指定了Partition，那么就是发送到特定的Partition；
+- 如果没有指定Partition，但是指定了一个Key，那么就是根据Key的Hash值取模来决定是哪个Partition；
+- 如果都没有指定，就是依次轮替着写入。
 
 所以我们可以用一个能标识业务的唯一名字来当Key，比如秒杀，就叫SecKill，指定Key之后算出来一定是落在相同的Partition，也就保证了顺序。
 
 **参考**
 
-- <cite doc-id="AUN5wnNzqixiz5kuUaRcuEnfnme" file-type="wiki" title="开门见山，从Topic开始讲起" type="doc"></cite>
-- <cite doc-id="WswtwhbKhi7oKyk2AtncQMnYnwh" file-type="wiki" title="分而治之，主题分片Partition" type="doc"></cite>
-- <cite doc-id="V3qnwiMsWi4XDtkXUVacMA7EnLc" file-type="wiki" title="如何让消息有序" type="doc"></cite>
+- 开门见山，从Topic开始讲起
+- 分而治之，主题分片Partition
+- 如何让消息有序
 
 **常见追问**：多线程消费怎么保证同 key 串行？单分区全局有序的吞吐瓶颈怎么缓解？
 
@@ -1509,7 +1518,7 @@ Kafka的分片流入规则是这样的：
 
 **参考**
 
-<cite doc-id="X36YwG7nmixB1pkEnnscg5NWnPd" file-type="wiki" title="多副本下的写入机制（重要，需要掌握）" type="doc"></cite>
+多副本下的写入机制（重要，需要掌握）
 
 **常见追问**：副本为什么会落后？Follower 同步慢会带来哪些连锁影响？
 
@@ -1543,7 +1552,7 @@ Kafka的分片流入规则是这样的：
 
 **参考**
 
-<cite doc-id="X36YwG7nmixB1pkEnnscg5NWnPd" file-type="wiki" title="多副本下的写入机制（重要，需要掌握）" type="doc"></cite>
+多副本下的写入机制（重要，需要掌握）
 
 **常见追问**：生产环境这个参数一般怎么配、为什么？ISR 为空通常意味着什么？
 
@@ -1573,9 +1582,9 @@ Kafka的分片流入规则是这样的：
 
 **参考**
 
-<cite doc-id="X36YwG7nmixB1pkEnnscg5NWnPd" file-type="wiki" title="多副本下的写入机制（重要，需要掌握）" type="doc"></cite>
+多副本下的写入机制（重要，需要掌握）
 
-<cite doc-id="EgPTwp9Khiwxx6kINlBcJbfbnHc" file-type="wiki" title="副本同步机制（大概理解流程即可）" type="doc"></cite>
+副本同步机制（大概理解流程即可）
 
 **常见追问**：HW 和 LEO 分别是什么？为什么消费者只能读到 HW 之前的消息？
 
@@ -1609,7 +1618,7 @@ Kafka天然支持多副本机制，每个副本都有完整的数据，这些副
 
 **参考**
 
-<cite doc-id="OaZQwIOSFi4NCYk4zaicFsHfnpd" file-type="wiki" title="多副本机制介绍（重要）" type="doc"></cite>
+多副本机制介绍（重要）
 
 **常见追问**：Controller 挂掉会怎样？副本切换期间客户端会报错吗、如何重试？
 
@@ -1645,7 +1654,7 @@ Kafka维护了一个叫ISR的列表，ISR里的副本都是包含完整数据的
 
 **参考**
 
-<cite doc-id="X36YwG7nmixB1pkEnnscg5NWnPd" file-type="wiki" title="多副本下的写入机制（重要，需要掌握）" type="doc"></cite>
+多副本下的写入机制（重要，需要掌握）
 
 **常见追问**：如果 ISR 里多个副本数据进度不同怎么办？选主会不会造成消息回退（丢消息）？
 
@@ -1687,9 +1696,9 @@ Kafka比较早期就直接让分片副本抢写Zookeeper，谁先写入谁就是
 
 **参考**
 
-<cite doc-id="OaZQwIOSFi4NCYk4zaicFsHfnpd" file-type="wiki" title="多副本机制介绍（重要）" type="doc"></cite>
+多副本机制介绍（重要）
 
-<cite doc-id="X3p6wqX2DitkXkkc6KDcla2vnpb" file-type="wiki" title="Zookeeper扮演了什么角色（有基本认知即可）" type="doc"></cite>
+Zookeeper扮演了什么角色（有基本认知即可）
 
 **常见追问**：Controller 怎么选出来的？（ZK 抢临时节点 / KRaft Raft 选举）客户端 metadata 多久刷新一次？
 
@@ -1733,12 +1742,12 @@ Kafka比较早期就直接让分片副本抢写Zookeeper，谁先写入谁就是
 
 **参考**
 
-- <cite doc-id="PjjlwLaRXi6w8Mk96ipcxll0nLb" file-type="wiki" title="高性能秘诀-顺序写" type="doc"></cite>
-- <cite doc-id="OKFRwfKPfiXCCtkBXFOctwkuntd" file-type="wiki" title="高性能秘诀-页缓存" type="doc"></cite>
-- <cite doc-id="JFVLwNuVHie1hWkv1eucWJK8n2h" file-type="wiki" title="高性能秘诀-零拷贝" type="doc"></cite>
-- <cite doc-id="L3JgwhGfRiQUaxkRUUhcmxU0nDe" file-type="wiki" title="高性能秘诀-多层次" type="doc"></cite>
-- <cite doc-id="ZTxkwgpJ9ihXdMkHP7BcnDHSnNc" file-type="wiki" title="高性能秘诀-批量操作" type="doc"></cite>
-- <cite doc-id="Mslawix7giWdNJkvCHXcNQ1Ynae" file-type="wiki" title="高性能秘诀-数据压缩" type="doc"></cite>
+- 高性能秘诀-顺序写
+- 高性能秘诀-页缓存
+- 高性能秘诀-零拷贝
+- 高性能秘诀-多层次
+- 高性能秘诀-批量操作
+- 高性能秘诀-数据压缩
 
 **常见追问**：零拷贝具体省了哪几次拷贝？页缓存命中率高和生产者-消费者时间差有什么关系？
 
@@ -1772,7 +1781,7 @@ Kafka比较早期就直接让分片副本抢写Zookeeper，谁先写入谁就是
 
 **参考**
 
-- <cite doc-id="PjjlwLaRXi6w8Mk96ipcxll0nLb" file-type="wiki" title="高性能秘诀-顺序写" type="doc"></cite>
+- 高性能秘诀-顺序写
 
 **常见追问**：顺序写性能高的底层原因是什么？如果消费需要随机读历史消息会不会退化？
 
@@ -1810,7 +1819,7 @@ Page Cache可以简单看作热点磁盘数据的内存缓存，当消息写入�
 
 **参考**
 
-- <cite doc-id="OKFRwfKPfiXCCtkBXFOctwkuntd" file-type="wiki" title="高性能秘诀-页缓存" type="doc"></cite>
+- 高性能秘诀-页缓存
 
 **常见追问**：PageCache 和 Kafka 自己的堆内存有什么关系？为什么 Kafka 不自己管理缓存？
 
@@ -1848,7 +1857,7 @@ Page Cache可以简单看作热点磁盘数据的内存缓存，当消息写入�
 
 **参考**
 
-- <cite doc-id="JFVLwNuVHie1hWkv1eucWJK8n2h" file-type="wiki" title="高性能秘诀-零拷贝" type="doc"></cite>
+- 高性能秘诀-零拷贝
 
 **常见追问**：两次拷贝分别是什么（DMA 与 CPU）？mmap 和 sendfile 有什么区别？
 
@@ -1882,7 +1891,7 @@ Page Cache可以简单看作热点磁盘数据的内存缓存，当消息写入�
 
 **参考**
 
-- <cite doc-id="L3JgwhGfRiQUaxkRUUhcmxU0nDe" file-type="wiki" title="高性能秘诀-多层次" type="doc"></cite>
+- 高性能秘诀-多层次
 
 **常见追问**：为什么不在 Partition 这一层就完全解决、还要 Segment？Segment 滚动对清理有什么好处？
 
@@ -1915,7 +1924,7 @@ Page Cache可以简单看作热点磁盘数据的内存缓存，当消息写入�
 
 **参考**
 
-- <cite doc-id="L3JgwhGfRiQUaxkRUUhcmxU0nDe" file-type="wiki" title="高性能秘诀-多层次" type="doc"></cite>
+- 高性能秘诀-多层次
 
 **常见追问**：稀疏索引怎么定位到具体某条消息？为什么稀疏比稠密索引更合适？
 
@@ -1955,7 +1964,7 @@ Kafka主要有2个批量操作的地方，一个是批量生产，也就是批�
 
 **参考**
 
-- <cite doc-id="ZTxkwgpJ9ihXdMkHP7BcnDHSnNc" file-type="wiki" title="高性能秘诀-批量操作" type="doc"></cite>
+- 高性能秘诀-批量操作
 
 **常见追问**：批量生产时同一条消息的顺序会受影响吗？批量消费对幂等和超时有什么要求？
 
@@ -1989,7 +1998,7 @@ Zookeeper拥有分布式协调能力，Kafka主要是用Zookeeper来管理Broker
 
 **参考**
 
-- <cite doc-id="X3p6wqX2DitkXkkc6KDcla2vnpb" file-type="wiki" title="Zookeeper扮演了什么角色（有基本认知即可）" type="doc"></cite>
+- Zookeeper扮演了什么角色（有基本认知即可）
 
 **常见追问**：KRaft 相比 ZooKeeper 解决了哪些痛点？迁移 KRaft 要注意什么？
 
@@ -2009,7 +2018,13 @@ Zookeeper拥有分布式协调能力，Kafka主要是用Zookeeper来管理Broker
 
 **参考回答**：
 
-RabbitMQ 原生不支持延迟队列，主流三种实现：① TTL+死信队列（DLX）：对消息或队列设 TTL，过期后经 dead-letter-exchange 转发到真正消费队列。注意队列级 TTL 是队头阻塞式，消息级 TTL 也只检查队头，队头 TTL 长会压住后面短 TTL 消息，延迟不准，是最经典的坑。② 延迟插件 rabbitmq_delayed_message_exchange：装插件后声明 x-delayed-type 交换机，发消息带 x-delay header，消息先存插件内部 Mnesia 表，到期由 Erlang 定时器投递；精度毫秒级、支持任意延迟，但量大对内存/磁盘和集群同步有压力，镜像/Quorum 队列场景有兼容限制。③ 业务层兜底：DB 存到期时间+状态机定时扫表、Redis ZSet 按 score 轮询、应用内时间轮（HashedWheelTimer），到点再发 MQ，适合长延迟、海量、要可追溯可补偿的场景。选型在精度、吞吐、可靠性、运维成本间权衡，且消费端必须做幂等。
+RabbitMQ 原生不支持延迟队列，主流三种实现：① TTL+死信队列（DLX）：对消息或队列设 TTL，过期后经 dead-letter-exchange 转发到真正消费队列。
+
+注意队列级 TTL 是队头阻塞式，消息级 TTL 也只检查队头，队头 TTL 长会压住后面短 TTL 消息，延迟不准，是最经典的坑。② 延迟插件 rabbitmq_delayed_message_exchange：装插件后声明 x-delayed-type 交换机，发消息带 x-delay header，消息先存插件内部 Mnesia 表，到期由 Erlang 定时器投递；精度毫秒级、支持任意延迟，但量大对内存/磁盘和集群同步有压力，镜像/Quorum 队列场景有兼容限制。
+
+③ 业务层兜底：DB 存到期时间+状态机定时扫表、Redis ZSet 按 score 轮询、应用内时间轮（HashedWheelTimer），到点再发 MQ，适合长延迟、海量、要可追溯可补偿的场景。
+
+选型在精度、吞吐、可靠性、运维成本间权衡，且消费端必须做幂等。
 
 **常见追问**：TTL+DLX 的队头阻塞在源码上是什么导致的？延迟插件在 Quorum 队列下有什么限制？
 
@@ -2029,7 +2044,9 @@ RabbitMQ 原生不支持延迟队列，主流三种实现：① TTL+死信队列
 
 **参考回答**：
 
-Kafka：高吞吐、持久化、分区、流处理，语义为至少一次，适合日志采集、大数据、事件流、需要回溯重放的场景。RabbitMQ：低延迟、灵活路由（direct/topic/fanout/headers exchange）、可靠投递、支持延迟与死信，适合业务消息、任务队列、RPC、复杂路由。选型看：要吞吐和流处理选 Kafka，要灵活路由和低延迟业务消息选 RabbitMQ。
+Kafka：高吞吐、持久化、分区、流处理，语义为至少一次，适合日志采集、大数据、事件流、需要回溯重放的场景。RabbitMQ：低延迟、灵活路由（direct/topic/fanout/headers exchange）、可靠投递、支持延迟与死信，适合业务消息、任务队列、RPC、复杂路由。
+
+选型看：要吞吐和流处理选 Kafka，要灵活路由和低延迟业务消息选 RabbitMQ。
 
 **常见追问**：RabbitMQ 的 exchange 有哪几种、怎么路由？两者的消息可靠性保证机制有什么不同？
 
@@ -2049,7 +2066,13 @@ Kafka：高吞吐、持久化、分区、流处理，语义为至少一次，适
 
 **参考回答**：
 
-ISR（In-Sync Replicas）是与 Leader 保持同步的副本集合，动态维护。重要性：① 只有 ISR 中的副本有资格被选为新 Leader，保证切换后不丢已提交数据；② acks=all 时 Leader 要等 ISR 全部写入才返回，是可靠性配置的基础；③ Follower 落后超过 replica.lag.time.max.ms（默认 10s）会被踢出 ISR，防止慢副本拖垮分区。所以 ISR 是 Kafka 一致性与高可用的核心机制。
+ISR（In-Sync Replicas）是与 Leader 保持同步的副本集合，动态维护。
+
+- 重要性：① 只有 ISR 中的副本有资格被选为新 Leader，保证切换后不丢已提交数据；
+- ② acks=all 时 Leader 要等 ISR 全部写入才返回，是可靠性配置的基础；
+- ③ Follower 落后超过 replica.lag.time.max.ms（默认 10s）会被踢出 ISR，防止慢副本拖垮分区。
+
+所以 ISR 是 Kafka 一致性与高可用的核心机制。
 
 **常见追问**：ISR 为空时怎么办？ISR 频繁抖动通常说明什么问题？
 
@@ -2069,7 +2092,9 @@ ISR（In-Sync Replicas）是与 Leader 保持同步的副本集合，动态维�
 
 **参考回答**：
 
-分区数决定并行度（同组消费者有效数不超过分区数）。估算：分区数 ≈ 目标吞吐 / 单分区吞吐，单分区吞吐经验值几 MB/s 到十几 MB/s，最好压测确定。考虑：过多分区会增加文件句柄、内存、副本同步与 rebalance 开销；分区数只能增不能减，且增加会改变 key 的分区映射导致顺序性变化。一般从 3~12 起步，结合压测与监控调整。
+分区数决定并行度（同组消费者有效数不超过分区数）。估算：分区数 ≈ 目标吞吐 / 单分区吞吐，单分区吞吐经验值几 MB/s 到十几 MB/s，最好压测确定。考虑：过多分区会增加文件句柄、内存、副本同步与 rebalance 开销；分区数只能增不能减，且增加会改变 key 的分区映射导致顺序性变化。
+
+一般从 3~12 起步，结合压测与监控调整。
 
 **常见追问**：分区数增加后原来的 key 顺序还能保证吗？单 Broker 分区数为什么建议不超过 2000？
 
@@ -2089,7 +2114,13 @@ ISR（In-Sync Replicas）是与 Leader 保持同步的副本集合，动态维�
 
 **参考回答**：
 
-以订单 30 分钟未支付关闭为例，主流方案：① Redis ZSet：score 存执行时间戳，定时轮询取到期任务（ZRANGEBYSCORE）处理，简单可靠、易扩展；② 时间轮：应用内 HashedWheelTimer，适合大量短延迟任务，内存态需配合持久化兜底；③ MQ 延迟消息：RocketMQ 延迟等级或 RabbitMQ 延迟插件，精度和可靠性好；④ 数据库轮询：存到期时间加状态机，定时扫表，适合小量但要防扫表压力；⑤ 集群用分布式锁或分片避免重复执行。要点：任务要幂等（可能重复触发）、要有兜底对账补偿、避免单点（不要用单机 Timer）、并监控延迟与失败告警。
+- 以订单 30 分钟未支付关闭为例，主流方案：① Redis ZSet：score 存执行时间戳，定时轮询取到期任务（ZRANGEBYSCORE）处理，简单可靠、易扩展；
+- ② 时间轮：应用内 HashedWheelTimer，适合大量短延迟任务，内存态需配合持久化兜底；
+- ③ MQ 延迟消息：RocketMQ 延迟等级或 RabbitMQ 延迟插件，精度和可靠性好；
+- ④ 数据库轮询：存到期时间加状态机，定时扫表，适合小量但要防扫表压力；
+- ⑤ 集群用分布式锁或分片避免重复执行。
+
+要点：任务要幂等（可能重复触发）、要有兜底对账补偿、避免单点（不要用单机 Timer）、并监控延迟与失败告警。
 
 **常见追问**：Redis ZSet 方案在 Redis 挂掉后任务会丢吗？为什么不能用 ScheduledExecutor 直接做？
 

@@ -32,7 +32,21 @@ def embed(texts):
 
 def main():
     embs = embed(TEXTS)
-    M = np.stack([np.array(e, dtype=np.float64) / (np.linalg.norm(e) or 1.0) for e in embs])
+    try:
+        M = np.asarray(embs, dtype=np.float64)
+        if M.ndim != 2 or M.shape[0] != len(TEXTS) or M.shape[1] == 0:
+            raise ValueError("数量或维度不符")
+        if not np.isfinite(M).all():
+            raise ValueError("向量包含非有限值")
+        # Scale first to avoid overflow/underflow of norms on finite vectors.
+        scales = np.max(np.abs(M), axis=1, keepdims=True)
+        if (scales == 0).any():
+            raise ValueError("向量范数为零")
+        M = M / scales
+        M = M / np.linalg.norm(M, axis=1, keepdims=True)
+    except (ValueError, TypeError, OverflowError) as exc:
+        print(f"!! 无效嵌入响应：{exc}")
+        raise SystemExit(1) from exc
     n = len(TEXTS)
     print(f"模型: {MODEL}  维度: {len(embs[0])}")
     print("相互余弦 (应远低于 1.0 才可用):")
@@ -54,7 +68,7 @@ def main():
         print("!! 该模型对短中文坍缩，不可用于去重。")
         sys.exit(1)
     else:
-        print("OK 该模型对短中文有区分度。")
+        print("OK 通过本组短中文区分度冒烟检查；实际去重效果仍需正负样本评估。")
 
 
 if __name__ == "__main__":

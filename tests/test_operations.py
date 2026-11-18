@@ -158,22 +158,35 @@ def test_curated_replacement_rejects_empty_input_and_preserves_other_sources(tmp
     source.mkdir()
     batch = source / "go.jsonl"
     target = tmp_path / "selected.db"
-    command = [sys.executable, str(ROOT / "scripts/import_questions_v2.py"), "--source", str(source), "--replace"]
+    # Exercise the real CLI and its complete-corpus checks with a two-question corpus.
+    launch = (
+        "import sys; sys.path.insert(0, sys.argv.pop(1)); import import_questions_v2 as importer; "
+        "importer.DOMAIN_LABELS = {'go': 'Go'}; importer.CURATED_QUESTION_COUNT = 2; "
+        "raise SystemExit(importer.main())"
+    )
+    command = [sys.executable, "-c", launch, str(ROOT / "scripts"), "--source", str(source), "--replace"]
     env = dict(os.environ, DATABASE_URL="sqlite:///" + target.as_posix(), PYTHONIOENCODING="utf-8")
 
     def run():
         return subprocess.run(command, cwd=tmp_path, env=env, capture_output=True, encoding="utf-8", timeout=30)
 
-    batch.write_text(json.dumps({"title": "old", "answer": "old answer"}), encoding="utf-8")
+    def write_batch(titles):
+        batch.write_text("\n".join(json.dumps({"id": f"q{i}", "title": title, "answer": "answer"})
+                                   for i, title in enumerate(titles)), encoding="utf-8")
+
+    write_batch(["old", "obsolete"])
     assert run().returncode == 0
     batch.write_text("\n", encoding="utf-8")
     rejected = run()
-    assert rejected.returncode != 0 and "源文件没有题目" in rejected.stderr
+    assert rejected.returncode != 0 and "题库数量不符" in rejected.stderr
+    write_batch(["old", "old"])
+    rejected = run()
+    assert rejected.returncode != 0 and "题面重复" in rejected.stderr
     with sqlite3.connect(target) as db:
-        assert db.execute("SELECT question_text FROM questions").fetchall() == [("old",)]
-        db.execute("UPDATE questions SET platform = 'custom'")
+        assert db.execute("SELECT question_text FROM questions ORDER BY id").fetchall() == [("old",), ("obsolete",)]
+        db.execute("UPDATE questions SET platform = 'custom' WHERE question_text='old'")
     db.close()
-    batch.write_text("\n".join(json.dumps({"title": title, "answer": "answer"}) for title in ("old", "new")), encoding="utf-8")
+    write_batch(["old", "new"])
     assert run().returncode == 0
     with sqlite3.connect(target) as db:
         assert db.execute("SELECT platform, question_text FROM questions ORDER BY id").fetchall() == [

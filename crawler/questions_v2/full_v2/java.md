@@ -1,6 +1,6 @@
 # Java
 
-> 题目数量：**59** ｜ 渲染时间：自动 ｜ 源：authored/java.jsonl
+> 题目数量：**50** ｜ 渲染时间：自动 ｜ 源：authored/java.jsonl
 
 ---
 
@@ -118,7 +118,7 @@ Spring AI 的核心思想是『把大模型调用当成 Spring 里的一种普�
 
 ---
 
-## 4. 精通Java核心技术，熟悉JVM原理、多线程编程？
+## 4. Java 工程师应如何系统掌握语言、JVM 与并发基础？
 
 > 原题 ID：`q2227`
 
@@ -145,7 +145,7 @@ Spring AI 的核心思想是『把大模型调用当成 Spring 里的一种普�
 
 ---
 
-## 5. 深入理解JVM底层原理、MySQL内核、分布式事务、高可用架构设计？
+## 5. Java 后端如何把 JVM、数据库与分布式系统知识用于工程决策？
 
 > 原题 ID：`q2228`
 
@@ -219,9 +219,13 @@ MySQL: 连接器 -> 分析器 -> 优化器 -> 执行器 -> InnoDB(Buffer Pool + 
 
 在企业级落地中，AI 应用的核心逻辑包括：模型接入与多供应商适配、Prompt 模板管理、对话记忆、RAG（文档加载/切分/向量化/检索/重排）、Function/Tool Calling、结构化输出解析、流式响应、可观测性与重试降级等。这些能力在 Spring AI、LangChain4j、LangChain 等成熟框架中已有大量生产验证，自己从零实现会重复踩坑且维护成本极高。
 
-以 Java 技术栈为例：Spring AI 提供 ChatClient、Advisor、VectorStore、EmbeddingModel、ToolCallback 等抽象，天然融入 Spring Boot 的自动配置、依赖注入与可观测体系；LangChain4j 提供 AiServices 声明式接口、ChatMemory、ContentRetriever、EmbeddingStore 等，对多模型供应商（OpenAI、Azure、通义、Ollama 等）有统一适配。选型时应评估：社区活跃度与版本迭代、供应商覆盖、与现有技术栈契合度、License、可扩展点（能否自定义 Retriever/Advisor）、可观测与评测支持。
+以 Java 技术栈为例：Spring AI 提供 ChatClient、Advisor、VectorStore、EmbeddingModel、ToolCallback 等抽象，天然融入 Spring Boot 的自动配置、依赖注入与可观测体系；LangChain4j 提供 AiServices 声明式接口、ChatMemory、ContentRetriever、EmbeddingStore 等，对多模型供应商（OpenAI、Azure、通义、Ollama 等）有统一适配。
 
-正确姿势是：用框架承载通用能力，用自研承载业务价值。例如用 LangChain4j 的 AiServices 定义业务 Agent 接口，用 Spring AI 的 Advisor 统一注入租户上下文、审计日志、敏感词过滤；RAG 的切分策略、检索重排、Prompt 模板则结合业务语料做定制。同时保留抽象边界（如自定义 ModelClient 接口），避免业务代码与框架 API 深度耦合，便于后续替换或升级。
+选型时应评估：社区活跃度与版本迭代、供应商覆盖、与现有技术栈契合度、License、可扩展点（能否自定义 Retriever/Advisor）、可观测与评测支持。
+
+正确姿势是：用框架承载通用能力，用自研承载业务价值。
+
+例如用 LangChain4j 的 AiServices 定义业务 Agent 接口，用 Spring AI 的 Advisor 统一注入租户上下文、审计日志、敏感词过滤；RAG 的切分策略、检索重排、Prompt 模板则结合业务语料做定制。同时保留抽象边界（如自定义 ModelClient 接口），避免业务代码与框架 API 深度耦合，便于后续替换或升级。
 
 权衡点：框架抽象会带来一定性能开销与调试复杂度，遇到框架不支持的供应商特性或极端性能要求时，可在局部下沉到原生 SDK；但不应因此全盘自研。
 
@@ -229,45 +233,7 @@ MySQL: 连接器 -> 分析器 -> 优化器 -> 执行器 -> InnoDB(Buffer Pool + 
 
 ---
 
-## 7. 什么是垃圾回收： JavaScript代码运行时，需要分配内存空间来储存变量和值？
-
-> 原题 ID：`q2448`
-
-**高频程度**：★★★
-
-**考察点**：考察 JS/V8 垃圾回收机制与常见算法。
-
-**回答框架**：
-
-1) 基于可达性分析，从根对象出发标记活动对象；2) 标记-清除产生碎片；3) 标记-整理移动活动对象解决碎片；4) 分代回收：新生代 Scavenge/Cheney 复制，老生代标记-清除/整理结合。
-
-**参考回答**：
-
-垃圾回收（GC）是自动管理内存的机制，通过识别并回收程序中不再使用的内存空间，防止内存泄漏。在 JavaScript 中，GC 主要基于可达性分析，常见算法有标记-清除、标记-整理、分代回收等。
-
-垃圾回收（Garbage Collection）是一种自动内存管理机制，它负责回收程序中不再使用的内存。在 JavaScript 中，内存分配发生在变量、对象、函数等创建时，而垃圾回收器会定期找出那些不再被引用的对象并释放其内存。
-
-JavaScript 引擎（如 V8）主要采用可达性分析：从根对象（如全局对象、当前调用栈中的变量）出发，遍历所有引用，能到达的对象标记为活动对象，其余视为垃圾。
-
-常见算法：
-1. 标记-清除（Mark-Sweep）：从根开始标记所有可达对象，然后清除未标记对象。缺点是产生内存碎片。
-2. 标记-整理（Mark-Compact）：在标记后，将活动对象向一端移动，然后清理边界外的内存，解决碎片问题。
-3. 分代回收（Generational GC）：基于弱分代假说，将对象分为新生代和老生代。新生代使用 Scavenge 算法（将内存分为两个半区，复制存活对象），老生代使用标记-清除/整理。V8 中新生代采用 Cheney 算法，老生代采用标记-清除和标记-整理结合。
-
-代码示例：
-```javascript
-let obj = { name: 'test' }; // 分配内存
-obj = null; // 解除引用，对象成为垃圾
-// 垃圾回收器会在某个时刻回收该对象
-```
-
-在 Go 语言中，垃圾回收也是自动的，但采用并发三色标记清除算法，与 JavaScript 有相似的可达性分析思想，但实现细节不同。
-
-**常见追问**：V8 为什么要区分新生代和老生代？
-
----
-
-## 8. java内存泄漏原理？
+## 7. java内存泄漏原理？
 
 > 原题 ID：`q2498`
 
@@ -304,7 +270,7 @@ Java 有垃圾回收，但 GC 判断对象能否回收的标准是“可达性�
 
 ---
 
-## 9. 对象头： 理解Java对象头中的Mark Word如何存储锁状态（无锁、偏向锁、轻量级锁、重量级锁），以及锁升级的过程？
+## 8. Java 对象头中的 Mark Word 如何表示锁状态？锁实现如何演进？
 
 > 原题 ID：`q2512`
 
@@ -341,16 +307,23 @@ HotSpot中普通对象由对象头、实例数据、对齐填充组成。对象�
 4. 轻量级锁→重量级锁：自旋超过阈值或竞争线程多，膨胀为ObjectMonitor，未抢到锁的线程进入EntryList阻塞，由OS调度。
 
 五、通俗类比
-Mark Word像门牌：无锁是空房；偏向锁是“已租给A”，A进出自由；轻量级锁是A临时外出，B来试钥匙，试几次不行就等；重量级锁是排队叫号，没叫到的人去休息室睡觉，由管理员唤醒。
+- Mark Word像门牌：无锁是空房；
+- 偏向锁是“已租给A”，A进出自由；
+- 轻量级锁是A临时外出，B来试钥匙，试几次不行就等；
+- 重量级锁是排队叫号，没叫到的人去休息室睡觉，由管理员唤醒。
 
 六、适用场景
-偏向锁适合单线程反复进入同步块；轻量级锁适合竞争少、临界区短；重量级锁适合竞争激烈、临界区长。JDK 15后偏向锁默认禁用并逐步移除，因为维护成本高、现代应用竞争模式变化。
+- 偏向锁适合单线程反复进入同步块；
+- 轻量级锁适合竞争少、临界区短；
+- 重量级锁适合竞争激烈、临界区长。
+
+JDK 15后偏向锁默认禁用并逐步移除，因为维护成本高、现代应用竞争模式变化。
 
 **常见追问**：JDK 15 之后为什么默认关闭偏向锁？
 
 ---
 
-## 10. synchronized 与 ReentrantLock 如何比较和选型？
+## 9. synchronized 与 ReentrantLock 如何比较和选型？
 
 > 原题 ID：`q2514`
 
@@ -398,152 +371,42 @@ try { /* 临界区 */ } finally { lock.unlock(); }
 
 ---
 
-## 11. AI 时代，我们还要“背八股”吗？——一个Java应届生的深思与破局？
-
-> 原题 ID：`q2517`
-
-**高频程度**：★★★
-
-**考察点**：考察 AI 时代八股的价值与学习方式转变。
-
-**回答框架**：
-
-1) 知识本身贬值，但知识形成的判断力升值；2) 面试官真正考的是「为什么」背后的数据结构、内存、并发与工程权衡；3) 不背的风险：AI 会幻觉，缺乏判断力会被带偏；4) 方法：把八股当索引，每个点追问三层为什么，并绑定项目踩坑。
-
-**参考回答**：
-
-要背，但要从背答案转向背原理与场景，把八股当作AI无法替代的底层认知骨架，用AI做陪练和验证而非答案来源。
-
-这道题本质在问：大模型能秒答'HashMap扩容机制''JVM内存模型'，那记忆型知识还有没有价值？答案是：知识本身贬值了，但'知识形成的判断力'升值了。
-
-类比：AI像一本随时可查的字典，但你不能靠查字典来写文章。面试官考八股，考的不是你能否复述'ArrayList默认容量10'，而是你是否理解'为什么是10''扩容1.5倍而不是2倍''为什么线程不安全'——这些追问背后是数据结构、内存、并发、工程权衡的认知。
-
-为什么还要背：
-1）面试筛选成本：面试官无法在40分钟内验证你的工程能力，八股是低成本的信号，答不出基础题会被直接判定'没系统学过'。
-2）AI幻觉风险：大模型会一本正经胡说，比如把CMS说成G1的替代、把volatile说成保证原子性。没有底层判断力，你无法识别AI的错误，反而被带偏。
-3）追问深度：AI给的是平均答案，面试官要的是你的思考路径。'为什么'类问题AI答得泛，你能结合项目讲出踩坑才加分。
-
-破局方法：
-- 把八股当'索引'而非'终点'：每个知识点追问三层为什么，比如synchronized→锁升级→偏向锁为何被废弃（JDK15后偏向锁默认关闭，因维护成本高于收益）。
-- 用AI做苏格拉底式陪练：让AI扮演面试官追问，或让它故意给出错误答案让你纠错，训练鉴别力。
-- 建立知识网络：把JVM、并发、MySQL、Redis串成'一次请求的生命周期'，而不是孤立背诵。
-- 项目反哺：用八股解释你项目里的选型，比如为什么用ConcurrentHashMap而不是Collections.synchronizedMap。
-
-适用场景：校招/初级岗八股权重高，因为缺乏工程履历；高级岗更看系统设计与落地，但底层原理仍是地基。
-
-**常见追问**：你会怎么用 AI 练面试而不是依赖它？
-
----
-
-## 12. 年轻代和老年代分别使用哪些垃圾回收算法？它们的优势和劣势是什么？请提供相关JVM参数示例？
+## 10. 年轻代和老年代分别如何回收？不同 JVM 收集器的算法有什么差异？
 
 > 原题 ID：`q2527`
 
 **高频程度**：★★★★
 
-**考察点**：考察分代收集算法选择与相关 JVM 参数。
+**考察点**：避免把分代与某一种固定算法绑定，按具体收集器说明复制、标记和并发回收。
 
 **回答框架**：
 
-1) 年轻代用复制算法（Eden:Survivor=8:1:1，Minor GC 复制存活对象，年龄阈值晋升）；2) 老年代用标记-清除或标记-整理（Major/Full GC）；3) 关键参数：-Xmn/-XX:NewRatio、-XX:SurvivorRatio、-XX:MaxTenuringThreshold、-XX:PretenureSizeThreshold；4) 权衡：复制无碎片但浪费空间，标记整理无碎片但开销大。
+1) 分代描述对象年龄与回收范围，不直接规定唯一算法
+2) 年轻代回收通常疏散存活对象，成本与存活量相关
+3) 老年代策略取决于 Parallel、G1、ZGC 等具体收集器
+4) 参数应围绕收集器与目标调优，不能混用过时结论
 
 **参考回答**：
 
-年轻代用复制算法（Minor GC），老年代用标记-清除或标记-整理（Major/Full GC），核心权衡是吞吐、停顿与内存碎片。
+不能笼统地回答“年轻代固定用复制、老年代固定用标记清除或标记整理”。分代是堆的组织方式，实际算法由所选垃圾收集器决定。
 
-JVM 堆通常按分代设计：年轻代（Young Gen）分为 Eden 和两个 Survivor（S0/S1），默认比例 8:1:1；老年代（Old Gen/Tenured）存放长期存活对象。
+以现代 HotSpot 默认常见的 G1 为例，堆被划分为多个 Region，并在逻辑上组成年轻代和老年代。年轻代收集会把存活对象从 Eden/Survivor Region 疏散到新的 Survivor 或老年代 Region；Mixed GC 还会选择一部分回收收益较高的老年代 Region，把其中存活对象疏散到其他 Region，因此在回收选中区域时同时完成压缩。
 
-1) 年轻代：复制算法（Copying）
-原理：对象优先在 Eden 分配，Eden 满触发 Minor GC，把 Eden 和当前 Survivor 中存活对象复制到另一个空 Survivor，然后清空 Eden 和原 Survivor；对象每熬过一次 GC 年龄加 1，达到阈值（默认 15，-XX:MaxTenuringThreshold）晋升老年代。大对象可直接进入老年代（-XX:PretenureSizeThreshold）。
-优势：只扫描存活对象、复制到连续空间，无碎片，分配可用指针碰撞（bump-the-pointer），效率高；适合“朝生夕死”的对象。
-劣势：需要一块空闲 Survivor 作为复制空间，浪费 10% 左右堆；存活对象多时复制成本高；Survivor 放不下会触发分配担保，提前晋升老年代。
+并发标记用于估算老年代对象存活情况；发生最后保障性的 Full GC 时则可能执行全堆压缩。
 
-2) 老年代：标记-清除（Mark-Sweep）或标记-整理（Mark-Compact）
-原理：老年代对象存活率高，不适合复制。CMS 使用标记-清除：初始标记、并发标记、重新标记、并发清除；G1 整体是标记-整理，局部 Region 之间复制；Parallel Old 使用标记-整理。
-优势：标记-清除不需要额外复制空间，适合大对象和长生命周期对象；标记-整理能消除碎片，适合长期运行。
-劣势：标记-清除产生内存碎片，可能触发 Full GC；标记-整理需要移动对象，停顿较长；并发回收会占用 CPU 并产生浮动垃圾。
+Parallel GC 同样采用分代设计，面向吞吐量，并可并行压缩老年代。ZGC 等低延迟收集器的阶段与实现又不同，不能套用同一组“新生代/老年代算法”答案。
 
-3) 参数示例：
-- 年轻代：-Xmn256m 或 -XX:NewRatio=2（老年代/年轻代=2:1）、-XX:SurvivorRatio=8、-XX:MaxTenuringThreshold=15、-XX:+UseSerialGC / -XX:+UseParNewGC / -XX:+UseParallelGC。
-- 老年代：-XX:+UseConcMarkSweepGC（CMS）、-XX:CMSInitiatingOccupancyFraction=70、-XX:+UseCMSCompactAtFullCollection、-XX:+UseParallelOldGC、-XX:+UseG1GC、-XX:MaxGCPauseMillis=200。
-- 典型组合：-Xms4g -Xmx4g -Xmn1g -XX:SurvivorRatio=8 -XX:MaxTenuringThreshold=15 -XX:+UseG1GC -XX:MaxGCPauseMillis=200。
+因此面试时应先说明 JDK 版本和收集器，再比较吞吐量、停顿、并发开销、堆规模与碎片处理。
 
-注意：题目虽标注“后端八股（Go）”，但内容实际是 JVM/Java GC；若面试官问 Go，应回答 Go 的三色标记+混合写屏障、无分代，并说明与 JVM 分代的区别。
+常见参数示例：`-XX:+UseG1GC` 显式选择 G1（许多现代 JDK 配置下已是默认），`-XX:MaxGCPauseMillis=200` 设置软停顿目标，`-Xms`/`-Xmx` 设置堆范围，`-Xlog:gc*` 记录 GC 日志。调优应先观察日志和业务 SLO，不应机械固定年轻代大小，也不应继续推荐已移除的 CMS 作为现代默认方案。
 
-**常见追问**：什么情况下对象会直接进入老年代？
+**常见追问**：为什么给 G1 固定设置很大的年轻代，反而可能妨碍其停顿时间目标？
+
+**核验资料**：[Oracle G1 Garbage Collector](https://docs.oracle.com/en/java/javase/26/gctuning/garbage-first-g1-garbage-collector1.html)；[Oracle Available Collectors](https://docs.oracle.com/en/java/javase/17/gctuning/available-collectors.html)
 
 ---
 
-## 13. 谁会去背IOC的七八种实现方式？谁会去记JVM调优的32个参数？
-
-> 原题 ID：`q3182`
-
-**高频程度**：★★★
-
-**考察点**：考察对「背实现方式/参数」的反讽背后真正的考察点。
-
-**回答框架**：
-
-1) IOC 本质是控制反转与依赖注入，实现方式（构造器/setter/字段/接口注入）只是形态差异；2) JVM 真正要记的是几类核心参数：堆大小、新生代比例、GC 选择、元空间、OOM dump；3) 调优方法论：明确目标→监控定位→小步调整→压测验证；4) 面试考的是理解与取舍，不是背诵数量。
-
-**参考回答**：
-
-面试考察的不是背诵实现方式或参数数量，而是能否理解 IOC 的本质（控制反转/依赖注入）和 JVM 调优的底层原理与调优方法论，并能在真实场景中按需查阅和取舍。
-
-这句话本身是面试官对『八股文式背诵』的反讽。IOC 的实现方式（构造器注入、setter 注入、字段注入、接口注入、工厂模式、服务定位器、模板方法、AOP 等）并不需要背，因为它们的本质都是同一个：把对象创建和依赖装配的控制权从业务代码反转给容器。你只要理解『谁控制谁、反转了什么、为什么需要反转』，就能在需要时推导出具体实现。例如 Spring 的构造器注入本质是容器在 new Bean 时按类型/名称解析依赖并递归创建，字段注入只是反射赋值，setter 注入是容器调用 setter。JVM 调优的 32 个参数同理，真正要记的是几类核心参数：堆大小（-Xms/-Xmx）、新生代比例（-Xmn/-XX:NewRatio）、GC 选择（-XX:+UseG1GC 等）、元空间（-XX:MaxMetaspaceSize）、GC 日志与 OOM dump（-XX:+HeapDumpOnOutOfMemoryError）。调优方法论是：先明确目标（吞吐/延迟/内存占用），再通过监控（jstat、GC 日志、Arthas、JFR）定位瓶颈，最后小步调整并压测验证，而不是背参数。适用场景上，IOC 适合需要解耦、可测试、可替换实现的业务系统；JVM 调优适合高并发、大内存、对延迟敏感的服务，普通 CRUD 应用默认参数往往就够。
-
-**常见追问**：现场给你一个 CPU 飙高的服务，你的调优步骤是什么？
-
----
-
-## 14. synchronized 和 ReentrantLock 的区别，如何选择？
-
-> 原题 ID：`q3392`
-
-**高频程度**：★★★★★
-
-**考察点**：考察 synchronized 与 ReentrantLock 的本质区别与选型。
-
-**回答框架**：
-
-1) 实现层：前者是 JVM 关键字 + Mark Word，后者是 AQS 的 state + CLH 队列；2) 释放：前者自动释放，后者必须 finally unlock；3) 功能：后者可中断、可超时、可公平、多 Condition，前者只有非公平；4) 选型：简单同步用 synchronized，需要高级能力用 ReentrantLock。
-
-**参考回答**：
-
-synchronized 是 JVM 内置的隐式可重入锁，ReentrantLock 是 JDK 层基于 AQS 的显式可重入锁，后者功能更灵活但需手动释放，选择取决于是否需要高级特性。
-
-一、本质区别
-1. 实现层面：synchronized 是 Java 关键字，由 JVM 通过 monitorenter/monitorexit 字节码指令实现，锁信息存在对象头 Mark Word 中；ReentrantLock 是 java.util.concurrent.locks 包下的类，基于 AQS（AbstractQueuedSynchronizer）的 state + CLH 队列实现，纯 Java 代码。
-2. 锁的获取与释放：synchronized 自动加锁解锁，异常时 JVM 保证释放；ReentrantLock 必须手动 lock()/unlock()，且 unlock 要放在 finally 中，否则可能死锁。
-3. 可重入性：两者都支持可重入。synchronized 通过对象头中的锁计数；ReentrantLock 通过 AQS 的 state 累加。
-
-二、功能差异
-1. 公平性：synchronized 只有非公平锁；ReentrantLock 可通过构造参数 new ReentrantLock(true) 选择公平锁（按等待队列顺序获取）。
-2. 可中断：ReentrantLock 提供 lockInterruptibly()，等待锁时可响应中断；synchronized 等待时不可中断。
-3. 超时尝试：ReentrantLock 提供 tryLock() 和 tryLock(long, TimeUnit)，可避免无限等待；synchronized 没有。
-4. 条件变量：ReentrantLock 可绑定多个 Condition，实现精确唤醒（如生产者消费者中分别唤醒生产者/消费者）；synchronized 只能配合一个 wait/notify，唤醒随机。
-5. 锁状态查询：ReentrantLock 提供 isLocked()、getHoldCount()、getQueueLength() 等监控方法；synchronized 无法直接查询。
-
-三、性能与优化
-早期 synchronized 是重量级锁，性能差；JDK 6 后引入偏向锁、轻量级锁、自旋锁、锁消除、锁粗化等优化，两者性能已接近。低竞争下 synchronized 因 JVM 优化甚至更优；高竞争或需要高级功能时 ReentrantLock 更合适。
-
-四、通俗类比
-synchronized 像酒店房卡：进门自动锁，出门自动开，简单但只能按固定规则；ReentrantLock 像带密码和定时功能的智能锁：可以设置等待时间、被中断、公平排队、多条件唤醒，但出门必须记得手动锁门（unlock），否则别人进不去。
-
-五、如何选择
-1. 优先用 synchronized：代码简洁、不易出错、JVM 持续优化，满足绝大多数场景。
-2. 需要以下任一高级特性时选 ReentrantLock：可中断等待、超时获取、公平锁、多个条件变量、锁状态监控。
-3. 注意：ReentrantLock 必须 finally 释放；公平锁会降低吞吐量，非必要不用。
-
-【同源补充】来自同源题「synchronized 和 ReentrantLock 的区别？」
-关键字 vs API、自动释放、可中断/超时/公平、Condition、tryLock
-1) synchronized 是 JVM 内置关键字，自动释放；ReentrantLock 是 API 层面，需手动 unlock（finally）；2) Lock 支持可中断、超时获取、公平锁、多条件 Condition；3) synchronized 在竞争激烈时性能已接近 Lock；4) Lock 可尝试非阻塞 tryLock。
-
-**常见追问**：什么场景下你必须用 ReentrantLock 而不能用 synchronized？
-
----
-
-## 15. ThreadLocal 内存泄露问题是怎么导致的？
+## 11. ThreadLocal 内存泄露问题是怎么导致的？
 
 > 原题 ID：`q3393`
 
@@ -581,7 +444,7 @@ ThreadLocalMap、弱引用 key、value 泄漏、remove()、线程池
 
 ---
 
-## 16. 项目中如何创建线程池，为什么不建议直接使用 Executors？
+## 12. 项目中如何创建线程池，为什么不建议直接使用 Executors？
 
 > 原题 ID：`q3394`
 
@@ -620,7 +483,7 @@ ThreadLocalMap、弱引用 key、value 泄漏、remove()、线程池
 
 ---
 
-## 17. 策略模式的应用场景...顺带问了spring三大特性？
+## 13. 策略模式的应用场景...顺带问了spring三大特性？
 
 > 原题 ID：`q3546`
 
@@ -656,7 +519,7 @@ ThreadLocalMap、弱引用 key、value 泄漏、remove()、线程池
    - 每个实现类加 @Component，channel() 返回唯一标识；
    - 用构造器注入 List 或 Map（Spring 会自动把 beanName 作为 key 注入 Map）；
    - 初始化时转成 Map，调用时 map.get(channel).pay()，彻底去掉 if/else。
-   注意：若用自定义 channel() 而非 beanName，需在 @PostConstruct 里手动构建映射，避免 key 冲突。
+注意：若用自定义 channel() 而非 beanName，需在 @PostConstruct 里手动构建映射，避免 key 冲突。
 7. 与工厂模式的区别：工厂关注「创建哪个对象」，策略关注「用哪种行为」；实际常组合使用（工厂产出策略）。
 
 二、Spring 三大特性（通常指 IoC/DI、AOP、以及 Bean 管理/生命周期，也有说法把「轻量级、非侵入、一站式」列为特性，面试中按主流理解答）
@@ -681,7 +544,7 @@ ThreadLocalMap、弱引用 key、value 泄漏、remove()、线程池
 
 ---
 
-## 18. JVM了解吗，有什么组成？
+## 14. JVM了解吗，有什么组成？
 
 > 原题 ID：`q3579`
 
@@ -710,13 +573,18 @@ JVM（Java Virtual Machine）本质是一个抽象计算机，屏蔽操作系统
 
 4) 本地接口与本地方法库：JNI 调用 C/C++ 等本地方法，如 System.currentTimeMillis()、Object.hashCode()。
 
-通俗类比：JVM 像一家餐厅。类加载器是采购员，把食材（class 文件）按规则买进来；运行时数据区是厨房和仓库（堆放食材、栈放当前做菜步骤）；执行引擎是厨师，边看菜谱（解释器）边把常做的菜提前练熟（JIT）；本地接口是外部供应商，需要特殊调料时打电话叫货。
+通俗类比：JVM 像一家餐厅。
+
+- 类加载器是采购员，把食材（class 文件）按规则买进来；
+- 运行时数据区是厨房和仓库（堆放食材、栈放当前做菜步骤）；
+- 执行引擎是厨师，边看菜谱（解释器）边把常做的菜提前练熟（JIT）；
+- 本地接口是外部供应商，需要特殊调料时打电话叫货。
 
 **常见追问**：直接内存算不算 JVM 运行时数据区？为什么容易 OOM？
 
 ---
 
-## 19. JDK 7 与 JDK 8 的 PermGen/Metaspace 和常见 GC 机制有哪些差异？
+## 15. JDK 7 与 JDK 8 的 PermGen/Metaspace 和常见 GC 机制有哪些差异？
 
 > 原题 ID：`q3580`
 
@@ -765,7 +633,7 @@ Go 用并发三色标记 + 混合写屏障，无分代，STW 极短；JVM 分代
 
 ---
 
-## 20. Java 中常见的两种同步锁实现是什么？
+## 16. Java 中常见的两种同步锁实现是什么？
 
 > 原题 ID：`q3608`
 
@@ -795,7 +663,7 @@ Java 中常见的两种同步锁实现是 synchronized 关键字和 java.util.co
 
 ---
 
-## 21. Java 后端面试通常如何考察 JVM、并发与集合等基础能力？
+## 17. Java 后端面试通常如何考察 JVM、并发与集合等基础能力？
 
 > 原题 ID：`q3622`
 
@@ -831,71 +699,7 @@ Java 中常见的两种同步锁实现是 synchronized 关键字和 java.util.co
 
 ---
 
-## 22. 为什么从 Java 后端转 AI Agent 应用开发？
-
-> 原题 ID：`q3954`
-
-**高频程度**：★★★
-
-**考察点**：考察 Java 后端转 AI Agent 的优势与需补齐的能力。
-
-**回答框架**：
-
-1) 可迁移的工程能力：Agent 应用本质是分布式系统，涉及 API 调用、会话状态、鉴权限流、异步编排、可观测；2) 需补齐：LLM 的概率性思维、Prompt/上下文工程、Agent 范式（ReAct、Plan-and-Execute、Function Calling）、评估体系；3) 类比：传统后端按图纸施工，Agent 开发像带一个不确定的实习生，要设计约束与反馈。
-
-**参考回答**：
-
-Java 后端转 AI Agent 开发的核心优势在于工程化能力可迁移，但需补齐 LLM 概率性思维、Prompt/上下文工程与 Agent 编排范式。
-
-这道题本质是考察你对两个领域差异与迁移性的理解。
-
-1) 为什么能转：Java 后端积累的工程能力在 Agent 应用层高度复用。Agent 应用本质是一个分布式系统：需要调用 LLM API（HTTP/RPC）、管理会话状态（Redis/DB）、做鉴权限流（网关）、异步编排（消息队列/线程池）、可观测性（日志/链路追踪/Trace）。这些正是 Java 后端的强项。Spring Boot + WebClient/OkHttp 调模型、用状态机或工作流引擎编排工具调用，都是熟悉的套路。
-
-2) 为什么需要补课：LLM 是概率性组件，不是确定性函数。后端习惯的"输入确定→输出确定"被打破，同一 Prompt 可能返回不同结果，还会幻觉、超时、限流。所以要学：Prompt 工程（few-shot、CoT、结构化输出）、上下文窗口管理（截断/摘要/RAG 检索）、Agent 范式（ReAct、Plan-and-Execute、Function Calling/Tool Use）、评估（Eval、回归测试集）。
-
-3) 通俗类比：传统后端像"按图纸施工的工程队"，每一步确定；Agent 开发像"带一个聪明但会走神的实习生"，你要设计好任务拆解、工具、检查点（guardrail）和兜底，而不是写死流程。
-
-4) 适用场景：适合做企业级 Agent 平台、RAG 知识库、工作流编排、多 Agent 协作等偏工程落地的方向；纯算法训练/微调则需补 ML 基础。
-
-**常见追问**：概率性组件怎么保证线上稳定性？
-
----
-
-## 23. 你认为 Agent 应用开发和普通 Java 后端开发最大的区别是什么？
-
-> 原题 ID：`q3955`
-
-**高频程度**：★★★★
-
-**考察点**：考察 Agent 应用与普通 Java 后端的本质差异。
-
-**回答框架**：
-
-1) 控制流：确定性代码 vs LLM 驱动的多步闭环，同一输入可能走不同路径；2) 核心资产：业务代码与数据库 vs Prompt/上下文、工具定义、记忆与检索；3) 正确性：单元测试与事务 vs 评测集、轨迹评估、LLM-as-judge 与概率性兜底；4) 运行时关注点：QPS/连接池/GC vs token 成本与延迟、上下文窗口、循环步数上限；5) 开发范式：写死逻辑 vs 设计约束与反馈。
-
-**参考回答**：
-
-普通 Java 后端是确定性的请求-响应流水线，Agent 应用是以 LLM 为决策核心、在不确定环境中自主规划并调用工具的多步闭环系统，开发范式从'写死逻辑'变成'设计约束与反馈'。
-
-可以从五个维度对比。
-
-1) 控制流：Java 后端是确定性代码，if/else、状态机、事务边界都由人写死，输入相同输出基本一致；Agent 是 LLM 驱动的循环（ReAct/Plan-Execute），下一步做什么由模型根据上下文动态决定，同一输入可能走不同路径。类比：Java 后端像按图纸施工的流水线，Agent 像给一个实习生目标+工具箱，让他自己想办法。
-
-2) 核心资产：Java 后端核心是业务逻辑代码和数据库；Agent 的核心是 Prompt/上下文工程、工具定义（Function Calling schema）、记忆与检索（RAG）、以及模型选型。代码更多是'脚手架'，真正决定效果的是上下文里放了什么。
-
-3) 正确性与测试：Java 靠单元测试、幂等、事务保证确定性正确；Agent 没有唯一正确答案，只能靠评测集（eval）、轨迹评估、LLM-as-judge、人工抽检来衡量成功率，且要接受概率性失败，做重试、降级、兜底。
-
-4) 运行时特征：Java 关注 QPS、连接池、GC、事务；Agent 关注 token 成本与延迟、上下文窗口溢出、多轮循环的步数上限、工具调用失败与幻觉、并发下的会话隔离。延迟从毫秒级变成秒到分钟级，成本模型从 CPU 变成按 token 计费。
-
-5) 工程重点：Java 后端重点是分层、解耦、高可用；Agent 重点是'约束与反馈'——用结构化输出、工具白名单、护栏（guardrail）、人工确认（human-in-the-loop）把不确定的模型框在安全边界内，并设计可观测性（trace 每一步 thought/action/observation）。
-
-一句话：Java 后端是'消除不确定性'，Agent 开发是'管理不确定性'。
-
-**常见追问**：Agent 的效果怎么像后端一样做「回归测试」？
-
----
-
-## 24. Spring AI 在项目中主要用了哪些能力？哪些地方是你自己封装的？
+## 18. Spring AI 在项目中主要用了哪些能力？哪些地方是你自己封装的？
 
 > 原题 ID：`q3990`
 
@@ -935,7 +739,7 @@ Spring AI 原生能力：
 
 ---
 
-## 25. 常见的垃圾回收算法有哪些？
+## 19. 常见的垃圾回收算法有哪些？
 
 > 原题 ID：`q4016`
 
@@ -949,13 +753,16 @@ Spring AI 原生能力：
 
 **参考回答**：
 
-1) 标记-清除：标记存活对象后清除未标记对象，会产生内存碎片；2) 标记-整理：清除后把存活对象向一端移动，无碎片但开销大；3) 复制算法：把内存分两块，存活对象复制到另一块，适合新生代；4) 分代收集：新生代用复制（Minor GC），老年代用标记-整理/清除（Major/Full GC）。
+1) 标记-清除：标记存活对象后清除未标记对象，会产生内存碎片；
+2) 标记-整理：清除后把存活对象向一端移动，无碎片但开销大；
+3) 复制算法：把内存分两块，存活对象复制到另一块，适合新生代；
+4) 分代收集：新生代用复制（Minor GC），老年代用标记-整理/清除（Major/Full GC）。
 
 **常见追问**：为什么新生代适合复制算法？
 
 ---
 
-## 26. G1、CMS、ZGC 三种垃圾回收器有什么区别？
+## 20. G1、CMS、ZGC 三种垃圾回收器有什么区别？
 
 > 原题 ID：`q4017`
 
@@ -969,13 +776,15 @@ Spring AI 原生能力：
 
 **参考回答**：
 
-CMS 以获取最短停顿为目标，并发标记清除，但会产生碎片、对 CPU 敏感；G1 把堆划分为 Region，可预测停顿模型，兼顾吞吐与延迟，JDK9 后默认；ZGC 是低延迟回收器（停顿 < 10ms），基于染色指针和读屏障，支持超大堆，几乎全并发。
+- CMS 以获取最短停顿为目标，并发标记清除，但会产生碎片、对 CPU 敏感；
+- G1 把堆划分为 Region，可预测停顿模型，兼顾吞吐与延迟，JDK9 后默认；
+- ZGC 是低延迟回收器（停顿 < 10ms），基于染色指针和读屏障，支持超大堆，几乎全并发。
 
 **常见追问**：ZGC 的停顿为什么与堆大小基本无关？
 
 ---
 
-## 27. 对象从创建到可以被 GC 的过程是怎样的？
+## 21. 对象从创建到可以被 GC 的过程是怎样的？
 
 > 原题 ID：`q4018`
 
@@ -989,13 +798,17 @@ CMS 以获取最短停顿为目标，并发标记清除，但会产生碎片、�
 
 **参考回答**：
 
-1) 类加载检查；2) 分配内存（指针碰撞或空闲列表）；3) 初始化零值；4) 设置对象头（Mark Word、类型指针）；5) 执行  构造函数。对象存活判定用可达性分析（GC Roots 引用链），经历回收标记、finalize 最多一次后回收。
+1) 类加载检查；
+2) 分配内存（指针碰撞或空闲列表）；
+3) 初始化零值；
+4) 设置对象头（Mark Word、类型指针）；
+5) 执行  构造函数。对象存活判定用可达性分析（GC Roots 引用链），经历回收标记、finalize 最多一次后回收。
 
 **常见追问**：finalize 为什么被废弃？现在用什么替代？
 
 ---
 
-## 28. 什么是双亲委派模型？为什么需要它？
+## 22. 什么是双亲委派模型？为什么需要它？
 
 > 原题 ID：`q4019`
 
@@ -1015,7 +828,7 @@ CMS 以获取最短停顿为目标，并发标记清除，但会产生碎片、�
 
 ---
 
-## 29. Java 中四种引用类型及其区别？ThreadLocal 的弱引用边界是什么？
+## 23. Java 中四种引用类型及其区别？ThreadLocal 的弱引用边界是什么？
 
 > 原题 ID：`q4020`
 
@@ -1029,7 +842,12 @@ CMS 以获取最短停顿为目标，并发标记清除，但会产生碎片、�
 
 **参考回答**：
 
-Java 的强引用会阻止对象被回收；软引用通常在内存紧张时才会被清理；弱引用在下一次 GC 后即可失效；虚引用不能通过引用取得对象，常配合 `ReferenceQueue` 跟踪回收并协调堆外资源。选择时要考虑缓存命中、可预测性和资源释放，不能把软/弱引用当通用缓存框架。
+- Java 的强引用会阻止对象被回收；
+- 软引用通常在内存紧张时才会被清理；
+- 弱引用在下一次 GC 后即可失效；
+- 虚引用不能通过引用取得对象，常配合 `ReferenceQueue` 跟踪回收并协调堆外资源。
+
+选择时要考虑缓存命中、可预测性和资源释放，不能把软/弱引用当通用缓存框架。
 
 `ThreadLocalMap` 中弱引用的是 `ThreadLocal` key，value 仍被线程持有的 map 强引用。在线程池中，key 被回收后若不调用 `remove()`，value 可能存活到后续 map 清理或线程结束，因此使用完成应显式 `remove()`，尤其是大对象或敏感上下文。
 
@@ -1037,7 +855,7 @@ Java 的强引用会阻止对象被回收；软引用通常在内存紧张时才
 
 ---
 
-## 30. Java 中常见 OutOfMemoryError 类型有哪些？如何排查？
+## 24. Java 中常见 OutOfMemoryError 类型有哪些？如何排查？
 
 > 原题 ID：`q4021`
 
@@ -1051,7 +869,9 @@ Java 的强引用会阻止对象被回收；软引用通常在内存紧张时才
 
 **参考回答**：
 
-常见 `OutOfMemoryError` 包括 Java heap space（堆对象过多或泄漏）、Metaspace（类加载/动态代理过多）、Direct buffer memory（堆外缓冲）、unable to create native thread（线程/系统资源不足）和 GC overhead limit exceeded。`StackOverflowError` 通常来自深递归或栈空间耗尽，是不同于 OOM 的错误类型。
+常见 `OutOfMemoryError` 包括 Java heap space（堆对象过多或泄漏）、Metaspace（类加载/动态代理过多）、Direct buffer memory（堆外缓冲）、unable to create native thread（线程/系统资源不足）和 GC overhead limit exceeded。`StackOverflowError`
+
+通常来自深递归或栈空间耗尽，是不同于 OOM 的错误类型。
 
 排障先保存证据：启用 heap dump、记录 GC 日志和容器/OS 内存限制；再用 MAT 等工具看 dominator tree、结合线程栈、类加载与直接内存指标定位增长源。修复应回到对象生命周期、缓存上限、并发度和部署内存预算，而不是只增大堆。
 
@@ -1059,7 +879,7 @@ Java 的强引用会阻止对象被回收；软引用通常在内存紧张时才
 
 ---
 
-## 31. synchronized 的实现与锁优化如何随 JDK 版本变化？
+## 25. synchronized 的实现与锁优化如何随 JDK 版本变化？
 
 > 原题 ID：`q4022`
 
@@ -1075,13 +895,15 @@ Java 的强引用会阻止对象被回收；软引用通常在内存紧张时才
 
 `synchronized` 在字节码层对应 `monitorenter`/`monitorexit`，实例锁依赖对象关联的 monitor，JVM 会根据竞争情况采用不同的轻量或重量级实现。JIT 还可能进行锁消除、锁粗化等优化。
 
-不要把“无锁→偏向→轻量→重量”的固定升级链当作所有 JDK 的长期事实：偏向锁已在较新的 JDK 中被移除，具体对象头和优化策略随版本、VM 和竞争模式变化。工程上应先保证临界区正确、避免长时间持锁，再用 JFR/线程栈/压测定位实际竞争。
+不要把“无锁→偏向→轻量→重量”的固定升级链当作所有 JDK 的长期事实：偏向锁已在较新的 JDK 中被移除，具体对象头和优化策略随版本、VM 和竞争模式变化。
+
+工程上应先保证临界区正确、避免长时间持锁，再用 JFR/线程栈/压测定位实际竞争。
 
 **常见追问**：为什么讨论 synchronized 时应同时说明 JDK 版本和竞争工作负载？
 
 ---
 
-## 32. volatile 的内存语义是什么？
+## 26. volatile 的内存语义是什么？
 
 > 原题 ID：`q4023`
 
@@ -1095,13 +917,17 @@ Java 的强引用会阻止对象被回收；软引用通常在内存紧张时才
 
 **参考回答**：
 
-volatile 保证：1) 可见性——写立即刷主存、读从主存取；2) 有序性——通过内存屏障禁止特定重排序；3) 不保证原子性。底层是 lock 前缀指令（x86 下）实现。典型用途：状态标志、双重检查单例。
+volatile 保证：
+
+1) 可见性——写立即刷主存、读从主存取；
+2) 有序性——通过内存屏障禁止特定重排序；
+3) 不保证原子性。底层是 lock 前缀指令（x86 下）实现。典型用途：状态标志、双重检查单例。
 
 **常见追问**：为什么双重检查单例里 volatile 是必需的？
 
 ---
 
-## 33. 什么是 happens-before 原则？
+## 27. 什么是 happens-before 原则？
 
 > 原题 ID：`q4024`
 
@@ -1121,7 +947,7 @@ happens-before 是判断数据竞争的内存可见性规则：若 A happens-bef
 
 ---
 
-## 34. 字符串常量池在 JDK 中是如何演进的？
+## 28. 字符串常量池在 JDK 中是如何演进的？
 
 > 原题 ID：`q4025`
 
@@ -1135,13 +961,17 @@ happens-before 是判断数据竞争的内存可见性规则：若 A happens-bef
 
 **参考回答**：
 
-JDK6 及之前字符串常量池在永久代；JDK7 移到堆中；JDK8 永久代被元空间取代，常量池仍在堆。String.intern() 会把字符串入池，池中已有则返回已有引用。这样的演进减少了永久代 OOM 风险。
+- JDK6 及之前字符串常量池在永久代；
+- JDK7 移到堆中；
+- JDK8 永久代被元空间取代，常量池仍在堆。
+
+String.intern() 会把字符串入池，池中已有则返回已有引用。这样的演进减少了永久代 OOM 风险。
 
 **常见追问**：大量使用 intern() 会有什么副作用？
 
 ---
 
-## 35. 常用 JVM 调优参数有哪些？
+## 29. 常用 JVM 调优参数有哪些？
 
 > 原题 ID：`q4026`
 
@@ -1155,13 +985,21 @@ JDK6 及之前字符串常量池在永久代；JDK7 移到堆中；JDK8 永久�
 
 **参考回答**：
 
--Xms/-Xmx 设置堆初始/最大；-Xmn 新生代大小；-XX:MetaspaceSize 元空间；-XX:+UseG1GC 选择回收器；-XX:MaxGCPauseMillis 目标停顿；-XX:+HeapDumpOnOutOfMemoryError；-Xss 线程栈大小。调优先看 GC 日志再定策略。
+- -Xms/-Xmx 设置堆初始/最大；
+- -Xmn 新生代大小；
+- -XX:MetaspaceSize 元空间；
+- -XX:+UseG1GC 选择回收器；
+- -XX:MaxGCPauseMillis 目标停顿；
+- -XX:+HeapDumpOnOutOfMemoryError；
+- -Xss 线程栈大小。
+
+调优先看 GC 日志再定策略。
 
 **常见追问**：-Xms 和 -Xmx 不设相等会有什么问题？
 
 ---
 
-## 36. 方法区（元空间）存什么？和永久代区别？
+## 30. 方法区（元空间）存什么？和永久代区别？
 
 > 原题 ID：`q4027`
 
@@ -1181,7 +1019,7 @@ JDK6 及之前字符串常量池在永久代；JDK7 移到堆中；JDK8 永久�
 
 ---
 
-## 37. Java 对象的创建一定在堆上吗？
+## 31. Java 对象的创建一定在堆上吗？
 
 > 原题 ID：`q4028`
 
@@ -1201,7 +1039,7 @@ JDK6 及之前字符串常量池在永久代；JDK7 移到堆中；JDK8 永久�
 
 ---
 
-## 38. 哪些条件会触发特定 JVM 收集器的 Full GC 或降级路径？如何诊断？
+## 32. 哪些条件会触发特定 JVM 收集器的 Full GC 或降级路径？如何诊断？
 
 > 原题 ID：`q4029`
 
@@ -1223,7 +1061,7 @@ Full GC 或退化回收的触发条件与收集器密切相关：老年代/元�
 
 ---
 
-## 39. 线程池的核心参数与执行流程？
+## 33. 线程池的核心参数与执行流程？
 
 > 原题 ID：`q4031`
 
@@ -1243,7 +1081,7 @@ Full GC 或退化回收的触发条件与收集器密切相关：老年代/元�
 
 ---
 
-## 40. 常见的线程池拒绝策略有哪些？
+## 34. 常见的线程池拒绝策略有哪些？
 
 > 原题 ID：`q4032`
 
@@ -1257,13 +1095,16 @@ Full GC 或退化回收的触发条件与收集器密切相关：老年代/元�
 
 **参考回答**：
 
-1) AbortPolicy：抛 RejectedExecutionException（默认）；2) DiscardPolicy：静默丢弃；3) DiscardOldestPolicy：丢弃队首最老任务重试；4) CallerRunsPolicy：由提交任务的线程自己执行，起到负反馈限流作用。也可自定义。
+1) AbortPolicy：抛 RejectedExecutionException（默认）；
+2) DiscardPolicy：静默丢弃；
+3) DiscardOldestPolicy：丢弃队首最老任务重试；
+4) CallerRunsPolicy：由提交任务的线程自己执行，起到负反馈限流作用。也可自定义。
 
 **常见追问**：CallerRunsPolicy 在什么情况下会拖垮调用方？
 
 ---
 
-## 41. AQS（AbstractQueuedSynchronizer）的核心思想？
+## 35. AQS（AbstractQueuedSynchronizer）的核心思想？
 
 > 原题 ID：`q4034`
 
@@ -1283,7 +1124,7 @@ AQS 用一个 volatile int state 表示同步状态，配一个 CLH 队列存放
 
 ---
 
-## 42. ConcurrentHashMap 在 JDK7 和 JDK8 的实现区别？
+## 36. ConcurrentHashMap 在 JDK7 和 JDK8 的实现区别？
 
 > 原题 ID：`q4035`
 
@@ -1303,7 +1144,7 @@ JDK7 用分段锁 Segment（继承 ReentrantLock），默认 16 段减小锁粒�
 
 ---
 
-## 43. 什么是 CAS？ABA 问题如何解决？
+## 37. 什么是 CAS？ABA 问题如何解决？
 
 > 原题 ID：`q4036`
 
@@ -1323,7 +1164,7 @@ CAS（Compare-And-Swap）是一条原子指令：比较内存值与预期值，�
 
 ---
 
-## 44. Java 中阻塞队列有哪些？使用场景？
+## 38. Java 中阻塞队列有哪些？使用场景？
 
 > 原题 ID：`q4038`
 
@@ -1337,13 +1178,15 @@ CAS（Compare-And-Swap）是一条原子指令：比较内存值与预期值，�
 
 **参考回答**：
 
-ArrayBlockingQueue（有界数组）、LinkedBlockingQueue（链表，默认无界）、SynchronousQueue（不存储，直接交付，用于 CachedThreadPool）、PriorityBlockingQueue（优先级）、DelayQueue（延迟）、LinkedTransferQueue。常用于生产者-消费者。
+ArrayBlockingQueue（有界数组）、LinkedBlockingQueue（链表，默认无界）、SynchronousQueue（不存储，直接交付，用于 CachedThreadPool）、PriorityBlockingQueue（优先级）、DelayQueue（延迟）、LinkedTransferQueue。
+
+常用于生产者-消费者。
 
 **常见追问**：线程池里用无界 LinkedBlockingQueue 有什么隐患？
 
 ---
 
-## 45. CompletableFuture 解决了什么问题？
+## 39. CompletableFuture 解决了什么问题？
 
 > 原题 ID：`q4039`
 
@@ -1363,7 +1206,7 @@ CompletableFuture 提供声明式异步编排：thenApply/thenAccept/thenRun 串
 
 ---
 
-## 46. volatile 和 synchronized 能互相替代吗？
+## 40. volatile 和 synchronized 能互相替代吗？
 
 > 原题 ID：`q4040`
 
@@ -1383,7 +1226,7 @@ CompletableFuture 提供声明式异步编排：thenApply/thenAccept/thenRun 串
 
 ---
 
-## 47. Java 线程的状态有哪些？
+## 41. Java 线程的状态有哪些？
 
 > 原题 ID：`q4041`
 
@@ -1397,13 +1240,15 @@ CompletableFuture 提供声明式异步编排：thenApply/thenAccept/thenRun 串
 
 **参考回答**：
 
-Thread.State：NEW、RUNNABLE（含就绪+运行）、BLOCKED（等监视器锁）、WAITING（wait/join/park 无期限）、TIMED_WAITING（sleep/带超时 wait）、TERMINATED。注意 BLOCKED 和 WAITING 是不同的阻塞原因。
+Thread.State：NEW、RUNNABLE（含就绪+运行）、BLOCKED（等监视器锁）、WAITING（wait/join/park 无期限）、TIMED_WAITING（sleep/带超时 wait）、TERMINATED。
+
+注意 BLOCKED 和 WAITING 是不同的阻塞原因。
 
 **常见追问**：线程处于 WAITING 状态时 CPU 占用是高还是低？
 
 ---
 
-## 48. 原子类（AtomicInteger 等）的实现原理？
+## 42. 原子类（AtomicInteger 等）的实现原理？
 
 > 原题 ID：`q4042`
 
@@ -1417,13 +1262,15 @@ Thread.State：NEW、RUNNABLE（含就绪+运行）、BLOCKED（等监视器锁�
 
 **参考回答**：
 
-底层用 Unsafe 的 CAS 循环（自旋）更新 volatile 变量。例如 incrementAndGet 循环 compareAndSet 直到成功。优点是免锁高并发，缺点是高竞争下自旋开销大。LongAdder 用分片 Cell 进一步降低竞争。
+底层用 Unsafe 的 CAS 循环（自旋）更新 volatile 变量。
+
+例如 incrementAndGet 循环 compareAndSet 直到成功。优点是免锁高并发，缺点是高竞争下自旋开销大。LongAdder 用分片 Cell 进一步降低竞争。
 
 **常见追问**：LongAdder 为什么比 AtomicLong 更适合高并发计数？
 
 ---
 
-## 49. wait/notify 为什么必须在 synchronized 内调用？
+## 43. wait/notify 为什么必须在 synchronized 内调用？
 
 > 原题 ID：`q4043`
 
@@ -1443,7 +1290,7 @@ wait/notify 操作的是对象监视器（Monitor），必须在持有该对象�
 
 ---
 
-## 50. 及其版本目录 (Version Catalog) 的灵活性，学习如何优雅地管理大型项目依赖？
+## 44. Gradle Version Catalog 如何治理大型多模块项目的依赖版本？
 
 > 原题 ID：`q1981`
 
@@ -1461,37 +1308,21 @@ wait/notify 操作的是对象监视器（Monitor），必须在持有该对象�
 
 **参考回答**：
 
-大型多模块项目常见的问题是版本散落在各个 build.gradle 里、依赖冲突、升级成本高、不同团队重复声明。Gradle 7.0 之后引入了 Version Catalog，默认文件是 gradle/libs.versions.toml，通过 versions、libraries、bundles、plugins 四段声明，构建脚本里用 libs.xxx 做类型安全访问。我讲几个核心用法。第一是版本集中：在 versions 段定义 spring 和 kotlin 的版本号，在 libraries 段通过 version.ref 引用，这样升级一个数字就全项目生效，PR 里也能清晰审阅。第二是 bundle 批量引用：比如把 spring-core 和 spring-context 组成 spring bundle，依赖里一行 implementation(libs.bundles.spring) 就能引入一组库。第三是 BOM 对齐：用 platform(libs.spring.bom) 或者 enforcedPlatform 统一下传递依赖版本，前者可以被覆盖，后者是强制的，这个区别在排查冲突时很关键。第四是多目录拆分为团队所用：在 settings.gradle.kts 的 dependencyResolutionManagement 里用 from(files(...)) 创建额外的 catalog，比如给测试域单独建 testLibs，实现按域拆分。第五是冲突解决策略，我一般遵循一个优先级：优先用 platform 或 BOM 对齐，其次用 constraints 声明版本约束，最后才用 resolutionStrategy 强制版本，避免到处写 force 把真实冲突掩盖掉。难点与决策上我讲三点：版本冲突优先用 BOM 对齐；动态版本和 SNAPSHOT 虽然 catalog 支持，但会破坏可复现性，建议 CI 里配合 dependencyLocking 锁定；迁移成本上我建议先建 catalog 再逐模块替换，用脚本扫描硬编码坐标保证编译通过。复盘：集中之后升级一个版本号就全项目生效、PR 可审计，但要注意 IDE 同步、别名命名规范用 kebab-case，以及 catalog 与插件版本耦合时可能出现的循环问题。
+大型多模块项目常见的问题是版本散落在各个 build.gradle 里、依赖冲突、升级成本高、不同团队重复声明。Gradle 7.0 之后引入了 Version Catalog，默认文件是 gradle/libs.versions.toml，通过 versions、libraries、bundles、plugins 四段声明，构建脚本里用 libs.xxx 做类型安全访问。
+
+我讲几个核心用法。
+
+- 第一是版本集中：在 versions 段定义 spring 和 kotlin 的版本号，在 libraries 段通过 version.ref 引用，这样升级一个数字就全项目生效，PR 里也能清晰审阅。
+- 第二是 bundle 批量引用：比如把 spring-core 和 spring-context 组成 spring bundle，依赖里一行 implementation(libs.bundles.spring) 就能引入一组库。
+- 第三是 BOM 对齐：用 platform(libs.spring.bom) 或者 enforcedPlatform 统一下传递依赖版本，前者可以被覆盖，后者是强制的，这个区别在排查冲突时很关键。
+- 第四是多目录拆分为团队所用：在 settings.gradle.kts 的 dependencyResolutionManagement 里用 from(files(...)) 创建额外的 catalog，比如给测试域单独建 testLibs，实现按域拆分。
+- 第五是冲突解决策略，我一般遵循一个优先级：优先用 platform 或 BOM 对齐，其次用 constraints 声明版本约束，最后才用 resolutionStrategy 强制版本，避免到处写 force 把真实冲突掩盖掉。难点与决策上我讲三点：版本冲突优先用 BOM 对齐；动态版本和 SNAPSHOT 虽然 catalog 支持，但会破坏可复现性，建议 CI 里配合 dependencyLocking 锁定；迁移成本上我建议先建 catalog 再逐模块替换，用脚本扫描硬编码坐标保证编译通过。复盘：集中之后升级一个版本号就全项目生效、PR 可审计，但要注意 IDE 同步、别名命名规范用 kebab-case，以及 catalog 与插件版本耦合时可能出现的循环问题。
 
 **常见追问**：platform 和 enforcedPlatform 的差别？什么时候必须用 enforcedPlatform？
 
 ---
 
-## 51. 自旋锁和互斥锁的区别是什么，你的项目里是怎么选的？
-
-> 原题 ID：`q3537`
-
-**高频程度**：★★★★
-
-**考察点**：考察锁机制原理与选型判断：等待策略、上下文限制、开销、临界区长度与竞争程度，以及如何用测量数据做决策。
-
-**回答框架**：
-
-1）等待行为：自旋忙等不释放 CPU，互斥睡眠让出 CPU；
-2）上下文限制：自旋可用于中断/原子上下文，互斥不能在中断上下文使用；
-3）开销：自旋无上下文切换但浪费 CPU，互斥有两次切换但等待不占 CPU；
-4）选型依据：临界区长度、是否可睡眠、竞争程度、上下文；
-5）复盘：先测量再选锁，能用原子操作/无锁就不用锁。
-
-**参考回答**：
-
-自旋锁和互斥锁的核心区别在等待策略和适用场景，我讲五点。第一，等待行为。自旋锁在获取不到锁时会在循环里反复检查锁状态，也就是忙等，不释放 CPU；互斥锁获取不到时会进入睡眠，把 CPU 让给其他线程，等锁释放后再被唤醒。第二，上下文限制。自旋锁可以用在中断上下文、软中断和原子上下文，因为它不睡眠；互斥锁会睡眠，所以不能在中断上下文或持有自旋锁时使用，否则会导致睡眠死锁。第三，开销。自旋锁没有上下文切换开销，但会浪费 CPU；互斥锁有睡眠和唤醒两次上下文切换开销，但等待期间不占 CPU。第四，临界区长度。自旋锁适合极短的临界区，通常只有几条指令，比如改一个计数器或更新一个指针；互斥锁适合较长的临界区，或者临界区内可能发生阻塞，比如 I/O、内存分配、调用可能睡眠的函数。第五，竞争程度。低竞争时自旋锁很快；高竞争时自旋会浪费大量 CPU，还会加剧缓存行弹跳，此时互斥锁反而更合适。项目里的选择我举一个例子。背景：我在一个高并发网络服务中负责连接管理模块，每个连接有状态结构，多个工作线程会并发更新连接状态、引用计数和统计信息。我的决策是：对连接引用计数、状态标志位这种只改几个字段、临界区只有几条指令的场景，用自旋锁或原子操作，因为临界区极短，睡眠唤醒的开销远大于自旋等待，而且这些代码可能被中断处理路径调用，不能睡眠；对连接建立销毁、需要访问共享哈希表并可能触发内存分配或日志 I/O 的路径，用互斥锁，因为临界区较长且可能阻塞；对读多写少的配置表，用读写锁或无锁 RCU 思路，读侧几乎无开销。复盘有两点：一开始为了『高性能』把所有锁都换成自旋锁，结果在 64 核机器上高竞争时 CPU 大量空转，吞吐反而下降，后来用 perf 看 spin 占比，把长临界区改回互斥锁并缩小临界区，性能明显提升；另外我还踩过在持有自旋锁时调用可能睡眠的函数，导致系统不稳定，后来严格约束自旋锁内只做内存操作。最终原则是：先测量竞争和临界区长度，再选锁；能用原子操作或无锁结构就不用锁。
-
-**常见追问**：MCS 锁相比 ticket 锁解决了什么问题？为什么？
-
----
-
-## 52. 抽象类和接口的区别？
+## 45. 抽象类和接口的区别？
 
 > 原题 ID：`q3505`
 
@@ -1505,13 +1336,17 @@ wait/notify 操作的是对象监视器（Monitor），必须在持有该对象�
 
 **参考回答**：
 
-抽象类和接口都是面向对象中用于抽象、解耦和多态的手段，但设计意图不同。第一，语义与关系：抽象类表示同一类事物的模板，强调 is-a，比如动物是抽象类，猫和狗继承它，共享 name、age 这些状态和 eat 这类通用行为；接口表示一种能力或契约，强调 can-do，比如会飞是接口，鸟、飞机、超人都能实现它，但它们并不属于同一继承体系。第二，语法限制（以 Java 为例）：继承数量上，类只能 extends 一个抽象类，但可以 implements 多个接口；成员变量上，抽象类可以有普通字段、静态字段和任意访问修饰符，接口的字段默认是 public static final 也就是常量；方法上，抽象类可以同时包含抽象方法和具体方法，接口在 Java 8 之前只能有 public abstract 方法，Java 8 增加了 default 和 static 方法，Java 9 又增加了 private 方法用于抽取内部复用；构造器上，抽象类有构造器供子类 super 调用，接口没有构造器；修饰符上，抽象方法可以是 protected 或 public，接口方法默认是 public。第三，设计选择依据：如果多个子类需要共享状态（字段）和复用通用实现，或者需要定义带构造流程的模板方法，用抽象类更合适；如果只是定义一组能力契约，让不相关的类型都能具备，或者需要多继承行为，用接口更合适。现代设计的倾向是接口优先、组合优于继承：用接口定义契约，用组合或默认方法复用实现，这样耦合更低、更容易测试和替换。另外在 Go 里没有类和继承，只有接口和结构体嵌入，接口是隐式实现的，这实际上把接口的契约作用发挥得更纯粹。
+抽象类和接口都是面向对象中用于抽象、解耦和多态的手段，但设计意图不同。
+
+- 第一，语义与关系：抽象类表示同一类事物的模板，强调 is-a，比如动物是抽象类，猫和狗继承它，共享 name、age 这些状态和 eat 这类通用行为；接口表示一种能力或契约，强调 can-do，比如会飞是接口，鸟、飞机、超人都能实现它，但它们并不属于同一继承体系。
+- 第二，语法限制（以 Java 为例）：继承数量上，类只能 extends 一个抽象类，但可以 implements 多个接口；成员变量上，抽象类可以有普通字段、静态字段和任意访问修饰符，接口的字段默认是 public static final 也就是常量；方法上，抽象类可以同时包含抽象方法和具体方法，接口在 Java 8 之前只能有 public abstract 方法，Java 8 增加了 default 和 static 方法，Java 9 又增加了 private 方法用于抽取内部复用；构造器上，抽象类有构造器供子类 super 调用，接口没有构造器；修饰符上，抽象方法可以是 protected 或 public，接口方法默认是 public。
+- 第三，设计选择依据：如果多个子类需要共享状态（字段）和复用通用实现，或者需要定义带构造流程的模板方法，用抽象类更合适；如果只是定义一组能力契约，让不相关的类型都能具备，或者需要多继承行为，用接口更合适。现代设计的倾向是接口优先、组合优于继承：用接口定义契约，用组合或默认方法复用实现，这样耦合更低、更容易测试和替换。另外在 Go 里没有类和继承，只有接口和结构体嵌入，接口是隐式实现的，这实际上把接口的契约作用发挥得更纯粹。
 
 **常见追问**：那 Java 8 的 default 方法会不会让接口和抽象类的界限模糊了？
 
 ---
 
-## 53. 公平锁和非公平锁哪个性能更好？为什么？
+## 46. 公平锁和非公平锁哪个性能更好？为什么？
 
 > 原题 ID：`q3623`
 
@@ -1531,35 +1366,20 @@ wait/notify 操作的是对象监视器（Monitor），必须在持有该对象�
 
 **参考回答**：
 
-通常非公平锁性能更好，因为它避免了线程唤醒后重新排队和上下文切换的开销，允许新线程直接抢占，提高了吞吐量。在Java中，ReentrantLock支持公平锁和非公平锁。公平锁严格按照FIFO顺序获取锁，非公平锁允许插队。性能差异主要源于： 1. 公平锁：当锁释放时，会唤醒等待队列头部的线程。被唤醒的线程需要从内核态返回到用户态，并重新竞争锁。如果此时有新的线程尝试获取锁，由于公平锁的机制，新线程会直接进入队列等待，不会抢占。但被唤醒的线程可能因为调度延迟未能及时获取锁，导致锁空闲时间增加。 2. 非公平锁：当锁释放时，会先尝试快速获取锁（CAS），如果成功则直接执行，无需唤醒等待线程。这减少了线程上下文切换和唤醒开销。同时，新来的线程可以直接抢占锁，提高了吞吐量。但可能导致等待队列中的线程饥饿。 实际测试表明，非公平锁的吞吐量通常比公平锁高一个数量级。例如，在高度竞争的场景下，非公平锁的吞吐量可能是公平锁的5-10倍。 但公平锁能保证线程获取锁的顺序，避免饥饿，适用于对公平性有要求的场景。
+通常非公平锁性能更好，因为它避免了线程唤醒后重新排队和上下文切换的开销，允许新线程直接抢占，提高了吞吐量。在Java中，ReentrantLock支持公平锁和非公平锁。公平锁严格按照FIFO顺序获取锁，非公平锁允许插队。性能差异主要源于：
+
+1. 公平锁：当锁释放时，会唤醒等待队列头部的线程。被唤醒的线程需要从内核态返回到用户态，并重新竞争锁。如果此时有新的线程尝试获取锁，由于公平锁的机制，新线程会直接进入队列等待，不会抢占。但被唤醒的线程可能因为调度延迟未能及时获取锁，导致锁空闲时间增加。
+2. 非公平锁：当锁释放时，会先尝试快速获取锁（CAS），如果成功则直接执行，无需唤醒等待线程。这减少了线程上下文切换和唤醒开销。同时，新来的线程可以直接抢占锁，提高了吞吐量。但可能导致等待队列中的线程饥饿。
+
+实际测试表明，非公平锁的吞吐量通常比公平锁高一个数量级。
+
+例如，在高度竞争的场景下，非公平锁的吞吐量可能是公平锁的5-10倍。 但公平锁能保证线程获取锁的顺序，避免饥饿，适用于对公平性有要求的场景。
 
 **常见追问**：高并发下死锁如何排查与避免？ 分库分表后跨分片查询和分布式事务怎么处理？
 
 ---
 
-## 54. 回收算法： 标记-复制（年轻代），标记-整理（老年代），标记-清除（已废弃）。理解它们如何解决内存碎片？
-
-> 原题 ID：`q2516`
-
-**高频程度**：★★★
-
-**考察点**：考察对「回收算法： 标记-复制（年轻代），标记-整理（老年代）…」的掌握，重点看能否讲清：垃圾回收要解决两个问题：找出垃圾（可达性分析/引用计数）和回收垃圾（释放内存）
-
-**回答框架**：
-
-垃圾回收要解决两个问题：找出垃圾（可达性分析/引用计数）和回收垃圾（释放内存）；回收后内存是否连续，直接影响后续分配大对象的能力，这就是内存碎片问题；1）标记-复制（Mark-Copy）：把内存分成两块（如 from/to），GC 时从 GC Roots 标记存活对象，然后把存活对象按顺序紧凑复制到另一块空闲区，最后整块清空原区域；因为复制时是挨着放的，所以天然没有碎片，分配只需移动指针（bump-the-pointer），速度极快；代价是始终有一半空间闲置，且存活对象多时复制成本高；因此它最适合“朝生夕死”的年轻代：绝大多数对象活不过一次 GC，复制量小、收益大
-
-**参考回答**：
-
-三种垃圾回收算法分别用复制、整理、清除来处理存活对象，核心差异在于是否移动对象以及如何应对内存碎片：标记-复制无碎片但浪费空间，标记-整理无碎片但移动成本高，标记-清除有碎片且已基本被淘汰。
-
-垃圾回收要解决两个问题：找出垃圾（可达性分析/引用计数）和回收垃圾（释放内存）。回收后内存是否连续，直接影响后续分配大对象的能力，这就是内存碎片问题。 1）标记-复制（Mark-Copy）：把内存分成两块（如 from/to），GC 时从 GC Roots 标记存活对象，然后把存活对象按顺序紧凑复制到另一块空闲区，最后整块清空原区域。因为复制时是挨着放的，所以天然没有碎片，分配只需移动指针（bump-the-pointer），速度极快。代价是始终有一半空间闲置，且存活对象多时复制成本高。因此它最适合“朝生夕死”的年轻代：绝大多数对象活不过一次 GC，复制量小、收益大。典型如 HotSpot 的 Serial/ParNew/Parallel Scavenge，配合 Eden + 两个 Survivor 的 8:1:1 布局，只浪费 10% 空间。 2）标记-整理（Mark-Compact）：先标记存活对象，然后把它们向内存一端滑动/压缩，再清理边界外的内存。它不浪费空间，也没有碎片，但移动对象后必须修正所有指向这些对象的引用（栈、寄存器、其他对象字段），成本高、停顿长。适合存活率高的老年代，如 Serial Old、Parallel Old，以及 CMS 失败后的兜底 Full GC。 3）标记-清除（Mark-Sweep）：标记存活对象后，直接回收未标记对象，不移动任何对象。实现简单、不移动对象所以停顿相对可控，但会产生大量不连续的空闲块，导致分配大对象时可能找不到连续空间而提前触发 GC，且分配需要维护空闲链表，效率低于指针碰撞。它是最早的算法，现代 JVM 中已不作为主流独立回收器使用（CMS 主体是标记-清除，但已被移除/废弃），常作为理解其他算法的基础。 通俗类比：宿舍楼退宿。标记-复制像把还在住的人全部搬到新楼，旧楼直接清空，房间连续好分配，但永远空着一栋楼；标记-整理像让留下的人往一楼集中，腾出高层，楼不浪费但要挨个通知换门牌（改引用）；标记-清除像谁走就空出谁的房间，不折腾人，但房间东一个西一个，来个大家庭（大对象）就住不下。
-
-**常见追问**：如何避免「1）误以为标记-清除“已废弃”是因为算法本身错误，其实是因为碎片和分配效率问题，且 CMS 主体就是它，只是现代回收器不再单独采用」？ 「2）把标记-复制说成“没有浪费空间”，忽略它需要双倍空间或 Survivor 预留」在真实项目中应如何规避？
-
----
-
-## 55. 常用哪些内存分析工具定位内存泄漏和 GC 问题？
+## 47. 常用哪些内存分析工具定位内存泄漏和 GC 问题？
 
 > 原题 ID：`q3397`
 
@@ -1575,13 +1395,34 @@ wait/notify 操作的是对象监视器（Monitor），必须在持有该对象�
 
 用过，内存分析工具用于定位内存泄漏、内存溢出、对象生命周期异常和 GC 压力问题，常见有 jmap/jstat/jhat、MAT、VisualVM、JProfiler、Arthas、async-profiler 等。
 
-内存分析工具的核心目标是回答三个问题：内存被谁占了、为什么没释放、GC 为什么频繁或停顿长。 常见工具分几类： 1. 命令行/JDK 自带：jps 看 Java 进程，jstat 看 GC 频率和各代使用量，jmap 导出堆快照或看直方图，jstack 看线程栈，jcmd 是更现代的聚合入口。 2. 堆快照分析：jhat 已过时，主流是 Eclipse MAT，能看支配树、直方图、Leak Suspects、GC Roots 引用链，快速定位大对象和泄漏点。 3. 可视化/采样：VisualVM、JProfiler、YourKit 可实时看堆、线程、CPU、GC，并支持采样或 instrumentation。 4. 在线诊断：Arthas 的 dashboard、heapdump、memory、profiler，async-profiler 的 alloc 和 wall-clock 模式，适合生产环境低开销排查。 5. Native/堆外：pmap、gperftools、jemalloc、NMT、ByteBuddy Agent 等，用于 DirectByteBuffer、Netty、JNI 导致的内存问题。 通俗类比：内存像仓库，对象像货物。jstat 是看仓库每天进出多少货、爆仓频率；jmap 是给仓库拍全景照；MAT 是照片分析软件，能找出哪堆货最大、谁还拽着不放；Arthas/async-profiler 是实时监控摄像头。 典型场景： - 频繁 Full GC 且老年代下不去：先 jstat 确认，再 jmap dump，MAT 找支配对象和 GC Roots。 - OOM: Java heap space：看堆快照中最大对象及引用链。 - OOM: Metaspace：排查动态代理、CGLIB、类加载器泄漏。 - OOM: Direct buffer memory：查 Netty、NIO、-XX:MaxDirectMemorySize。 - 内存缓慢增长：用 async-profiler alloc 采样分配热点，或多次 dump 对比。 回答时最好给出一次真实排查链路：告警 -> jstat 看 GC -> jmap dump -> MAT 支配树 -> 定位到静态 Map/ThreadLocal/缓存未清理 -> 修复并加监控。
+内存分析工具的核心目标是回答三个问题：内存被谁占了、为什么没释放、GC 为什么频繁或停顿长。 常见工具分几类：
+
+1. 命令行/JDK 自带：jps 看 Java 进程，jstat 看 GC 频率和各代使用量，jmap 导出堆快照或看直方图，jstack 看线程栈，jcmd 是更现代的聚合入口。
+2. 堆快照分析：jhat 已过时，主流是 Eclipse MAT，能看支配树、直方图、Leak Suspects、GC Roots 引用链，快速定位大对象和泄漏点。
+3. 可视化/采样：VisualVM、JProfiler、YourKit 可实时看堆、线程、CPU、GC，并支持采样或 instrumentation。
+4. 在线诊断：Arthas 的 dashboard、heapdump、memory、profiler，async-profiler 的 alloc 和 wall-clock 模式，适合生产环境低开销排查。
+5. Native/堆外：pmap、gperftools、jemalloc、NMT、ByteBuddy Agent 等，用于 DirectByteBuffer、Netty、JNI 导致的内存问题。
+
+通俗类比：内存像仓库，对象像货物。
+
+- jstat 是看仓库每天进出多少货、爆仓频率；
+- jmap 是给仓库拍全景照；
+- MAT 是照片分析软件，能找出哪堆货最大、谁还拽着不放；
+- Arthas/async-profiler 是实时监控摄像头。
+
+典型场景：
+
+- 频繁 Full GC 且老年代下不去：先 jstat 确认，再 jmap dump，MAT 找支配对象和 GC Roots。
+- OOM: Java heap space：看堆快照中最大对象及引用链。
+- OOM: Metaspace：排查动态代理、CGLIB、类加载器泄漏。
+- OOM: Direct buffer memory：查 Netty、NIO、-XX:MaxDirectMemorySize。
+- 内存缓慢增长：用 async-profiler alloc 采样分配热点，或多次 dump 对比。 回答时最好给出一次真实排查链路：告警 -> jstat 看 GC -> jmap dump -> MAT 支配树 -> 定位到静态 Map/ThreadLocal/缓存未清理 -> 修复并加监控。
 
 **常见追问**：如何避免「只说用过 VisualVM 看内存曲线，讲不出具体排查方法和引用链分析。」？ 「把 jmap dump 当成无成本操作，不知道会 STW，生产大堆可能导致服务卡顿甚至 OOM。」在真实项目中应如何规避？
 
 ---
 
-## 56. 为什么使用 MapStruct？
+## 48. 为什么使用 MapStruct？
 
 > 原题 ID：`q1976`
 
@@ -1597,13 +1438,24 @@ wait/notify 操作的是对象监视器（Monitor），必须在持有该对象�
 
 MapStruct 是一个编译期生成 Java Bean 映射代码的注解处理器，用它可以替代手写 getter/setter 或反射式映射，兼顾性能、类型安全和可维护性。
 
-MapStruct 的核心定位是“编译期代码生成器”，而不是运行时框架。它通过 JSR 269 注解处理器在 javac 编译阶段读取 @Mapper 接口，为接口生成实现类，实现类里就是普通的 getter/setter 调用，没有反射、没有运行时代理。 为什么用它？可以从几个角度理解： 1. 性能：手写映射最快，但重复劳动多；BeanUtils.copyProperties 这类反射方案在热点路径上慢，且容易因字段名不一致而静默失败。MapStruct 生成的是编译后的字节码，调用开销接近手写代码。 2. 类型安全：字段名、类型不匹配在编译期就报错，而不是运行时才发现。 3. 可维护性：映射规则集中写在 @Mapper 接口里，字段增删改时编译器会提醒你更新映射，避免“漏拷贝”的隐蔽 bug。 4. 可调试：生成的实现类在 target/generated-sources 下可见，出问题可以直接看生成代码。 通俗类比：MapStruct 像“编译期帮你把两个箱子之间的物品清单翻译成搬运工指令”，而不是运行时派一个机器人去猜每个物品该放哪。 典型用法： @Mapper public interface UserMapper { UserMapper INSTANCE = Mappers.getMapper(UserMapper.class); UserDTO toDto(User user); User toEntity(UserDTO dto); } 编译后会生成 UserMapperImpl，里面逐字段赋值。对于字段名不同、类型不同、集合映射、嵌套映射，可以用 @Mapping、@Mappings、@MappingTarget、@AfterMapping 等注解定制。 适用场景：DTO/VO/Entity 之间的转换、分层架构中的对象隔离、微服务接口参数转换、需要高性能且字段较多的映射。不适用场景：映射逻辑极其复杂、需要动态字段、或者团队更愿意用运行时反射方案快速原型。
+MapStruct 的核心定位是“编译期代码生成器”，而不是运行时框架。它通过 JSR 269 注解处理器在 javac 编译阶段读取 @Mapper 接口，为接口生成实现类，实现类里就是普通的 getter/setter 调用，没有反射、没有运行时代理。 为什么用它？可以从几个角度理解：
+
+1. 性能：手写映射最快，但重复劳动多；BeanUtils.copyProperties 这类反射方案在热点路径上慢，且容易因字段名不一致而静默失败。MapStruct 生成的是编译后的字节码，调用开销接近手写代码。
+2. 类型安全：字段名、类型不匹配在编译期就报错，而不是运行时才发现。
+3. 可维护性：映射规则集中写在 @Mapper 接口里，字段增删改时编译器会提醒你更新映射，避免“漏拷贝”的隐蔽 bug。
+4. 可调试：生成的实现类在 target/generated-sources 下可见，出问题可以直接看生成代码。
+
+通俗类比：MapStruct 像“编译期帮你把两个箱子之间的物品清单翻译成搬运工指令”，而不是运行时派一个机器人去猜每个物品该放哪。 典型用法： @Mapper public interface UserMapper { UserMapper INSTANCE = Mappers.getMapper(UserMapper.class); UserDTO toDto(User user); User toEntity(UserDTO dto); } 编译后会生成 UserMapperImpl，里面逐字段赋值。
+
+对于字段名不同、类型不同、集合映射、嵌套映射，可以用 @Mapping、@Mappings、@MappingTarget、@AfterMapping 等注解定制。
+
+适用场景：DTO/VO/Entity 之间的转换、分层架构中的对象隔离、微服务接口参数转换、需要高性能且字段较多的映射。不适用场景：映射逻辑极其复杂、需要动态字段、或者团队更愿意用运行时反射方案快速原型。
 
 **常见追问**：如何避免「误以为 MapStruct 是运行时反射框架，和 BeanUtils 一样；实际上它是编译期生成代码，运行时没有反射开销。」？ 「以为只要加 @Mapper 就能自动映射所有字段；实际上字段名不同、类型不同、嵌套对象、集合元素类型不同时，需要显式配置，否则可能编译报错或静默忽略。」在真实项目中应如何规避？
 
 ---
 
-## 57. 学习如何在追求极致响应速度的场景下，优雅、安全地处理 Entity 与 DTO 之间的复杂映射？
+## 49. Entity 与 DTO 应如何安全、高效地映射？
 
 > 原题 ID：`q1989`
 
@@ -1619,13 +1471,28 @@ MapStruct 的核心定位是“编译期代码生成器”，而不是运行时�
 
 在极致响应速度场景下，Entity↔DTO 映射应优先用编译期生成/手写映射（MapStruct、Record 构造器、显式 setter），避免运行时反射与对象分配，同时通过不可变 DTO、字段裁剪和懒加载控制保证安全与性能。
 
-核心问题是：Entity 是持久化模型（带 ORM 代理、懒加载、双向关联、可变状态），DTO 是接口契约（稳定、可序列化、按需裁剪）。映射本质是“翻译”，如果每次请求都用反射框架（如 BeanUtils、ModelMapper）逐字段读写，会带来反射开销、临时对象、触发懒加载、甚至把内部字段泄露给前端。 追求极致响应速度时，原则是： 1) 编译期确定映射：MapStruct 在编译期生成 getter/setter 调用，无反射；Java 16+ 可用 record + 构造器/静态工厂，JIT 易内联。 2) 减少对象分配：DTO 用不可变对象，避免中间 Map/BeanWrapper；批量场景用投影（JPA Projection / MyBatis resultMap）直接查 DTO，跳过 Entity。 3) 控制加载边界：在事务内完成映射，避免在序列化阶段触发懒加载（N+1、LazyInitializationException）；用 fetch join / EntityGraph 一次取齐。 4) 安全：DTO 只暴露必要字段，防止 Mass Assignment 和内部字段泄露；入参用独立 Command/DTO 并做校验，出参不直接返回 Entity。 通俗类比：Entity 是后厨的原始食材和半成品（带保鲜膜、可能还没解冻），DTO 是端上桌的摆盘。映射就是装盘。反射框架像让服务员每次现场查菜谱再摆盘，慢且容易把后厨杂物端出去；编译期映射像提前印好摆盘图，直接照做。 例子： - 反例：`BeanUtils.copyProperties(entity, dto)` 在循环里对 1 万条数据映射，反射+字符串匹配，CPU 高且可能触发 lazy。 - 正例：MapStruct 接口 `UserDto toDto(User entity)`，编译生成 `dto.setName(entity.getName())`；或 `new UserDto(entity.getId(), entity.getName())`。 - 更极致：查询直接返回 DTO：`@Query("select new com.x.UserDto(u.id,u.name) from User u where ...")`，零 Entity 实例化。
+核心问题是：Entity 是持久化模型（带 ORM 代理、懒加载、双向关联、可变状态），DTO 是接口契约（稳定、可序列化、按需裁剪）。映射本质是“翻译”，如果每次请求都用反射框架（如 BeanUtils、ModelMapper）逐字段读写，会带来反射开销、临时对象、触发懒加载、甚至把内部字段泄露给前端。
+
+追求极致响应速度时，原则是：
+
+1) 编译期确定映射：MapStruct 在编译期生成 getter/setter 调用，无反射；Java 16+ 可用 record + 构造器/静态工厂，JIT 易内联。
+2) 减少对象分配：DTO 用不可变对象，避免中间 Map/BeanWrapper；批量场景用投影（JPA Projection / MyBatis resultMap）直接查 DTO，跳过 Entity。
+3) 控制加载边界：在事务内完成映射，避免在序列化阶段触发懒加载（N+1、LazyInitializationException）；用 fetch join / EntityGraph 一次取齐。
+4) 安全：DTO 只暴露必要字段，防止 Mass Assignment 和内部字段泄露；入参用独立 Command/DTO 并做校验，出参不直接返回 Entity。
+
+通俗类比：Entity 是后厨的原始食材和半成品（带保鲜膜、可能还没解冻），DTO 是端上桌的摆盘。映射就是装盘。反射框架像让服务员每次现场查菜谱再摆盘，慢且容易把后厨杂物端出去；编译期映射像提前印好摆盘图，直接照做。
+
+例子：
+
+- 反例：`BeanUtils.copyProperties(entity, dto)` 在循环里对 1 万条数据映射，反射+字符串匹配，CPU 高且可能触发 lazy。
+- 正例：MapStruct 接口 `UserDto toDto(User entity)`，编译生成 `dto.setName(entity.getName())`；或 `new UserDto(entity.getId(), entity.getName())`。
+- 更极致：查询直接返回 DTO：`@Query("select new com.x.UserDto(u.id,u.name) from User u where ...")`，零 Entity 实例化。
 
 **常见追问**：如何避免「1) 认为“DTO 只是多此一举”，直接返回 Entity，导致懒加载异常、字段泄露、循环引用」？ 「2) 用 BeanUtils/ModelMapper 做热路径映射，忽略反射和临时对象成本」在真实项目中应如何规避？
 
 ---
 
-## 58. 内存引用及LeakCanary原理？
+## 50. Java/Android 内存泄漏的原理是什么？LeakCanary 如何定位引用链？
 
 > 原题 ID：`q2499`
 
@@ -1641,30 +1508,39 @@ MapStruct 的核心定位是“编译期代码生成器”，而不是运行时�
 
 内存引用是对象可达性的判定依据，LeakCanary 通过弱引用+引用队列监听对象是否被回收，未回收则用 Debug.dumpHprofData 抓取堆快照并用 Shark 分析最短引用链，定位内存泄漏。
 
-一、内存引用基础 Java/Android 中 GC 判断对象是否存活采用可达性分析：从 GC Roots（栈帧局部变量、静态变量、JNI 引用、活跃线程等）出发，能走到的对象存活，走不到的可回收。引用类型决定回收时机： 1. 强引用：普通赋值，只要可达就绝不回收，是内存泄漏的根源。 2. 软引用 SoftReference：内存不足时才回收，适合做缓存。 3. 弱引用 WeakReference：只要发生 GC 就回收，不管内存是否充足。 4. 虚引用 PhantomReference：无法通过它拿到对象，唯一用途是配合 ReferenceQueue 在对象被回收时收到通知。 通俗类比：GC Roots 是“活人名单”，引用链是“人际关系”。只要有人能顺着关系找到你，你就“还活着”；弱引用像“点头之交”，GC 一“大扫除”就断；虚引用像“讣告订阅”，人没了才通知你。 二、LeakCanary 原理 核心思路：一个对象如果本该被回收，却因为被强引用链意外持有而无法回收，就是泄漏。LeakCanary 用“弱引用 + 引用队列”来检测： 1. 监听阶段：对 Activity/Fragment 等生命周期对象，在 onDestroy 后创建 KeyedWeakReference（弱引用）并关联 ReferenceQueue。 2. 触发 GC：等待一段时间后，主动调用 Runtime.gc() 并触发一次 GC，然后检查 ReferenceQueue。若弱引用已入队，说明对象已被回收，无泄漏；若仍在队列外，说明对象仍被强引用持有，疑似泄漏。 3. 抓取快照：确认泄漏后调用 Debug.dumpHprofData() 生成 hprof 堆转储文件。 4. 分析阶段：用 Shark（LeakCanary 2.x 自研的 hprof 解析库，替代早期 HAHA）解析 hprof，从泄漏对象出发做广度优先搜索，找到到 GC Roots 的最短强引用路径，即“泄漏引用链”。 5. 报告：输出引用链，指出哪个类/字段持有了本该释放的对象，帮助定位。 三、适用场景 开发/测试阶段检测 Activity、Fragment、View、Presenter 等生命周期对象泄漏；不适合线上全量开启，因为 dump hprof 会 STW 卡顿且文件大。 四、常见泄漏场景 非静态内部类/匿名类持有 Activity、Handler 延时消息未移除、单例持有 Context、静态集合未清理、监听器未反注册、线程/AsyncTask 未结束等。
+**一、内存引用基础**
+
+Java/Android 中 GC 判断对象是否存活采用可达性分析：从 GC Roots（栈帧局部变量、静态变量、JNI 引用、活跃线程等）出发，能走到的对象存活，走不到的可回收。引用类型决定回收时机：
+
+1. 强引用：普通赋值，只要可达就绝不回收，是内存泄漏的根源。
+2. 软引用 SoftReference：内存不足时才回收，适合做缓存。
+3. 弱引用 WeakReference：只要发生 GC 就回收，不管内存是否充足。
+4. 虚引用 PhantomReference：无法通过它拿到对象，唯一用途是配合 ReferenceQueue 在对象被回收时收到通知。
+
+通俗类比：GC Roots 是“活人名单”，引用链是“人际关系”。
+
+- 只要有人能顺着关系找到你，你就“还活着”；
+- 弱引用像“点头之交”，GC 一“大扫除”就断；
+- 虚引用像“讣告订阅”，人没了才通知你。
+
+**二、LeakCanary**
+
+原理 核心思路：一个对象如果本该被回收，却因为被强引用链意外持有而无法回收，就是泄漏。LeakCanary 用“弱引用 + 引用队列”来检测：
+
+1. 监听阶段：对 Activity/Fragment 等生命周期对象，在 onDestroy 后创建 KeyedWeakReference（弱引用）并关联 ReferenceQueue。
+2. 触发 GC：等待一段时间后，主动调用 Runtime.gc() 并触发一次 GC，然后检查 ReferenceQueue。若弱引用已入队，说明对象已被回收，无泄漏；若仍在队列外，说明对象仍被强引用持有，疑似泄漏。
+3. 抓取快照：确认泄漏后调用 Debug.dumpHprofData() 生成 hprof 堆转储文件。
+4. 分析阶段：用 Shark（LeakCanary 2.x 自研的 hprof 解析库，替代早期 HAHA）解析 hprof，从泄漏对象出发做广度优先搜索，找到到 GC Roots 的最短强引用路径，即“泄漏引用链”。
+5. 报告：输出引用链，指出哪个类/字段持有了本该释放的对象，帮助定位。
+
+**三、适用场景**
+
+开发/测试阶段检测 Activity、Fragment、View、Presenter 等生命周期对象泄漏；不适合线上全量开启，因为 dump hprof 会 STW 卡顿且文件大。
+
+**四、常见泄漏场景**
+
+非静态内部类/匿名类持有 Activity、Handler 延时消息未移除、单例持有 Context、静态集合未清理、监听器未反注册、线程/AsyncTask 未结束等。
 
 **常见追问**：如何避免「误以为弱引用对象一定立即回收：弱引用只是“GC 时回收”，若对象还被强引用链持有，弱引用不会入队，这正是检测依据。」？ 「把 LeakCanary 当成万能：它只能检测“生命周期对象”泄漏，对 Bitmap 过大、内存抖动、非生命周期对象泄漏无能为力。」在真实项目中应如何规避？
-
----
-
-## 59. leak原理？
-
-> 原题 ID：`q2500`
-
-**高频程度**：★★★
-
-**考察点**：考察对「leak原理」的掌握，重点看能否讲清：在 Java/Android 等带 GC 的语言里，判断对象是否可回收看的是“可达性分析”：从 GC Roots（栈帧局部变量、静态变量、常量、JNI 引用
-
-**回答框架**：
-
-长生命周期对象持有短生命周期对象。例如单例/静态集合缓存了 Activity、Context；静态 Map 只 put 不 remove。；非静态内部类/匿名类隐式持有外部类。例如 Handler、Runnable、AsyncTask、监听器持有 Activity，消息队列延迟执行导致 Activity 无法释放。；资源未关闭：Cursor、Stream、Bitmap、线程池、RxJava 订阅未 dispose。；注册后未反注册：广播、EventBus、ContentObserver、传感器监听。；集合类对象 hashCode/equals 被修改后无法 remove，或 ThreadLocal 的 key 被回收但 value 仍被 Thread 强引用。
-
-**参考回答**：
-
-Leak 指对象已不再被业务使用，却仍被 GC Roots 强引用而无法回收，导致内存占用持续增长，本质是“可达但无用”。
-
-在 Java/Android 等带 GC 的语言里，判断对象是否可回收看的是“可达性分析”：从 GC Roots（栈帧局部变量、静态变量、常量、JNI 引用、活跃线程等）出发，能顺着引用链走到的对象就存活。Leak（内存泄漏）不是对象丢了，而是它“不该活却还活着”——业务代码已经不再需要它，但某条引用链仍把它连到 GC Roots 上，GC 只能保留它。 通俗类比：GC 像保洁阿姨，只清理“从大门（GC Roots）走不到的房间”。如果某个房间已经没人用，但门被一根绳子（引用）拴在大门上，阿姨就以为里面还有人，不敢清。Leak 就是这根多余的绳子。 常见成因： 1. 长生命周期对象持有短生命周期对象。例如单例/静态集合缓存了 Activity、Context；静态 Map 只 put 不 remove。 2. 非静态内部类/匿名类隐式持有外部类。例如 Handler、Runnable、AsyncTask、监听器持有 Activity，消息队列延迟执行导致 Activity 无法释放。 3. 资源未关闭：Cursor、Stream、Bitmap、线程池、RxJava 订阅未 dispose。 4. 注册后未反注册：广播、EventBus、ContentObserver、传感器监听。 5. 集合类对象 hashCode/equals 被修改后无法 remove，或 ThreadLocal 的 key 被回收但 value 仍被 Thread 强引用。 后果：堆内存逐步被占满，GC 频繁触发（卡顿、掉帧），最终 OOM。注意 leak 与 OOM 不是一回事：leak 是原因，OOM 是可能结果；短时间大量分配也可能 OOM 但不叫 leak。 排查思路：用 MAT/LeakCanary 抓取 heap dump，按 GC Roots 最短路径找引用链；Android 上重点看 Activity/Fragment 是否被静态变量、Handler、监听器持有。修复原则：缩短引用生命周期、及时 remove/unregister/close、用 WeakReference/静态内部类+弱引用、生命周期感知组件。
-
-**常见追问**：如何避免「把 leak 等同于 OOM，认为内存泄漏一定马上崩溃。2. 认为 Java 靠引用计数回收，或认为“没有引用变量指向对象就一定会被回收”，忽略 GC Roots 可达性。3. 认为调用 System.gc() 能解决泄漏——泄漏对象仍可达，GC 不会回收。4. 只背“Handler 泄漏”结论，说不清为什么：非静态内部类隐式持有外部类，Message 又持有 Handler，MessageQueue 持有 Message，主线程 Looper 一直存活。5. 认为 WeakReference 万能，滥用导致缓存被频繁回收、对象提前失效。6. 忽略注册/反注册、close 资源、dispose 订阅这些非引用链型泄漏。7. 把“内存抖动”和“内存泄漏”混为一谈。」？ 能否结合「能区分“内存泄漏”和“内存溢出”：泄漏是可达性异常，溢出是容量不足；泄漏会累积，溢出可能瞬时。2. 能讲清 GC Roots 枚举和可达性分析，而不是只说“引用计数为 0 才回收”——JVM/ART 主流不是引用计数。3. 能提到 WeakReference/SoftReference 的语义差异：Weak 在下次 GC 必被回收，Soft 在内存不足时回收，适合做缓存但要防被提前清。4. 能结合 Android 具体案例：非静态 Handler 持有 Activity，正确写法是 static Handler + WeakReference，并在 onDestroy 移除消息；LeakCanary 的 ReferenceQueue + WeakReference 检测原理。5. 能提到 ThreadLocal 泄漏：Entry 的 key 是弱引用，value 是强引用，线程池复用线程时 value 会一直存活，必须 remove。6. 能说清“可达但无用”这个本质，并指出不是所有长生命周期引用都是泄漏，要看业务是否还需要。」进一步展开？
 
 ---
